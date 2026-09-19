@@ -227,7 +227,7 @@ function gotoMenu(instant){
   show('menu', instant);
   $('#bg').classList.add('live');
   updateContinue(); select(0, true);
-  $('#menu-br').textContent = 'DELVE v1.2.0-shell · fan work · 2026-09-19';
+  $('#menu-br').textContent = 'DELVE v1.3.0-shell · fan work · 2026-09-19';
   DelveAudio.startMenu(); DelveAudio.ambStart();
 }
 
@@ -314,10 +314,11 @@ $$('.opts[data-key]').forEach(box => {
   });
 });
 /* sliders */
+const setFill = sl => { const mn = +sl.min || 0, mx = +sl.max || 100; sl.style.setProperty('--fill', (((+sl.value - mn) / (mx - mn)) * 100).toFixed(1) + '%'); };
 $$('input[type="range"][data-key]').forEach(sl => {
   const out = document.querySelector(`output[data-for="${sl.dataset.key}"]`);
   const fmt = v => sl.dataset.unit === 'm' ? (+v).toFixed(1) + ' m' : sl.dataset.unit === '%' ? v + '%' : v;
-  sl.addEventListener('input', () => { if (out) out.textContent = fmt(sl.value); Opt.set(sl.dataset.key, +sl.value); });
+  sl.addEventListener('input', () => { if (out) out.textContent = fmt(sl.value); Opt.set(sl.dataset.key, +sl.value); setFill(sl); });
 });
 /* keybinds */
 const KEY_LABEL = c => ({ Space: 'Space', Escape: 'Esc', Tab: 'Tab', ShiftLeft: 'L-Shift', ShiftRight: 'R-Shift' }[c] || (c || '').replace('Key', '').replace('Digit', '').replace('Arrow', '↑↓←→→') || c);
@@ -355,6 +356,7 @@ function syncOptionsUI(){
     sl.value = Opt.get(sl.dataset.key);
     const out = document.querySelector(`output[data-for="${sl.dataset.key}"]`);
     if (out) out.textContent = sl.dataset.unit === 'm' ? (+sl.value).toFixed(1) + ' m' : sl.dataset.unit === '%' ? sl.value + '%' : sl.value;
+    setFill(sl);
   });
   syncBindsUI();
   setGroupUI('fr-diff', Opt.get('play.diff'));

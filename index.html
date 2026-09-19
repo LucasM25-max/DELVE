@@ -96,6 +96,7 @@
 
 <!-- ============ FIRST RUN PAGE (§2.4.2) ============ -->
 <section id="page-firstrun" class="screen" aria-label="Sign the contract">
+  <div class="motes" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
   <div class="sheet cert">
     <div class="sheet-head">
       <img class="sheet-emblem" src="assets/img/logo_emblem.png" alt="">
@@ -139,11 +140,13 @@
       <button class="btn ghost" id="fr-back">BACK</button>
     </div>
     <p class="fine">By signing you accept the road as it comes. These choices may be changed at any camp.</p>
+    <span class="fr-seal" data-seal aria-hidden="true"></span>
   </div>
 </section>
 
 <!-- ============ OPTIONS PAGE (§2.5 full tree) ============ -->
 <section id="page-options" class="screen" aria-label="Options">
+  <div class="motes" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
   <div class="sheet cert optpage">
     <div class="sheet-head">
       <img class="sheet-emblem" src="assets/img/logo_emblem.png" alt="">
@@ -152,18 +155,18 @@
     </div>
     <div class="optbody">
       <nav class="orail" aria-label="Options sections">
-        <button class="rbtn on" data-sec="graphics">Graphics</button>
-        <button class="rbtn" data-sec="camera">Camera</button>
-        <button class="rbtn" data-sec="gameplay">Gameplay</button>
-        <button class="rbtn" data-sec="accessibility">Accessibility</button>
-        <button class="rbtn" data-sec="audio">Audio</button>
-        <button class="rbtn" data-sec="controls">Controls</button>
+        <button class="rbtn on" data-sec="graphics"><span class="ric" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M8 11v2M5 13.5h6"/></svg></span>Graphics</button>
+        <button class="rbtn" data-sec="camera"><span class="ric" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8s-2.5 4.5-6.5 4.5S1.5 8 1.5 8Z"/><circle cx="8" cy="8" r="2"/></svg></span>Camera</button>
+        <button class="rbtn" data-sec="gameplay"><span class="ric" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5 13.5 4.75v6.5L8 14.5 2.5 11.25v-6.5Z"/><path d="M8 4.8 11 10H5Z"/></svg></span>Gameplay</button>
+        <button class="rbtn" data-sec="accessibility"><span class="ric" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="3.1" r="1.5"/><path d="M8 5.4v4M8 9.4 5.6 13.4M8 9.4l2.4 4M3.6 6.6h8.8"/></svg></span>Accessibility</button>
+        <button class="rbtn" data-sec="audio"><span class="ric" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.4c-2.6 0-4 2-4 4.5 0 3-1 4.1-1.5 4.6h11C13 11 12 9.9 12 6.9c0-2.5-1.4-4.5-4-4.5Z"/><path d="M6.8 13.6a1.3 1.3 0 0 0 2.4 0"/></svg></span>Audio</button>
+        <button class="rbtn" data-sec="controls"><span class="ric" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="4.4" cy="8" r="2.4"/><path d="M6.8 8h7.2M11.4 8v2.6M14 8v1.8"/></svg></span>Controls</button>
       </nav>
       <div class="ocontent">
 
         <div class="osec on" id="sec-graphics">
           <div class="orow"><span class="olabel">Resolution</span>
-            <div class="opts octl" data-key="gfx.res"><button class="opt">Native</button><button class="opt">1280×720</button><button class="opt">1600×900</button><button class="opt">1920×1080</button><button class="opt">2560×1440</button></div></div>
+            <div class="opts octl" data-key="gfx.res"><button class="opt">Native</button><button class="opt">720p</button><button class="opt">900p</button><button class="opt">1080p</button><button class="opt">1440p</button></div></div>
           <div class="orow"><span class="olabel">Frame rate cap</span>
             <div class="opts octl" data-key="gfx.fps"><button class="opt">30</button><button class="opt">60</button><button class="opt">90</button><button class="opt">120</button><button class="opt">Unlocked</button></div></div>
           <div class="orow"><span class="olabel">Quality preset</span>
