@@ -331,3 +331,74 @@ body.rm .bg-pan img, body.rm .bg-cam, body.rm .bg-mist, body.rm .gull{animation:
   .card{padding:28px 24px 24px;}
   .menu-word{width:calc(9vh * 2.6);}
 }
+
+/* ==========================================================================
+   OPTIONS PAGE (§2.5) + accessibility application classes
+   ========================================================================== */
+.optpage{width:min(1060px, 96vw); padding:30px 44px 22px;}
+.optbody{display:grid; grid-template-columns:172px 1fr; gap:26px; min-height:380px;}
+.orail{display:flex; flex-direction:column; gap:4px; border-right:1px solid rgba(94,61,25,.35); padding-right:14px;}
+.rbtn{
+  text-align:left; font-family:var(--font-display); font-weight:600; font-size:13px;
+  letter-spacing:.18em; text-transform:uppercase; color:#5b4630; padding:9px 10px; border-radius:3px;
+  transition:all .12s ease; position:relative;
+}
+.rbtn:hover{background:rgba(94,61,25,.1); color:#33261a;}
+.rbtn.on{background:linear-gradient(180deg, #2b333b, #141a1f); color:var(--parchment);
+  box-shadow:inset 0 0 0 1px rgba(176,121,58,.8), 0 2px 8px rgba(0,0,0,.35);}
+.rbtn.on::before{content:""; position:absolute; left:5px; top:50%; width:5px; height:5px;
+  background:var(--bronze-hi); transform:translateY(-50%) rotate(45deg);}
+.ocontent{padding-right:6px;}
+.osec{display:none;}
+.osec.on{display:block; animation:secin .25s ease;}
+@keyframes secin{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+.orow{
+  display:grid; grid-template-columns:minmax(180px, 34%) 1fr; align-items:center; gap:14px;
+  padding:9px 2px; border-bottom:1px dashed rgba(94,61,25,.28);
+}
+.orow .ohelp{grid-column:1 / -1; margin:2px 0 4px;}
+.olabel{font-family:var(--font-display); font-weight:600; font-size:12.5px; letter-spacing:.14em;
+  text-transform:uppercase; color:#4a3620;}
+.octl{display:flex; justify-content:flex-end; align-items:center; gap:8px; flex-wrap:wrap;}
+.octl .opts{justify-content:flex-end;}
+.octl .opt{padding:7px 14px; font-size:13.5px;}
+.octl.slide{gap:12px;}
+.octl.slide input[type="range"]{width:min(240px, 40vw); accent-color:var(--bronze); height:22px; cursor:pointer;}
+.octl.slide output{font-family:var(--font-dice); font-size:14px; color:#33261a; min-width:52px; text-align:right;}
+.ohelp{font-size:12.5px; font-style:italic; color:#6b5539; border-left:2px solid rgba(176,121,58,.6);
+  padding-left:10px; line-height:1.5;}
+.keycap{
+  min-width:74px; padding:7px 12px; border-radius:4px; text-align:center;
+  font-family:var(--font-dice); font-size:14px; color:var(--parchment);
+  background:linear-gradient(180deg, #2b333b, #141a1f); border:1px solid var(--bronze-dk);
+  box-shadow:0 2px 6px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.12);
+  transition:all .12s ease;
+}
+.keycap:hover{filter:brightness(1.25);}
+.keycap.listening{outline:2px solid var(--obelisk); outline-offset:2px; animation:kpulse .8s ease-in-out infinite;}
+@keyframes kpulse{50%{box-shadow:0 0 14px rgba(116,224,180,.6);}}
+.keyfix{font-family:var(--font-dice); font-size:14px; color:#5b4630; border:1px dashed rgba(94,61,25,.5);
+  padding:6px 12px; border-radius:4px;}
+#sec-controls .card-btns{margin-top:14px;}
+@media (max-width:760px){
+  .optbody{grid-template-columns:1fr; gap:10px;}
+  .orail{flex-direction:row; flex-wrap:wrap; border-right:0; border-bottom:1px solid rgba(94,61,25,.35); padding:0 0 8px;}
+  .orow{grid-template-columns:1fr; gap:6px;}
+  .octl{justify-content:flex-start;}
+}
+
+/* ---------- accessibility application (§2.5) ---------- */
+body.hc{--parchment:#fffdf4;}
+body.hc .mitem{color:#fff; text-shadow:0 2px 4px #000, 0 0 3px #000;}
+body.hc .mitem.sel{color:#ffe9b0;}
+body.hc .bg-vig{background:rgba(0,0,0,.55);}
+body.hc .olabel, body.hc .fhelp, body.hc .ohelp{color:#1d1408;}
+body.cb-prot #bg{filter:sepia(.28) saturate(.72) hue-rotate(-12deg);}
+body.cb-deut #bg{filter:sepia(.2) saturate(.66) hue-rotate(8deg);}
+body.cb-trit #bg{filter:saturate(.6) hue-rotate(18deg) contrast(1.05);}
+.octl .opts{display:flex; gap:6px;}
+
+/* options screen centering + inner scroll */
+#page-options{display:grid; place-items:center; padding:2vh 2vw;}
+.optpage{max-height:94vh; overflow:auto;}
+#page-options{z-index:20; background:rgba(6,9,12,.58); backdrop-filter:blur(3px);}

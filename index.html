@@ -142,7 +142,142 @@
   </div>
 </section>
 
-<!-- ============ OVERLAY: SEALED STUB (options/codex/credits not in this build) ============ -->
+<!-- ============ OPTIONS PAGE (§2.5 full tree) ============ -->
+<section id="page-options" class="screen" aria-label="Options">
+  <div class="sheet cert optpage">
+    <div class="sheet-head">
+      <img class="sheet-emblem" src="assets/img/logo_emblem.png" alt="">
+      <h2 class="sheet-title">Options</h2>
+      <div class="rule"><i></i></div>
+    </div>
+    <div class="optbody">
+      <nav class="orail" aria-label="Options sections">
+        <button class="rbtn on" data-sec="graphics">Graphics</button>
+        <button class="rbtn" data-sec="camera">Camera</button>
+        <button class="rbtn" data-sec="gameplay">Gameplay</button>
+        <button class="rbtn" data-sec="accessibility">Accessibility</button>
+        <button class="rbtn" data-sec="audio">Audio</button>
+        <button class="rbtn" data-sec="controls">Controls</button>
+      </nav>
+      <div class="ocontent">
+
+        <div class="osec on" id="sec-graphics">
+          <div class="orow"><span class="olabel">Resolution</span>
+            <div class="opts octl" data-key="gfx.res"><button class="opt">Native</button><button class="opt">1280×720</button><button class="opt">1600×900</button><button class="opt">1920×1080</button><button class="opt">2560×1440</button></div></div>
+          <div class="orow"><span class="olabel">Frame rate cap</span>
+            <div class="opts octl" data-key="gfx.fps"><button class="opt">30</button><button class="opt">60</button><button class="opt">90</button><button class="opt">120</button><button class="opt">Unlocked</button></div></div>
+          <div class="orow"><span class="olabel">Quality preset</span>
+            <div class="opts octl" data-key="gfx.quality"><button class="opt">Low</button><button class="opt">Medium</button><button class="opt">High</button><button class="opt">Epic</button></div></div>
+          <div class="orow"><span class="olabel">Ray-traced shadows</span>
+            <div class="opts octl" data-key="gfx.rt"><button class="opt">On</button><button class="opt">Off</button></div></div>
+          <div class="orow"><span class="olabel">Foliage density</span>
+            <div class="opts octl" data-key="gfx.foliage"><button class="opt">Low</button><button class="opt">Med</button><button class="opt">High</button></div></div>
+          <p class="ohelp">Graphics settings apply in the full build; the web shell stores them with your contract.</p>
+        </div>
+
+        <div class="osec" id="sec-camera">
+          <div class="orow"><span class="olabel">Default view</span>
+            <div class="opts octl" data-key="cam.view"><button class="opt">Third person</button><button class="opt">First person</button></div></div>
+          <div class="orow"><span class="olabel">Toggle-view key</span>
+            <div class="octl"><button class="keycap" data-bind="view">V</button></div></div>
+          <div class="orow"><span class="olabel">Field of view (first person)</span>
+            <div class="octl slide"><input type="range" min="80" max="110" step="5" data-key="cam.fov"><output data-for="cam.fov">95</output></div></div>
+          <div class="orow"><span class="olabel">Boom length (third person)</span>
+            <div class="octl slide"><input type="range" min="2.5" max="6" step="0.1" data-unit="m" data-key="cam.boom"><output data-for="cam.boom">3.8 m</output></div></div>
+          <div class="orow"><span class="olabel">Head bob</span>
+            <div class="opts octl" data-key="cam.bob"><button class="opt">Off</button><button class="opt">Low</button><button class="opt">High</button></div></div>
+          <div class="orow"><span class="olabel">Camera shake</span>
+            <div class="octl slide"><input type="range" min="0" max="100" step="5" data-unit="%" data-key="cam.shake"><output data-for="cam.shake">70%</output></div></div>
+          <div class="orow"><span class="olabel">Snap turn (pad, first person)</span>
+            <div class="opts octl" data-key="cam.snap"><button class="opt">Off</button><button class="opt">15°</button><button class="opt">30°</button></div></div>
+          <div class="orow"><span class="olabel">Combat framing</span>
+            <div class="opts octl" data-key="cam.framing"><button class="opt">Auto two-shot</button><button class="opt">Follow actor</button><button class="opt">Manual</button></div></div>
+          <div class="orow"><span class="olabel">Reduced motion</span>
+            <div class="opts octl" data-key="cam.reduced"><button class="opt">On</button><button class="opt">Off</button></div></div>
+        </div>
+
+        <div class="osec" id="sec-gameplay">
+          <div class="orow"><span class="olabel">Show hit chances</span>
+            <div class="opts octl" data-key="play.hitch"><button class="opt">On</button><button class="opt">Off</button></div></div>
+          <div class="orow"><span class="olabel">Rules grid overlay</span>
+            <div class="opts octl" data-key="play.grid"><button class="opt">Off</button><button class="opt">On-hover targeting</button><button class="opt">Always</button></div></div>
+          <div class="orow"><span class="olabel">Enemy turn pace</span>
+            <div class="opts octl" data-key="play.pace"><button class="opt">Cinematic</button><button class="opt">Brisk</button><button class="opt">Instant</button></div></div>
+          <div class="orow"><span class="olabel">Reaction prompts</span>
+            <div class="opts octl" data-key="play.react"><button class="opt">Ask always</button><button class="opt">Auto-take</button><button class="opt">Auto-pass</button></div></div>
+          <div class="orow"><span class="olabel">Reaction timer</span>
+            <div class="opts octl" data-key="play.rtimer"><button class="opt">Off</button><button class="opt">6 s</button><button class="opt">10 s</button></div></div>
+          <div class="orow"><span class="olabel">Auto-end turn</span>
+            <div class="opts octl" data-key="play.autoend"><button class="opt">On</button><button class="opt">Off</button></div></div>
+          <div class="orow"><span class="olabel">Companion trap tells</span>
+            <div class="opts octl" data-key="play.tells"><button class="opt">On</button><button class="opt">Off</button></div></div>
+          <div class="orow"><span class="olabel">Difficulty</span>
+            <div class="opts octl" data-key="play.diff"><button class="opt">Story</button><button class="opt">Balanced</button><button class="opt">Tactical</button></div></div>
+          <div class="orow"><span class="olabel">Combat pacing</span>
+            <div class="opts octl" data-key="play.combat"><button class="opt">Table Mode (turn-based)</button><button class="opt">Skirmish Mode (real-time, pausable)</button></div></div>
+          <div class="orow"><span class="olabel">Fast travel</span>
+            <div class="opts octl" data-key="play.fast"><button class="opt">Off</button><button class="opt" data-locked="1">Map</button></div>
+            <p class="ohelp">The road is part of the story. The map opens in later chapters.</p></div>
+        </div>
+
+        <div class="osec" id="sec-accessibility">
+          <div class="orow"><span class="olabel">Subtitles</span>
+            <div class="opts octl" data-key="acc.subs"><button class="opt">On</button><button class="opt">Off</button></div></div>
+          <div class="orow"><span class="olabel">Subtitle size</span>
+            <div class="opts octl" data-key="acc.subsize"><button class="opt">S</button><button class="opt">M</button><button class="opt">L</button></div></div>
+          <div class="orow"><span class="olabel">Speaker names in subtitles</span>
+            <div class="opts octl" data-key="acc.names"><button class="opt">On</button><button class="opt">Off</button></div></div>
+          <div class="orow"><span class="olabel">Colourblind filter</span>
+            <div class="opts octl" data-key="acc.cb"><button class="opt">Off</button><button class="opt">Protanopia</button><button class="opt">Deuteranopia</button><button class="opt">Tritanopia</button></div></div>
+          <div class="orow"><span class="olabel">High-contrast UI</span>
+            <div class="opts octl" data-key="acc.hc"><button class="opt">On</button><button class="opt">Off</button></div></div>
+          <div class="orow"><span class="olabel">Screen-reader UI labels</span>
+            <div class="opts octl" data-key="acc.sr"><button class="opt">On</button><button class="opt">Off</button></div></div>
+          <div class="orow"><span class="olabel">Difficult-terrain outline</span>
+            <div class="opts octl" data-key="acc.dt"><button class="opt">Off</button><button class="opt">Subtle</button><button class="opt">On</button></div></div>
+          <div class="orow"><span class="olabel">Cover outlines</span>
+            <div class="opts octl" data-key="acc.cover"><button class="opt">Off</button><button class="opt">On-hover</button><button class="opt">Always</button></div></div>
+        </div>
+
+        <div class="osec" id="sec-audio">
+          <div class="orow"><span class="olabel">Master</span>
+            <div class="octl slide"><input type="range" min="0" max="100" step="5" data-key="aud.master"><output data-for="aud.master">90</output></div></div>
+          <div class="orow"><span class="olabel">Music</span>
+            <div class="octl slide"><input type="range" min="0" max="100" step="5" data-key="aud.music"><output data-for="aud.music">80</output></div></div>
+          <div class="orow"><span class="olabel">SFX</span>
+            <div class="octl slide"><input type="range" min="0" max="100" step="5" data-key="aud.sfx"><output data-for="aud.sfx">90</output></div></div>
+          <div class="orow"><span class="olabel">Voice</span>
+            <div class="octl slide"><input type="range" min="0" max="100" step="5" data-key="aud.voice"><output data-for="aud.voice">100</output></div></div>
+          <div class="orow"><span class="olabel">Mute when unfocused</span>
+            <div class="opts octl" data-key="aud.mute"><button class="opt">On</button><button class="opt">Off</button></div></div>
+          <p class="ohelp">Audio files are added via assets/audio/ — see AUDIO_PROMPTS.md and AUDIO_GENERATION_GUIDE.md.</p>
+        </div>
+
+        <div class="osec" id="sec-controls">
+          <div class="orow"><span class="olabel">Move</span><div class="octl"><span class="keyfix">W A S D</span></div></div>
+          <div class="orow"><span class="olabel">Look</span><div class="octl"><span class="keyfix">Mouse</span></div></div>
+          <div class="orow"><span class="olabel">Sprint</span><div class="octl"><button class="keycap" data-bind="sprint">L-Shift</button></div></div>
+          <div class="orow"><span class="olabel">Jump</span><div class="octl"><button class="keycap" data-bind="jump">Space</button></div></div>
+          <div class="orow"><span class="olabel">Interact</span><div class="octl"><button class="keycap" data-bind="interact">F</button></div></div>
+          <div class="orow"><span class="olabel">View toggle</span><div class="octl"><button class="keycap" data-bind="view">V</button></div></div>
+          <div class="orow"><span class="olabel">Folio</span><div class="octl"><button class="keycap" data-bind="folio">Tab</button></div></div>
+          <div class="orow"><span class="olabel">Journal</span><div class="octl"><button class="keycap" data-bind="journal">J</button></div></div>
+          <div class="orow"><span class="olabel">Codex</span><div class="octl"><button class="keycap" data-bind="codex">C</button></div></div>
+          <div class="orow"><span class="olabel">Hide action</span><div class="octl"><button class="keycap" data-bind="hide">H</button></div></div>
+          <div class="orow"><span class="olabel">End turn</span><div class="octl"><button class="keycap" data-bind="endturn">Space</button></div></div>
+          <div class="orow"><span class="olabel">Pause</span><div class="octl"><button class="keycap" data-bind="pause">Esc</button></div></div>
+          <div class="orow"><span class="olabel">Pad layout</span>
+            <div class="opts octl" data-key="pad"><button class="opt">Standard</button><button class="opt">Swapped A/B</button></div></div>
+          <div class="card-btns"><button class="btn ghost" id="opt-reset-binds">RESET BINDS</button></div>
+        </div>
+
+      </div>
+    </div>
+    <div class="card-btns sheet-btns"><button class="btn ghost" id="opt-back">BACK</button></div>
+  </div>
+</section>
+
+<!-- ============ OVERLAY: SEALED STUB (codex/credits not in this build) ============ -->
 <div id="modal-stub" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="stub-title">
   <div class="card cert card-s">
     <div class="card-seal" data-seal></div>
