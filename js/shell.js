@@ -47,16 +47,7 @@ if (P.get('save') === '1' && !save){
 }
 const pending = { diff: 'Balanced', pace: 'Table Mode (turn-based)', subs: 'On', comfort: 'Standard' };
 
-/* ---------- emblem / seal SVG (GDD-02 §1.3, §1.5) ---------- */
-function emblemSVG(settled){
-  return `<svg viewBox="0 0 100 92" role="img" aria-label="Delve emblem" class="${settled ? 'settled' : ''}">
-    <path class="emblem-outline${settled ? ' draw' : ''}" pathLength="1" d="M3 3 H97 L50 84.4 Z"/>
-    <path class="emblem-step s1${settled ? ' lit-s' : ''}" pathLength="1" d="M64 30 H42 V50"/>
-    <path class="emblem-step s2${settled ? ' lit-s' : ''}" pathLength="1" d="M42 50 H58 V70"/>
-    <path class="emblem-step s3${settled ? ' lit-s' : ''}" pathLength="1" d="M58 70 H46 V78"/>
-    <circle class="emblem-pip" cx="50" cy="60" r="5"/>
-  </svg>`;
-}
+/* ---------- wax seal SVG (GDD-02 §1.5 save-stamp lockup) ---------- */
 function sealSVG(){
   return `<svg viewBox="0 0 100 100" role="img" aria-label="Contract seal">
     <circle cx="50" cy="50" r="47" fill="#8E2F26"/>
@@ -136,7 +127,6 @@ addEventListener('keydown', e => { if (current === 'legal' && !e.repeat) leaveLe
 let stingT0 = 0, stingRaf = 0, stingDone = false, holdAt = P.get('t') ? +P.get('t') : 0;
 const fired = {};
 function startSting(){
-  $('#sting-emblem').innerHTML = emblemSVG(false);
   stingT0 = performance.now();
   DelveAudio.sting();
   stingRaf = requestAnimationFrame(stingTick);
@@ -145,20 +135,18 @@ function stingTick(){
   let el = performance.now() - stingT0;
   if (holdAt) el = Math.min(el, holdAt);
   const at = (ms, fn) => { if (el >= ms && !fired[ms]){ fired[ms] = 1; fn(); } };
-  at(800, () => { const o = document.querySelector('#sting-emblem .emblem-outline'); if (o) o.classList.add('draw');
+  at(800, () => { $('#sting-emblem').classList.add('reveal');
                   const r = $('#sting-emblem').getBoundingClientRect(); FX.embers(r, performance.now() + 1200); });
-  at(1000, () => lightStep('.s1')); at(1350, () => lightStep('.s2')); at(1700, () => lightStep('.s3'));
-  at(1900, () => { const p = document.querySelector('#sting-emblem .emblem-pip'); if (p) p.classList.add('lit'); });
-  const letters = document.querySelectorAll('#sting-word span');
-  letters.forEach((sp, i) => at(2000 + i * 200, () => {
-    sp.classList.add('in');
-    const r = sp.getBoundingClientRect(); FX.dust(r.x + r.width / 2, r.y + r.height * .8);
-  }));
+  at(1900, () => $('#pipflash').classList.add('go'));
+  at(2000, () => $('#sting-word').classList.add('wipe'));
+  for (let i = 0; i < 5; i++) at(2000 + i * 200, () => {
+    const r = $('#sting-word img').getBoundingClientRect();
+    FX.dust(r.x + r.width * (i + .5) / 5, r.y + r.height * .85);
+  });
   at(3000, () => { $('#sting-sub').classList.add('in'); $('#sting-word').classList.add('sweep'); });
   at(4000, () => { if (!holdAt) gotoMenu(); });
   if (!holdAt || el < holdAt) stingRaf = requestAnimationFrame(stingTick);
 }
-function lightStep(sel){ const s = document.querySelector('#sting-emblem ' + sel); if (s) s.classList.add('lit'); }
 function skipSting(){
   const el = performance.now() - stingT0;
   if (current === 'sting' && el > 1500 && !stingDone){ gotoMenu(); }   // skippable after 1.5 s
@@ -216,6 +204,7 @@ addEventListener('keydown', e => {
 });
 function gotoMenu(){
   stingDone = true;
+  const m = $('#screen-menu'); m.classList.remove('live-in'); void m.offsetWidth; m.classList.add('live-in');
   show('menu');
   $('#bg').classList.add('live');
   updateContinue(); select(0, true);
@@ -313,7 +302,6 @@ function pollGamepad(){
 requestAnimationFrame(pollGamepad);
 
 /* ---------- inject emblems, seals, boot ---------- */
-$('#menu-emblem').innerHTML = emblemSVG(true);
 document.querySelectorAll('[data-seal]').forEach(el => { el.innerHTML = sealSVG(); });
 if (P.get('still') === '1') document.body.classList.add('still');
 if (P.get('rm') === '1' || matchMedia('(prefers-reduced-motion: reduce)').matches) document.body.classList.add('rm');

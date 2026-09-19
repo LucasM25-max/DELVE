@@ -45,10 +45,15 @@ Push to a repo, enable Pages on the branch root — the site is fully static.
 
 ## What is synthesized vs generated
 
-- **Audio:** 100 % runtime Web Audio synthesis (`js/audio.js`) — the 90-second dwarf-march
-  menu loop (Karplus-Strong bouzouki plucks, frame drum, pad), its 50 %-intensity hum
-  variant, the harbour-dawn ambience bed (bell ≈22 s, gulls, rope creaks, blade clacks),
-  the boot-sting one-shots and every UI sound. Zero audio files, zero licensing.
+- **Logo:** generated metallic artwork (`assets/img/logo_wordmark.png`,
+  `assets/img/logo_emblem.png`), black-background keyed to true transparency and
+  trimmed by script; raw generations kept as `raw_*.png`. Used in the sting, menu
+  lockup, legal screen, First Run header and favicon.
+- **Audio:** ships with 100 % runtime Web Audio synthesis fallbacks (`js/audio.js`) so
+  the shell is never silent — but **real generated files win automatically**: drop
+  files into `assets/audio/` using the exact filenames and prompts in
+  [`AUDIO_PROMPTS.md`](AUDIO_PROMPTS.md) (`.ogg` → `.mp3` → `.wav` preference) and
+  reload. Zero licensing risk either way.
 - **Images:** `assets/img/yard_dawn_panorama.png` (menu background, generated matte
   painting) and `assets/img/parchment.jpg` (card/sheet grain). The DELVE wordmark, the
   delve-stair emblem and the wax contract seal are hand-built inline SVG per GDD-02 §1.2–1.3

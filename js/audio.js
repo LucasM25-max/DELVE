@@ -152,6 +152,38 @@ const DelveAudio = (() => {
 
   function toBuffer(arr){ const b = ctx.createBuffer(1, arr.length, SR); b.copyToChannel(arr, 0); return b; }
 
+  /* ---------- drop-in file replacements (see AUDIO_PROMPTS.md) ----------
+     Any of these ids can be replaced by a real generated/recording file at
+     assets/audio/<name>.{ogg,mp3,wav}; files win over synthesis when present. */
+  const FILES = {
+    theme: 'mus_menu_theme', 'var': 'mus_menu_theme_var',
+    rumble: 'sfx_boot_stone', chime: 'sfx_boot_chime', chisel: 'sfx_boot_chisel', cadence: 'mus_boot_cadence',
+    move: 'sfx_ui_move', confirm: 'sfx_ui_confirm', back: 'sfx_ui_back', deny: 'sfx_ui_deny',
+    page: 'sfx_ui_page', stamp: 'sfx_ui_stamp',
+    gull: 'amb_gull', bell: 'amb_bell', creak: 'amb_creak', clack: 'amb_clack'
+  };
+  async function loadFiles(){
+    // assets/audio/manifest.json lists dropped-in files, e.g. {"files": ["mus_menu_theme.ogg"]}
+    let list = [];
+    try {
+      const r = await fetch('assets/audio/manifest.json');
+      if (!r.ok) return;
+      list = ((await r.json()).files) || [];
+    } catch (e) { return; }
+    const byName = {};
+    Object.keys(FILES).forEach(id => { byName[FILES[id]] = id; });
+    for (const fname of list){
+      const base = fname.replace(/\.(ogg|mp3|wav)$/i, '');
+      const id = byName[base];
+      if (!id) continue;
+      try {
+        const r = await fetch('assets/audio/' + fname);
+        if (!r.ok) continue;
+        B[id] = await ctx.decodeAudioData(await r.arrayBuffer());
+      } catch (e) { /* keep synthesized buffer */ }
+    }
+  }
+
   /* ---------- public ---------- */
   function init(){
     if (ctx) { if (ctx.state === 'suspended') ctx.resume().catch(()=>{}); return; }
@@ -168,14 +200,15 @@ const DelveAudio = (() => {
       buildOneShots();
       for (const k of Object.keys(B)) if (B[k] instanceof Float32Array) B[k] = toBuffer(B[k]);
       OK = true;
+      loadFiles();   // upgrade to real files when present
       if (ctx.state === 'suspended') ctx.resume().catch(()=>{});
     } catch (e) { OK = false; }
   }
   const AMB_IDS = { gull: 1, bell: 1, creak: 1, clack: 1 };
-  function play(id, gain = 1, when = 0){
+  function play(id, gain = 1, when = 0, rate = 1){
     if (!OK || !B[id]) return;
     try {
-      const src = ctx.createBufferSource(); src.buffer = B[id];
+      const src = ctx.createBufferSource(); src.buffer = B[id]; src.playbackRate.value = rate;
       const g = ctx.createGain(); g.gain.value = gain;
       src.connect(g); g.connect(AMB_IDS[id] ? ambG : sfxG);
       src.start(ctx.currentTime + when);
@@ -183,7 +216,7 @@ const DelveAudio = (() => {
   }
   function sting(){                      // §1.4 timeline audio
     play('rumble', 0.9, 0);
-    play('chime', 0.7, 1.0); play('chime', 0.7, 1.35); play('chime', 0.8, 1.7);
+    play('chime', 0.7, 1.0, 1); play('chime', 0.7, 1.35, 1.12); play('chime', 0.8, 1.7, 1.26);
     for (let i = 0; i < 5; i++) play('chisel', 0.55, 2.0 + i * 0.2);
     play('cadence', 0.9, 3.0);
   }
