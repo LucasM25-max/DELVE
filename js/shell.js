@@ -19,6 +19,8 @@ const STR = {
   NEW_BODY: 'A signed contract already exists: "{0} — {1}, {2}, {3}". Starting anew will not erase it; up to 8 contracts may rest in the ledger.',
   BACK: 'BACK',
   STUB_CODEX: 'The codex awaits the full build.',
+  CODEX_LORE_EMPTY: 'The ledger is blank. Lore earns itself.',
+  CODEX_BEST_EMPTY: 'No creatures catalogued yet.',
   STUB_CREDITS: 'The credits scroll awaits the full build.',
   END_SIGNED_T: 'CONTRACT SIGNED',
   END_SIGNED_B: 'The wax is set, {0}. The yard gate opens in the full build — this shell ends at the threshold.',
@@ -126,7 +128,7 @@ const FX = (() => {
 })();
 
 /* ---------- screens ---------- */
-const screens = { legal: $('#screen-legal'), sting: $('#screen-sting'), menu: $('#screen-menu'), firstrun: $('#page-firstrun'), options: $('#page-options') };
+const screens = { legal: $('#screen-legal'), sting: $('#screen-sting'), menu: $('#screen-menu'), firstrun: $('#page-firstrun'), options: $('#page-options'), codex: $('#page-codex') };
 let current = 'legal';
 function show(name, instant){
   const go = () => { for (const k in screens) screens[k].classList.toggle('active', k === name); current = name; };
@@ -213,6 +215,7 @@ function activate(i){
   if (i === 0){ save ? openNew() : show('firstrun'); }
   else if (i === 1){ if (save) openEnd('resume'); else { DelveAudio.play('deny', .9); tipShow(); setTimeout(tipHide, 1600); } }
   else if (i === 2){ syncOptionsUI(); show('options'); }
+  else if (i === 3){ openCodex(); }
   else openStub(i);
 }
 addEventListener('keydown', e => {
@@ -220,6 +223,7 @@ addEventListener('keydown', e => {
   if (e.key === 'ArrowDown' || e.key === 's'){ select((sel + 1) % items.length); e.preventDefault(); }
   else if (e.key === 'ArrowUp' || e.key === 'w'){ select((sel - 1 + items.length) % items.length); e.preventDefault(); }
   else if (e.key === 'Enter' || e.key === ' '){ if (document.activeElement && document.activeElement.classList.contains('mitem')) return; activate(sel); e.preventDefault(); }
+  else if (e.code === Opt.get('binds.codex') && !e.repeat){ openCodex(); e.preventDefault(); }
 });
 function gotoMenu(instant){
   stingDone = true;
@@ -227,7 +231,7 @@ function gotoMenu(instant){
   show('menu', instant);
   $('#bg').classList.add('live');
   updateContinue(); select(0, true);
-  $('#menu-br').textContent = 'DELVE v1.3.0-shell · fan work · 2026-09-19';
+  $('#menu-br').textContent = 'DELVE v1.4.0-shell · fan work · 2026-09-19';
   DelveAudio.startMenu(); DelveAudio.ambStart();
 }
 
@@ -240,7 +244,7 @@ function openNew(){
 $('#new-begin').addEventListener('click', () => { DelveAudio.play('confirm', .9); $('#modal-new').hidden = true; syncFirstRunUI(); show('firstrun'); });
 $('#new-back').addEventListener('click', () => { DelveAudio.play('back', .8); $('#modal-new').hidden = true; });
 
-const STUBS = { 3: ['CODEX', STR.STUB_CODEX], 4: ['CREDITS', STR.STUB_CREDITS] };
+const STUBS = { 4: ['CREDITS', STR.STUB_CREDITS] };
 function openStub(i){
   $('#stub-title').textContent = STUBS[i][0];
   $('#stub-body').textContent = STUBS[i][1];
@@ -372,7 +376,7 @@ addEventListener('keydown', e => {
   if (!$('#modal-new').hidden){ $('#modal-new').hidden = true; return; }
   if (!$('#modal-stub').hidden){ $('#modal-stub').hidden = true; return; }
   if (!$('#modal-end').hidden){ $('#end-back').click(); return; }
-  if (current === 'firstrun' || current === 'options'){ show('menu'); return; }
+  if (current === 'firstrun' || current === 'options' || current === 'codex'){ show('menu'); return; }
 });
 
 /* ---------- mute when unfocused (§2.5 Audio) ---------- */
@@ -406,6 +410,136 @@ function pollGamepad(){
 }
 requestAnimationFrame(pollGamepad);
 
+
+/* ---------- codex (§2.6): rules folio, ledger, bestiary ---------- */
+const hasContract = () => !!localStorage.getItem(SAVE_KEY);
+const CX_P = t => `<p>${t}</p>`;
+const CX_RULES = [
+{ k:'Core mechanic · PHB 2024, ch. 1', t:'The D20 Test', b:
+  CX_P('When the outcome of an action is uncertain, the game uses a d20 roll to determine success or failure. These rolls are called D20 Tests, and they come in three kinds: ability checks, saving throws, and attack rolls. They follow these steps:') +
+  '<ul><li><b>Roll 1d20.</b> You always want to roll high. If the roll has Advantage or Disadvantage, you roll two d20s, but you use the number from only one of them—the higher one if you have Advantage or the lower one if you have Disadvantage.</li>' +
+  '<li><b>Add Modifiers.</b> The relevant ability modifier; your Proficiency Bonus if relevant; and any circumstantial bonuses or penalties from a class feature, a spell, or another rule.</li>' +
+  '<li><b>Compare the Total to a Target Number.</b> If the total of the d20 and its modifiers equals or exceeds the target number, the D20 Test succeeds. Otherwise, it fails.</li></ul>' +
+  CX_P('The target number for an ability check or a saving throw is called a Difficulty Class (DC). The target number for an attack roll is called an Armor Class (AC).') },
+{ k:'Core mechanic · PHB 2024, ch. 1', t:'Advantage & Disadvantage', b:
+  CX_P('Advantage reflects the positive circumstances surrounding a d20 roll, while Disadvantage reflects negative circumstances. You usually acquire them through the use of special abilities and actions; the DM can also decide that circumstances grant Advantage or impose Disadvantage.') +
+  CX_P('<b>Roll Two D20s.</b> When a roll has either Advantage or Disadvantage, roll a second d20 when you make the roll. Use the higher of the two rolls if you have Advantage, and use the lower roll if you have Disadvantage. For example, if you have Disadvantage and roll an 18 and a 3, use the 3.') +
+  CX_P('<b>They Don’t Stack.</b> If multiple situations affect a roll and they all grant Advantage on it, you still roll only two d20s. If circumstances cause a roll to have both Advantage and Disadvantage, the roll has neither of them, and you roll one d20.') },
+{ k:'Combat · PHB 2024, ch. 1', t:'Attack Rolls & Armor Class', b:
+  CX_P('An attack roll determines whether an attack hits a target. An attack roll hits if the roll equals or exceeds the target’s Armor Class.') +
+  CX_P('A creature’s Armor Class represents how well the creature avoids being wounded in combat. All creatures start with the same base AC calculation:') +
+  '<blockquote class="cx-note"><p><b>Base AC</b> = 10 + the creature’s Dexterity modifier</p></blockquote>' +
+  CX_P('A creature’s AC can then be modified by armor, magic items, spells, and more. Melee weapon attacks use Strength; ranged weapon attacks use Dexterity; spell attacks use the ability determined by the spellcasting feature.') },
+{ k:'Core mechanic · PHB 2024, ch. 1', t:'Ability Checks & Difficulty Classes', b:
+  CX_P('An ability check represents a creature using talent and training to try to overcome a challenge, such as forcing open a stuck door, picking a lock, entertaining a crowd, or deciphering a cipher. The DM and the rules often call for an ability check when a creature attempts something other than an attack that has a chance of meaningful failure.') +
+  CX_P('The Difficulty Class of an ability check represents the task’s difficulty. The more difficult the task, the higher its DC. The rules provide DCs for certain checks, but the DM ultimately sets them.') +
+  '<table class="cx-table"><thead><tr><th>Task Difficulty</th><th>DC</th></tr></thead><tbody>' +
+  '<tr><td>Very easy</td><td>5</td></tr><tr><td>Easy</td><td>10</td></tr><tr><td>Medium</td><td>15</td></tr>' +
+  '<tr><td>Hard</td><td>20</td></tr><tr><td>Very hard</td><td>25</td></tr><tr><td>Nearly impossible</td><td>30</td></tr></tbody></table>' },
+{ k:'Core mechanic · PHB 2024, ch. 1', t:'Passive Scores', b:
+  CX_P('Sometimes the DM determines whether your character notices something without asking for a Wisdom (Perception) check; the DM uses your Passive Perception instead. Passive Perception is a score that reflects a general awareness of your surroundings when you’re not actively looking for something.') +
+  '<blockquote class="cx-note"><p><b>Passive Perception</b> = 10 + Wisdom (Perception) check modifier</p></blockquote>' +
+  CX_P('Include all modifiers that apply to your Wisdom (Perception) checks. For example, if your character has a Wisdom of 15 and proficiency in the Perception skill, you have a Passive Perception of 14 (10 + 2 for your Wisdom modifier + 2 for proficiency).') },
+{ k:'Combat · PHB 2024, ch. 1', t:'Surprise', b:
+  CX_P('If a combatant is surprised by combat starting, that combatant has Disadvantage on their Initiative roll. For example, if an ambusher starts combat while hidden from a foe who is unaware that combat is starting, that foe is surprised.') +
+  CX_P('On the trail to Phandalin, an unseen bowstring is the whole difference between a story and a funeral. Watch the treeline.') },
+{ k:'Exploration · PHB 2024, ch. 1', t:'Hiding & Unseen Foes', b:
+  CX_P('Adventurers and monsters often hide, whether to spy on one another, sneak past a guardian, or set an ambush. The Dungeon Master decides when circumstances are appropriate for hiding. When you try to hide, you take the Hide action.') +
+  '<blockquote class="cx-note"><p>When you make an attack roll against a target you can’t see, you have Disadvantage on the roll. When a creature can’t see you, you have Advantage on attack rolls against it. If you are hidden when you make an attack roll, you give away your location when the attack hits or misses.</p></blockquote>' },
+{ k:'Combat · PHB 2024, ch. 1', t:'Cover', b:
+  CX_P('Walls, trees, creatures, and other obstacles can provide cover, making a target more difficult to harm. There are three degrees of cover, each of which gives a different benefit to a target.') +
+  CX_P('A target can benefit from cover only when an attack or other effect originates on the opposite side of the cover. If a target is behind multiple sources of cover, only the most protective degree of cover applies; the degrees aren’t added together.') +
+  '<table class="cx-table"><thead><tr><th>Degree</th><th>Benefit to Target</th><th>Offered By…</th></tr></thead><tbody>' +
+  '<tr><td>Half</td><td>+2 bonus to AC and Dex saves</td><td>Another creature or an object that covers at least half of the target</td></tr>' +
+  '<tr><td>Three-Quarters</td><td>+5 bonus to AC and Dex saves</td><td>An object that covers at least three-quarters of the target</td></tr>' +
+  '<tr><td>Total</td><td>Can’t be targeted directly</td><td>An object that covers the whole target</td></tr></tbody></table>' },
+{ k:'Movement · PHB 2024, ch. 1', t:'Difficult Terrain', b:
+  CX_P('Combatants are often slowed down by Difficult Terrain. Low furniture, rubble, undergrowth, steep stairs, snow, and shallow bogs are examples of Difficult Terrain.') +
+  CX_P('Every foot of movement in Difficult Terrain costs 1 extra foot, even if multiple things in a space count as Difficult Terrain.') },
+{ k:'Rules glossary · PHB 2024', t:'Conditions Glossary', b:
+  CX_P('Many effects impose a condition, a temporary state that alters the recipient’s capabilities. The following conditions are defined in the rules glossary:') +
+  '<ul><li>Blinded</li><li>Charmed</li><li>Deafened</li><li>Exhaustion</li><li>Frightened</li><li>Grappled</li><li>Incapacitated</li><li>Invisible</li><li>Paralyzed</li><li>Petrified</li><li>Poisoned</li><li>Prone</li><li>Restrained</li><li>Stunned</li><li>Unconscious</li></ul>' +
+  '<blockquote class="cx-note"><p>Table note: conditions don’t stack — if two effects impose the same condition, the recipient has it once; and a creature reduced to 0 hit points is dying, not merely unconscious, unless a foe chose mercy (see Knocking Out a Creature).</p></blockquote>' },
+{ k:'Combat · PHB 2024, ch. 1', t:'Anatomy of a Turn', b:
+  CX_P('On your turn, you can move a distance up to your Speed and take one action. You decide whether to move first or take your action first.') +
+  CX_P('You can communicate however you are able—through brief utterances and gestures—as you take your turn. Doing so uses neither your action nor your move. Extended communication, such as a detailed explanation or an attempt to persuade a foe, requires an action.') +
+  CX_P('In Table Mode the yard bell keeps this rhythm: your turn, their turn, no arguments. In Skirmish Mode the same anatomy flows in real time, pausable at a raised hand.') },
+{ k:'Combat · PHB 2024, ch. 1', t:'Reactions & Opportunity Attacks', b:
+  CX_P('Certain special abilities, spells, and situations allow you to take a special action called a Reaction: an instant response to a trigger of some kind, which can occur on your turn or on someone else’s. When you take a Reaction, you can’t take another one until the start of your next turn.') +
+  CX_P('You can make an Opportunity Attack when a creature that you can see leaves your reach. To make the attack, take a Reaction to make one melee attack with a weapon or an Unarmed Strike against that creature. The attack occurs right before it leaves your reach.') +
+  CX_P('You can avoid provoking an Opportunity Attack by taking the Disengage action. You also don’t provoke when you Teleport or when you are moved without using your movement, action, Bonus Action, or Reaction.') },
+{ k:'Recovery · PHB 2024, ch. 1', t:'Resting', b:
+  CX_P('Adventurers can’t spend every hour adventuring. They need rest. Any creature can take hour-long Short Rests in the midst of a day and an 8-hour Long Rest to end it. Regaining Hit Points is one of the main benefits of a rest.') +
+  CX_P('You can spend Hit Dice during a Short Rest to recover Hit Points. Temporary Hit Points last until they’re depleted or you finish a Long Rest.') },
+{ k:'Mercy · PHB 2024, ch. 1', t:'Knocking Out a Creature', b:
+  CX_P('When you would reduce a creature to 0 Hit Points with a melee attack, you can instead reduce the creature to 1 Hit Point and give it the Unconscious condition. It then starts a Short Rest, at the end of which that condition ends on it.') +
+  CX_P('The condition ends early if the creature regains any Hit Points or if someone takes an action to administer first aid to it, making a successful DC 10 Wisdom (Medicine) check. A live prisoner answers questions; a dead one only haunts them.') },
+{ k:'Weapon properties · PHB 2024, ch. 6', t:'Weapon Masteries', b:
+  CX_P('Each weapon has a mastery property, usable only by a character who has a feature, such as Weapon Mastery, that unlocks the property for the character. The properties are defined below.') +
+  '<dl class="cx-dl">' +
+  '<dt>Cleave</dt><dd>If you hit a creature with a melee attack roll using this weapon, you can make a melee attack roll with the weapon against a second creature within 5 feet of the first that is also within your reach. On a hit, the second creature takes the weapon’s damage, but don’t add your ability modifier to that damage unless that modifier is negative. Once per turn.</dd>' +
+  '<dt>Graze</dt><dd>If your attack roll with this weapon misses a creature, you can deal damage to that creature equal to the ability modifier you used to make the attack roll. This damage is the same type dealt by the weapon.</dd>' +
+  '<dt>Nick</dt><dd>When you make the extra attack of the Light property, you can make it as part of the Attack action instead of as a Bonus Action. Once per turn.</dd>' +
+  '<dt>Push</dt><dd>If you hit a creature with this weapon, you can push the creature up to 10 feet straight away from yourself if it is Large or smaller.</dd>' +
+  '<dt>Sap</dt><dd>If you hit a creature with this weapon, that creature has Disadvantage on its next attack roll before the start of your next turn.</dd>' +
+  '<dt>Slow</dt><dd>If you hit a creature with this weapon and deal damage to it, you can reduce its Speed by 10 feet until the start of your next turn.</dd>' +
+  '<dt>Topple</dt><dd>If you hit a creature with this weapon, you can force it to make a Constitution saving throw (DC 8 + the ability modifier used for the attack roll + your Proficiency Bonus). On a failed save, the creature has the Prone condition.</dd>' +
+  '<dt>Vex</dt><dd>If you hit a creature with this weapon and deal damage to it, you have Advantage on your next attack roll against that creature before the end of your next turn.</dd>' +
+  '</dl>' },
+];
+const CX_LORE = [
+{ k:'Prologue · earned at signing', t:'The Rockseeker Contract', b:
+  CX_P('Three lines of ink and a wax seal: escort the supplies, report the road, ask no wages beyond the dwarf’s promise. Gundren Rockseeker signs without hesitation, which tells you either that the road is safe or that he needs you badly enough to pretend it is.') +
+  CX_P('Contracts of this kind are the oldest magic in the Sword Coast. Nothing is enchanted about them; and still, once signed, they pull a body south like a hook in the lip.') },
+{ k:'Prologue · earned at signing', t:'The Muster-Yard at Dawn', b:
+  CX_P('Neverwinter keeps its training yard between the wall and the water: five straw dummies in a row, a bell that counts the watch, gulls arguing over the fish market. Every blade in the city learned its first cut here, including yours.') +
+  CX_P('The yardmaster’s rule is written over the gate in chipped paint: <i>slow is smooth, smooth is fast.</i> The dummies have never disagreed.') },
+];
+const CX_TABS = {
+  rules: ['Rules of Engagement', 'Player’s Handbook 2024 · verbatim excerpts'],
+  lore:  ['The Ledger', 'lore earns itself in play'],
+  best:  ['Bestiary', 'catalogued on first encounter'],
+};
+const CX_EMPTY_SVG = '<svg viewBox="0 0 72 72" fill="none" stroke="#7a5428" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 14h34a6 6 0 0 1 6 6v38H22a6 6 0 0 1-6-6Z"/><path d="M16 14a6 6 0 0 0-6 6v32a6 6 0 0 0 6 6"/><path d="M46 14v44"/><circle cx="51" cy="36" r="4.5"/><path d="M51 40.5v6M28 26h10M28 33h10"/></svg>';
+function codexEntries(tab){
+  if (tab === 'rules') return CX_RULES;
+  if (tab === 'lore') return hasContract() ? CX_LORE : [];
+  return [];
+}
+function renderCodex(tab){
+  const f = $('#codex-folio');
+  const meta = CX_TABS[tab];
+  const list = codexEntries(tab);
+  let html = `<div class="cfol-head"><h3>${meta[0]}</h3><span class="cfol-sub">${meta[1]}</span><div class="rule"><i></i></div></div><div class="cfol-inner">`;
+  if (!list.length){
+    const str = tab === 'lore' ? STR.CODEX_LORE_EMPTY : STR.CODEX_BEST_EMPTY;
+    const help = tab === 'lore'
+      ? 'Sign the Rockseeker Contract and walk the road; the ledger fills as you learn.'
+      : 'Creatures are catalogued the first time you meet them in play.';
+    html += `<div class="cx-empty">${CX_EMPTY_SVG}<p class="cx-empty-str">${str}</p><p class="cx-empty-help">${help}</p></div>`;
+  } else {
+    list.forEach((en, i) => {
+      html += `<article class="cx-entry" style="animation-delay:${Math.min(i * 45, 400)}ms"><span class="cx-kick">${en.k}</span><h4>${en.t}</h4>${en.b}</article>`;
+    });
+  }
+  f.innerHTML = html + '</div>';
+  f.scrollTop = 0;
+  $('#cx-count-rules').textContent = CX_RULES.length;
+  $('#cx-count-lore').textContent = hasContract() ? CX_LORE.length : 0;
+  $('#cx-count-best').textContent = 0;
+}
+let cxTab = 'rules';
+function syncCodexTabs(){ $$('.ctab').forEach(t => t.classList.toggle('on', t.dataset.tab === cxTab)); }
+function openCodex(instant){ syncCodexTabs(); renderCodex(cxTab); show('codex', instant); }
+$$('.ctab').forEach(t => t.addEventListener('click', () => {
+  if (t.dataset.tab === cxTab) return;
+  cxTab = t.dataset.tab; syncCodexTabs();
+  const f = $('#codex-folio'); f.classList.remove('turning'); void f.offsetWidth; f.classList.add('turning');
+  DelveAudio.play('page', .7);
+  renderCodex(cxTab);
+}));
+$('#cx-back').addEventListener('click', () => { DelveAudio.play('back', .8); show('menu'); });
+
 /* ---------- boot ---------- */
 document.querySelectorAll('[data-seal]').forEach(el => { el.innerHTML = sealSVG(); });
 if (P.get('still') === '1') document.body.classList.add('still');
@@ -418,6 +552,7 @@ switch (P.get('s')){
   case 'new': gotoMenu(); openNew(); break;
   case 'firstrun': gotoMenu(true); syncFirstRunUI(); show('firstrun', true); break;
   case 'options': gotoMenu(true); syncOptionsUI(); show('options', true); break;
+  case 'codex': gotoMenu(true); openCodex(true); break;
   case 'end': gotoMenu(); openEnd('signed'); break;
   case 'stub3': gotoMenu(); openStub(3); break;
   case 'stub4': gotoMenu(); openStub(4); break;
