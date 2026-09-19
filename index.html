@@ -349,7 +349,47 @@
   </div>
 </section>
 
-<!-- ============ OVERLAY: SEALED STUB (credits not in this build) ============ -->
+<!-- ============ LOADING SCREEN (§3) ============ -->
+<section id="page-loading" class="screen" aria-label="Loading">
+  <div class="ld-map" aria-hidden="true">
+    <img class="ld-map-img" src="assets/img/sword_coast_map.png" alt="">
+    <svg class="ld-route" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+      <path id="ld-path" d="M 560 515 C 720 545 880 535 1000 515 C 1080 500 1120 470 1180 462 L 1268 455"/>
+      <circle id="ld-nib" cx="560" cy="515" r="5"/>
+      <g class="ld-glyph" transform="translate(560,515)">
+        <circle r="10" class="ld-g-ring"/>
+        <path d="M0 -6 V5 M-4 -3 H4 M-3.5 5.5 A3.5 3.5 0 0 0 3.5 5.5" class="ld-g-ink"/>
+      </g>
+      <g class="ld-glyph" transform="translate(1268,455)">
+        <circle r="10" class="ld-g-ring"/>
+        <path d="M-5 -5 L5 5 M5 -5 L-5 5 M-5 -5 l2 -2 M5 5 l-2 2 M5 -5 l2 -2 M-5 5 l2 2" class="ld-g-ink"/>
+      </g>
+    </svg>
+    <div class="ld-label" style="left:31%; top:72%;">Neverwinter harbour</div>
+    <div class="ld-label" style="left:81.5%; top:67.5%;">The muster-yard</div>
+    <div class="ld-vig"></div>
+  </div>
+  <div class="ld-title" id="ld-title">NEVERWINTER — THE ROCKSEEKER CONTRACT</div>
+  <div class="ld-tipwrap" id="ld-tipwrap">
+    <div class="ld-tip" id="ld-tip">
+      <span class="ld-tip-kick">Field note</span>
+      <p id="ld-tip-text"></p>
+    </div>
+    <div class="ld-err" id="ld-err" hidden>
+      <p id="ld-err-text"></p>
+      <div class="card-btns"><button class="btn" id="ld-retry">RETRY</button><button class="btn ghost" id="ld-quit">QUIT TO MENU</button></div>
+    </div>
+  </div>
+  <div class="ld-sealwrap" id="ld-sealwrap">
+    <div class="ld-sealbox">
+      <span class="ld-seal" id="ld-seal" data-seal></span>
+      <span class="ld-pct" id="ld-pct">0</span>
+    </div>
+    <div class="ld-pips" aria-hidden="true"><i></i><i></i><i></i></div>
+  </div>
+</section>
+
+<!-- ============ OVERLAY: SEALED STUB ============ -->
 <div id="modal-stub" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="stub-title">
   <div class="card cert card-s">
     <div class="card-seal" data-seal></div>

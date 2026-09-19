@@ -23,6 +23,12 @@ const STR = {
   CODEX_BEST_EMPTY: 'No creatures catalogued yet.',
   STUB_CREDITS: 'The credits scroll awaits the full build.',
   CREDITS_END: 'Made with love for the table. Never for sale.',
+  LOAD_TITLE_YRD: 'NEVERWINTER — THE ROCKSEEKER CONTRACT',
+  LOAD_TITLE_CH1: 'CHAPTER 1 — A DANGEROUS JOURNEY',
+  LOAD_ERR: 'The road is washed out. (Asset load failed: {0}). Retry?',
+  LOAD_SLOW: 'Still packing the wagon… large loads take a moment on first visit.',
+  RETRY: 'RETRY',
+  QUIT_MENU: 'QUIT TO MENU',
   END_SIGNED_T: 'CONTRACT SIGNED',
   END_SIGNED_B: 'The wax is set, {0}. The yard gate opens in the full build — this shell ends at the threshold.',
   END_RESUME_T: 'CONTRACT RESTORED',
@@ -129,7 +135,7 @@ const FX = (() => {
 })();
 
 /* ---------- screens ---------- */
-const screens = { legal: $('#screen-legal'), sting: $('#screen-sting'), menu: $('#screen-menu'), firstrun: $('#page-firstrun'), options: $('#page-options'), codex: $('#page-codex'), credits: $('#page-credits') };
+const screens = { legal: $('#screen-legal'), sting: $('#screen-sting'), menu: $('#screen-menu'), firstrun: $('#page-firstrun'), options: $('#page-options'), codex: $('#page-codex'), credits: $('#page-credits'), loading: $('#page-loading') };
 let current = 'legal';
 function show(name, instant){
   const go = () => { for (const k in screens) screens[k].classList.toggle('active', k === name); current = name; };
@@ -214,7 +220,7 @@ function emblemFlicker(){
 function activate(i){
   DelveAudio.play('confirm', .9); emblemFlicker();
   if (i === 0){ save ? openNew() : show('firstrun'); }
-  else if (i === 1){ if (save) openEnd('resume'); else { DelveAudio.play('deny', .9); tipShow(); setTimeout(tipHide, 1600); } }
+  else if (i === 1){ if (save) startLoad('yrd', 'menu'); else { DelveAudio.play('deny', .9); tipShow(); setTimeout(tipHide, 1600); } }
   else if (i === 2){ syncOptionsUI(); show('options'); }
   else if (i === 3){ openCodex(); }
   else if (i === 4){ openCredits(); }
@@ -233,7 +239,7 @@ function gotoMenu(instant){
   show('menu', instant);
   $('#bg').classList.add('live');
   updateContinue(); select(0, true);
-  $('#menu-br').textContent = 'DELVE v1.5.0-shell · fan work · 2026-09-19';
+  $('#menu-br').textContent = 'DELVE v1.6.0-shell · fan work · 2026-09-19';
   DelveAudio.startMenu(); DelveAudio.ambStart();
 }
 
@@ -266,6 +272,11 @@ function openEnd(mode){
 }
 $('#end-back').addEventListener('click', () => { DelveAudio.play('back', .8); $('#modal-end').hidden = true; updateContinue(); });
 
+function writeSave(){
+  save = { slot: 'Contract I', name: 'Recruit', cls: 'Recruit', lvl: 1, chap: 'Prologue', ts: Date.now() };
+  storeSave(save); updateContinue();
+}
+
 /* ---------- first run (§2.4.2) — writes into the shared options store ---------- */
 const FR_MAP = { 'fr-diff': 'play.diff', 'fr-pace': 'play.combat', 'fr-subs': 'acc.subs', 'fr-comfort': 'fr-comfort' };
 function wireGroup(groupId, key){
@@ -291,12 +302,7 @@ function syncFirstRunUI(){
   setGroupUI('fr-subs', Opt.get('acc.subs'));
   setGroupUI('fr-comfort', Opt.get('cam.reduced') === 'On' ? 'Reduced motion' : 'Standard');
 }
-$('#fr-go').addEventListener('click', () => {
-  save = { slot: 'Contract I', name: 'Recruit', cls: 'Recruit', lvl: 1, chap: 'Prologue', ts: Date.now() };
-  storeSave(save);
-  show('menu', true);
-  openEnd('signed');
-});
+$('#fr-go').addEventListener('click', () => { DelveAudio.play('stamp', .9); writeSave(); startLoad('yrd', 'menu'); });
 $('#fr-back').addEventListener('click', () => { DelveAudio.play('back', .8); show('menu'); });
 
 /* ---------- OPTIONS PAGE (§2.5) ---------- */
@@ -380,6 +386,7 @@ addEventListener('keydown', e => {
   if (!$('#modal-end').hidden){ $('#end-back').click(); return; }
   if (current === 'firstrun' || current === 'options' || current === 'codex'){ show('menu'); return; }
   if (current === 'credits'){ stopCredits(); show('menu'); return; }
+  if (current === 'loading'){ quitLoad(); return; }
 });
 
 /* ---------- mute when unfocused (§2.5 Audio) ---------- */
@@ -582,6 +589,117 @@ addEventListener('keydown', e => { if (current === 'credits' && !credDone && (e.
 addEventListener('keyup', e => { if (e.code === 'Space' || e.code === 'ShiftLeft'){ credMult = 1; document.querySelector('#page-credits').classList.remove('holding'); } });
 $('#cred-back').addEventListener('click', () => { DelveAudio.play('back', .8); stopCredits(); show('menu'); });
 
+
+/* ---------- loading screen (§3): ink-drawn map, real weighted progress ---------- */
+const LD_TIPS = [
+  'Goblins fight to the death until only one remains — and that one runs. Catch it, and the trail is yours.',
+  'Half cover adds +2 to AC and Dexterity saves; three-quarters cover adds +5. Shoot through thickets at your peril.',
+  'A surprised creature skips its first turn entirely. Stealth is a weapon — spend it well.',
+  'Weapon masteries: Push shoves 10 feet. Topple knocks Prone. Vex grants Advantage on your next hit. Learn their manners.',
+  'Falling Prone costs half your Speed to stand, and attacks from Prone have Disadvantage. Mind the fire pit.',
+  'You can knock a creature unconscious instead of killing it with any bludgeoning hit that would drop it — prisoners talk.',
+  'High ground grants Advantage on ranged attacks; low ground imposes Disadvantage. The archery loft exists for a reason.',
+  'Reactions refresh at the start of YOUR turn, not the round’s. Budget them like coins.',
+  'Difficult terrain costs double movement. Briars, rubble and knee-deep streams all bite.',
+  'A short rest lets you spend Hit Dice to heal. A long rest returns everything — if the place is safe. The cave mouth is not.',
+  'Darkvision is not daylight: beyond 60 feet even dwarves guess. Carry a lantern, or carry a wizard.',
+  'Hiding beats passive Perception, not eyes: break line of sight first, then roll.',
+  'Concentration breaks on damage unless you pass a Constitution save. Protect your casters’ focus.',
+  'The die is the truth: every roll in DELVE is a real d20 simulation. Watch the dice theatre — it never lies.',
+  'Press V to see the world through your hero’s own eyes. Press it again to shoulder the camera back.',
+  'Turn-based is the intended rhythm. Skirmish Mode waits in Options for the impatient.',
+];
+const LD = { raf: 0, real: 0, shown: 0, t0: 0, done: false, dest: 'menu', title: 'yrd',
+  tipI: -1, tipTimer: 0, slowTimer: 0, slow: false, len: 0, failNext: false };
+function ldSetTip(i){
+  const el = $('#ld-tip');
+  el.classList.add('fade');
+  setTimeout(() => { $('#ld-tip-text').textContent = LD_TIPS[i]; el.classList.remove('fade'); }, 400);
+}
+function ldNextTip(){ LD.tipI = (LD.tipI + 1) % LD_TIPS.length; ldSetTip(LD.tipI); }
+function ldSlowTip(){
+  if (LD.slow) return; LD.slow = true;
+  clearInterval(LD.tipTimer);
+  const el = $('#ld-tip');
+  el.classList.add('fade');
+  setTimeout(() => { $('#ld-tip-text').textContent = STR.LOAD_SLOW; el.classList.remove('fade'); }, 400);
+}
+function ldTasks(){
+  const imgs = ['yard_dawn_panorama.png', 'parchment.jpg', 'logo_wordmark.png', 'logo_emblem.png', 'sword_coast_map.png'];
+  const tasks = imgs.map((n, k) => ({ w: 70 / imgs.length, id: n, run: () =>
+    fetch('assets/img/' + n).then(r => { if (!r.ok) throw new Error(n); return r.blob(); })
+      .then(b => (window.createImageBitmap ? createImageBitmap(b) : b)) }));
+  tasks.push({ w: 20, id: 'typefaces', run: () => (document.fonts ? document.fonts.ready : Promise.resolve()) });
+  tasks.push({ w: 10, id: 'rules-grid', run: () => new Promise(res => {
+    Opt.get('play.diff'); void document.querySelector('#screen-menu').offsetHeight;
+    requestAnimationFrame(() => requestAnimationFrame(res)); }) });
+  return tasks;
+}
+function ldTick(now){
+  const dt = Math.min((now - (LD.last || now)) / 1000, .1); LD.last = now;
+  LD.shown = Math.max(LD.shown, LD.shown + (LD.real - LD.shown) * Math.min(1, dt * 3.4));
+  const p = Math.min(LD.shown, 1);
+  $('#ld-pct').textContent = Math.floor(p * 100);
+  if (LD.len){ const path = $('#ld-path'); path.style.strokeDashoffset = LD.len * (1 - p);
+    const pt = path.getPointAtLength(p * LD.len); const nib = $('#ld-nib');
+    nib.setAttribute('cx', pt.x); nib.setAttribute('cy', pt.y); nib.style.opacity = p > .004 && p < .996 ? 1 : 0; }
+  const pips = $$('#ld-sealwrap .ld-pips i');
+  [ .33, .66, .995 ].forEach((t, i) => pips[i].classList.toggle('lit', p >= t));
+  const elapsed = now - LD.t0;
+  if (LD.real >= 1 && LD.shown >= .999 && elapsed >= 1200){ ldComplete(); return; }
+  LD.raf = requestAnimationFrame(ldTick);
+}
+function ldComplete(){
+  LD.done = true; cancelAnimationFrame(LD.raf); clearInterval(LD.tipTimer); clearTimeout(LD.slowTimer);
+  $('#ld-pct').textContent = '100';
+  $$('#ld-sealwrap .ld-pips i').forEach(i => i.classList.add('lit'));
+  $('#ld-sealwrap').classList.add('stamped');
+  DelveAudio.play('stamp', 1);
+  setTimeout(() => {
+    const f = $('#fade'); f.classList.add('slow', 'on');
+    setTimeout(() => { show(LD.dest, true); f.classList.remove('on'); setTimeout(() => f.classList.remove('slow'), 80); }, 620);
+  }, 500);
+}
+function ldError(id){
+  cancelAnimationFrame(LD.raf); clearInterval(LD.tipTimer); clearTimeout(LD.slowTimer);
+  $('#ld-tip').style.display = 'none';
+  $('#ld-err-text').textContent = STR.LOAD_ERR.replace('{0}', id);
+  $('#ld-retry').textContent = STR.RETRY; $('#ld-quit').textContent = STR.QUIT_MENU;
+  $('#ld-err').hidden = false;
+  DelveAudio.play('deny', .9);
+}
+function quitLoad(){
+  cancelAnimationFrame(LD.raf); clearInterval(LD.tipTimer); clearTimeout(LD.slowTimer);
+  LD.done = true; show('menu');
+}
+function startLoad(title, dest){
+  cancelAnimationFrame(LD.raf); clearInterval(LD.tipTimer); clearTimeout(LD.slowTimer);
+  Object.assign(LD, { real: 0, shown: 0, done: false, dest: dest || 'menu', title: title || 'yrd',
+    tipI: -1, slow: false, last: 0 });
+  $('#ld-title').textContent = title === 'ch1' ? STR.LOAD_TITLE_CH1 : STR.LOAD_TITLE_YRD;
+  $('#ld-err').hidden = true; $('#ld-tip').style.display = '';
+  $('#ld-sealwrap').classList.remove('stamped');
+  $$('#ld-sealwrap .ld-pips i').forEach(i => i.classList.remove('lit'));
+  $('#ld-pct').textContent = '0';
+  const path = $('#ld-path'); LD.len = path.getTotalLength();
+  path.style.strokeDasharray = LD.len; path.style.strokeDashoffset = LD.len;
+  show('loading', true);
+  LD.t0 = performance.now();
+  $('#ld-tip-text').textContent = LD_TIPS[0]; LD.tipI = 0;
+  LD.tipTimer = setInterval(ldNextTip, 5000);
+  LD.slowTimer = setTimeout(ldSlowTip, 45000);
+  let doneW = 0;
+  ldTasks().forEach(t => {
+    const run = () => (LD.failNext && t.id.endsWith('.png') ? (LD.failNext = false, Promise.reject(new Error(t.id))) : t.run());
+    run().then(() => { if (LD.done) return; doneW += t.w; LD.real = Math.min(1, doneW / 100); })
+         .catch(() => { if (!LD.done) ldError(t.id); });
+  });
+  LD.raf = requestAnimationFrame(ldTick);
+}
+$('#ld-retry').addEventListener('click', () => { DelveAudio.play('confirm', .9); startLoad(LD.title, LD.dest); });
+$('#ld-quit').addEventListener('click', () => { DelveAudio.play('back', .8); quitLoad(); });
+window.DelveLoad = { start: startLoad, failNext: () => { LD.failNext = true; }, slow: ldSlowTip, nextTip: ldNextTip };
+
 /* ---------- boot ---------- */
 document.querySelectorAll('[data-seal]').forEach(el => { el.innerHTML = sealSVG(); });
 if (P.get('still') === '1') document.body.classList.add('still');
@@ -596,6 +714,8 @@ switch (P.get('s')){
   case 'options': gotoMenu(true); syncOptionsUI(); show('options', true); break;
   case 'codex': gotoMenu(true); openCodex(true); break;
   case 'credits': gotoMenu(true); openCredits(true); break;
+  case 'load': gotoMenu(true); startLoad('yrd', 'menu'); break;
+  case 'load1': gotoMenu(true); startLoad('ch1', 'menu'); break;
   case 'end': gotoMenu(); openEnd('signed'); break;
   case 'stub3': gotoMenu(); openStub(3); break;
   case 'stub4': gotoMenu(); openStub(4); break;
