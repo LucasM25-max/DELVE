@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DELVE — Main Menu</title>
+<meta name="description" content="DELVE — a Dungeons &amp; Dragons adventure: Phandelver and Below · The Shattered Obelisk. Web shell: boot sequence, main menu and first-run contract.">
+<meta property="og:title" content="DELVE">
+<meta property="og:description" content="A D&amp;D adventure — Phandelver and Below: The Shattered Obelisk. Unofficial non-commercial fan project.">
+<meta property="og:image" content="assets/img/yard_dawn_panorama.png">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/shell.css">
+</head>
+<body>
+<canvas id="fx" aria-hidden="true"></canvas>
+
+<!-- ============ MENU BACKGROUND (live yard at dawn, §2.2) ============ -->
+<div id="bg" aria-hidden="true">
+  <div class="bg-cam">
+    <div class="bg-pan"><img src="assets/img/yard_dawn_panorama.png" alt=""></div>
+    <div class="bg-mist m1"></div>
+    <div class="bg-mist m2"></div>
+    <div class="gulls">
+      <svg class="gull g1" viewBox="0 0 24 8"><path d="M1 6 Q6 1 12 6 Q18 1 23 6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      <svg class="gull g2" viewBox="0 0 24 8"><path d="M1 6 Q6 1 12 6 Q18 1 23 6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      <svg class="gull g3" viewBox="0 0 24 8"><path d="M1 6 Q6 1 12 6 Q18 1 23 6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </div>
+  </div>
+  <div class="bg-vig"></div>
+</div>
+
+<!-- ============ 1. LEGAL / ATTRIBUTION (§2.1 state 1) ============ -->
+<section id="screen-legal" class="screen active" role="dialog" aria-label="Attribution">
+  <div class="legal-card">
+    <p class="legal-disclaimer">An unofficial, non-commercial fan project. Dungeons &amp; Dragons, Phandelver and Below: The Shattered Obelisk and all Wizards of the Coast characters and locations are trademarks of Wizards of the Coast LLC. Used here without permission; no challenge to any trademark or copyright. This game will never be sold.</p>
+    <p class="legal-line">Web shell build: hand-written HTML, CSS and JavaScript with runtime Web&nbsp;Audio synthesis. The full game targets Unreal Engine 5.7.</p>
+    <p class="legal-line">Typefaces: Cinzel, Alegreya and IM&nbsp;Fell&nbsp;English under the SIL Open Font License.</p>
+  </div>
+  <p class="legal-press" id="legal-press">Press any button to continue.</p>
+</section>
+
+<!-- ============ 2. LOGO STING (§1.4) ============ -->
+<section id="screen-sting" class="screen" aria-label="DELVE">
+  <div class="sting-wrap">
+    <div class="sting-word" id="sting-word" aria-hidden="true"><span>D</span><span>E</span><span>L</span><span class="vd">V</span><span>E</span></div>
+    <div class="sting-emblem" id="sting-emblem"></div>
+    <div class="sting-sub" id="sting-sub">
+      <span>A DUNGEONS &amp; DRAGONS ADVENTURE</span>
+      <span>PHANDELVER AND BELOW · THE SHATTERED OBELISK</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3. MAIN MENU (§2.2–2.3) ============ -->
+<section id="screen-menu" class="screen" aria-label="Main menu">
+  <header class="menu-lockup">
+    <div class="menu-emblem" id="menu-emblem"></div>
+    <div class="menu-word" aria-hidden="true"><span>D</span><span>E</span><span>L</span><span class="vd">V</span><span>E</span></div>
+    <span class="sr-only">DELVE</span>
+  </header>
+  <nav id="menu-nav" aria-label="Main">
+    <button class="mitem" data-i="0" id="mi-play">PLAY</button>
+    <button class="mitem" data-i="1" id="mi-continue">CONTINUE</button>
+    <button class="mitem" data-i="2" id="mi-options">OPTIONS</button>
+    <button class="mitem" data-i="3" id="mi-codex">CODEX</button>
+    <button class="mitem" data-i="4" id="mi-credits">CREDITS</button>
+  </nav>
+  <div id="menu-tip" role="tooltip" hidden></div>
+  <p class="menu-bl" id="menu-bl">An unofficial, non-commercial fan project. Dungeons &amp; Dragons, Phandelver and Below: The Shattered Obelisk and all Wizards of the Coast characters and locations are trademarks of Wizards of the Coast LLC. Used here without permission; no challenge to any trademark or copyright. This game will never be sold.</p>
+  <p class="menu-br" id="menu-br"></p>
+</section>
+
+<!-- ============ OVERLAY: BEGIN A NEW CONTRACT (§2.4) ============ -->
+<div id="modal-new" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="new-title">
+  <div class="card">
+    <div class="card-seal" data-seal></div>
+    <h2 id="new-title">Begin a new contract?</h2>
+    <p id="new-body"></p>
+    <div class="card-btns">
+      <button class="btn" id="new-begin">BEGIN NEW</button>
+      <button class="btn ghost" id="new-back">BACK</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ FIRST RUN PAGE (§2.4.2) ============ -->
+<section id="page-firstrun" class="screen" aria-label="Sign the contract">
+  <div class="sheet">
+    <h2 class="sheet-title">Sign the contract</h2>
+    <div class="fgroup" role="radiogroup" aria-labelledby="fr-diff-l">
+      <span class="flabel" id="fr-diff-l">Difficulty</span>
+      <div class="opts" id="fr-diff">
+        <button class="opt" role="radio" aria-checked="false" data-v="Story">Story</button>
+        <button class="opt" role="radio" aria-checked="true"  data-v="Balanced">Balanced</button>
+        <button class="opt" role="radio" aria-checked="false" data-v="Tactical">Tactical</button>
+      </div>
+      <p class="fhelp">Story: forgiving foes, longer reaction timers. Balanced: the intended table. Tactical: sharper foes, alert states bite.</p>
+    </div>
+    <div class="fgroup" role="radiogroup" aria-labelledby="fr-pace-l">
+      <span class="flabel" id="fr-pace-l">Combat pacing</span>
+      <div class="opts" id="fr-pace">
+        <button class="opt" role="radio" aria-checked="true"  data-v="Table Mode (turn-based)">Table Mode (turn-based)</button>
+        <button class="opt" role="radio" aria-checked="false" data-v="Skirmish Mode (real-time, pausable)">Skirmish Mode (real-time, pausable) <span class="tag">SECONDARY</span></button>
+      </div>
+      <p class="fhelp">Table Mode is the intended experience: full turns, full information. Skirmish Mode runs the same rules in flowing real time with pause.</p>
+    </div>
+    <div class="fgroup" role="radiogroup" aria-labelledby="fr-subs-l">
+      <span class="flabel" id="fr-subs-l">Subtitles</span>
+      <div class="opts" id="fr-subs">
+        <button class="opt" role="radio" aria-checked="true"  data-v="On">On</button>
+        <button class="opt" role="radio" aria-checked="false" data-v="Off">Off</button>
+      </div>
+    </div>
+    <div class="fgroup" role="radiogroup" aria-labelledby="fr-comf-l">
+      <span class="flabel" id="fr-comf-l">Camera comfort preset</span>
+      <div class="opts" id="fr-comfort">
+        <button class="opt" role="radio" aria-checked="true"  data-v="Standard">Standard</button>
+        <button class="opt" role="radio" aria-checked="false" data-v="Reduced motion">Reduced motion</button>
+      </div>
+    </div>
+    <div class="card-btns sheet-btns">
+      <button class="btn" id="fr-go">SIGN &amp; DESCEND</button>
+      <button class="btn ghost" id="fr-back">BACK</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ OVERLAY: SEALED STUB (options/codex/credits not in this build) ============ -->
+<div id="modal-stub" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="stub-title">
+  <div class="card card-s">
+    <div class="card-seal" data-seal></div>
+    <h2 id="stub-title"></h2>
+    <p id="stub-body"></p>
+    <div class="card-btns"><button class="btn ghost" id="stub-back">BACK</button></div>
+  </div>
+</div>
+
+<!-- ============ OVERLAY: CONTRACT SIGNED / RESTORED END CARD ============ -->
+<div id="modal-end" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="end-title">
+  <div class="card">
+    <div class="end-seal" id="end-seal"></div>
+    <h2 id="end-title"></h2>
+    <p id="end-body"></p>
+    <p class="end-set" id="end-settings"></p>
+    <div class="card-btns"><button class="btn" id="end-back">RETURN TO MENU</button></div>
+  </div>
+</div>
+
+<div id="fade"></div>
+<script src="js/audio.js"></script>
+<script src="js/shell.js"></script>
+</body>
+</html>

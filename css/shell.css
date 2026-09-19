@@ -1,0 +1,266 @@
+/* ==========================================================================
+   DELVE — web shell styles (GDD-02 §1–2). Tokens per spec §1.2.
+   ========================================================================== */
+:root{
+  --ink:#101418;
+  --parchment:#E9DFC8;
+  --bronze:#B0793A;
+  --obelisk:#74E0B4;
+  --blood:#8E2F26;
+  --font-display:"Cinzel", "Trajan Pro", Georgia, serif;
+  --font-ui:"Alegreya", Georgia, serif;
+  --font-dice:"IM Fell English", Georgia, serif;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{
+  background:var(--ink);
+  color:var(--parchment);
+  font-family:var(--font-ui);
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;}
+button:focus-visible{outline:2px solid var(--obelisk); outline-offset:3px;}
+
+/* ---------- screens & fade ---------- */
+.screen{position:fixed; inset:0; opacity:0; pointer-events:none; transition:opacity .45s ease;}
+.screen.active{opacity:1; pointer-events:auto;}
+#fade{position:fixed; inset:0; background:var(--ink); opacity:0; pointer-events:none; transition:opacity .25s ease; z-index:60;}
+#fade.on{opacity:1; pointer-events:auto;}
+
+/* ---------- fx canvas ---------- */
+#fx{position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:40;}
+
+/* ---------- menu background (§2.2) ---------- */
+#bg{position:fixed; inset:0; opacity:0; transition:opacity 1.2s ease; z-index:0;}
+#bg.live{opacity:1;}
+.bg-cam{position:absolute; inset:-4%; animation:hand 9s ease-in-out infinite alternate;}
+.bg-pan{position:absolute; inset:0; overflow:hidden;}
+.bg-pan img{
+  position:absolute; left:-15%; top:-15%; width:130%; height:130%;
+  object-fit:cover; transform-origin:50% 55%;
+  animation:drift 90s ease-in-out infinite;
+  filter:saturate(1.02) contrast(1.02);
+}
+@keyframes drift{
+  0%  {transform:scale(1.12) translate(0%, 4%);}
+  16% {transform:scale(1.20) translate(7%, 1%);}
+  34% {transform:scale(1.26) translate(11%, -2%);}
+  52% {transform:scale(1.32) translate(15%, -4%);}
+  70% {transform:scale(1.22) translate(-9%, 0%);}
+  86% {transform:scale(1.14) translate(-2%, 3%);}
+  100%{transform:scale(1.12) translate(0%, 4%);}
+}
+@keyframes hand{from{transform:rotate(-.12deg) translate(.15%,0);} to{transform:rotate(.15deg) translate(-.15%,.2%);}}
+.bg-mist{position:absolute; inset:0; pointer-events:none;}
+.bg-mist.m1{
+  background:radial-gradient(60% 26% at 30% 88%, rgba(240,230,208,.16), transparent 70%),
+             radial-gradient(50% 20% at 72% 92%, rgba(240,230,208,.12), transparent 70%);
+  animation:mist 64s ease-in-out infinite alternate;
+}
+.bg-mist.m2{
+  background:radial-gradient(70% 22% at 55% 96%, rgba(226,214,190,.13), transparent 72%);
+  animation:mist 91s ease-in-out infinite alternate-reverse;
+}
+@keyframes mist{from{transform:translateX(-3%);} to{transform:translateX(3%);}}
+.gulls{position:absolute; inset:0; color:#2a2f36;}
+.gull{position:absolute; width:26px; opacity:.65;}
+.g1{top:16%; animation:fly1 47s linear infinite;}
+.g2{top:22%; animation:fly2 61s linear infinite; animation-delay:-22s; width:20px;}
+.g3{top:12%; animation:fly3 73s linear infinite; animation-delay:-40s; width:16px; opacity:.45;}
+@keyframes fly1{from{left:-4%; transform:translateY(0);} 50%{transform:translateY(-14px);} to{left:104%; transform:translateY(0);}}
+@keyframes fly2{from{left:104%; transform:translateY(0);} 50%{transform:translateY(10px);} to{left:-4%; transform:translateY(0);}}
+@keyframes fly3{from{left:-6%; transform:translateY(0);} 50%{transform:translateY(-8px);} to{left:104%; transform:translateY(0);}}
+.bg-vig{
+  position:absolute; inset:0;
+  background:
+    radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(8,11,14,.55) 100%),
+    linear-gradient(to bottom, rgba(8,11,14,.42), transparent 22%, transparent 74%, rgba(8,11,14,.6));
+}
+body.still .bg-pan img, body.still .bg-cam, body.still .bg-mist, body.still .gull{animation:none !important;}
+body.rm .bg-pan img, body.rm .bg-cam, body.rm .bg-mist, body.rm .gull{animation:none !important;}
+
+/* ---------- legal (§2.1) ---------- */
+#screen-legal{display:grid; place-items:center; z-index:10; background:var(--ink);}
+.legal-card{max-width:760px; padding:0 8vw; text-align:center;}
+.legal-disclaimer{font-size:14px; line-height:1.65; color:var(--parchment);}
+.legal-line{font-size:12px; line-height:1.6; color:var(--parchment); opacity:.62; margin-top:14px;}
+.legal-press{
+  position:absolute; bottom:7%; left:0; right:0; text-align:center;
+  font-family:var(--font-dice); font-size:15px; letter-spacing:.08em; color:var(--parchment);
+  animation:pulse 2.2s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:.45;} 50%{opacity:.95;}}
+
+/* ---------- logo sting (§1.4) ---------- */
+#screen-sting{display:grid; place-items:center; z-index:10; background:var(--ink);}
+.sting-wrap{display:flex; flex-direction:column; align-items:center; gap:2.2vh;}
+.sting-word{display:flex; gap:.045em; font-family:var(--font-display); font-weight:700;
+  font-size:clamp(56px, 11vw, 148px); line-height:1; letter-spacing:.04em;}
+.sting-word span{
+  opacity:0;
+  background:linear-gradient(178deg, #d9a463 8%, var(--bronze) 46%, #7d5222 92%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  -webkit-text-stroke:1px rgba(16,20,24,.85);
+  text-shadow:0 0 22px rgba(116,224,180,.0);
+  position:relative;
+}
+.sting-word span.in{animation:chiselIn .22s ease-out forwards;}
+@keyframes chiselIn{from{opacity:0; transform:scale(1.22) translateY(-4px); filter:blur(2px);} to{opacity:1; transform:none; filter:blur(0);}}
+.sting-word span.vd{transform:translateY(.055em);}
+.sting-word span.vd.in{animation:chiselInV .22s ease-out forwards;}
+@keyframes chiselInV{from{opacity:0; transform:scale(1.22) translateY(.055em); filter:blur(2px);} to{opacity:1; transform:translateY(.055em); filter:blur(0);}}
+.sting-word.sweep span{ text-shadow:0 0 26px rgba(116,224,180,.16); }
+.sting-word.sweep::after{
+  content:""; position:absolute; inset:-6% -2%;
+  background:linear-gradient(100deg, transparent 42%, rgba(233,223,200,.34) 50%, transparent 58%);
+  transform:translateX(-120%); opacity:0; animation:rim .6s ease-in-out forwards; pointer-events:none;
+}
+@keyframes rim{0%{transform:translateX(-120%); opacity:1;} 85%{opacity:1;} 100%{transform:translateX(120%); opacity:0;}}
+.sting-word{position:relative;}
+.sting-emblem{width:clamp(72px, 10vw, 132px);}
+.sting-emblem svg{width:100%; display:block;}
+.emblem-outline{fill:none; stroke:var(--bronze); stroke-width:6; stroke-linejoin:round;
+  stroke-dasharray:1; stroke-dashoffset:1;}
+.lit .emblem-outline, .emblem-outline.draw{transition:stroke-dashoffset 1.1s ease-out; stroke-dashoffset:0;}
+.emblem-step{fill:none; stroke:var(--bronze); stroke-width:6; stroke-linecap:round; opacity:.35;
+  stroke-dasharray:1; stroke-dashoffset:1;}
+.emblem-step.lit{stroke:var(--obelisk); opacity:1; stroke-dashoffset:0;
+  transition:stroke-dashoffset .35s ease-out, stroke .35s, opacity .35s;
+  filter:drop-shadow(0 0 6px rgba(116,224,180,.75));}
+.emblem-pip{fill:var(--obelisk); opacity:0; transform-origin:center; transform:scale(.2);}
+.emblem-pip.lit{opacity:1; transform:scale(1); transition:all .4s cubic-bezier(.2,1.6,.4,1); filter:drop-shadow(0 0 8px rgba(116,224,180,.9));}
+/* settled (menu lockup / seals): geometry visible, steps unlit bronze, pip present */
+svg.settled .emblem-step{stroke-dashoffset:0; opacity:.55;}
+svg.settled .emblem-pip{opacity:.9; transform:scale(1);}
+.sting-sub{display:flex; flex-direction:column; gap:.7vh; align-items:center;}
+.sting-sub span{
+  font-family:var(--font-display); font-weight:600; font-size:clamp(10px, 1.35vw, 17px);
+  letter-spacing:.34em; color:var(--parchment); opacity:0; transition:opacity .6s ease, letter-spacing .6s ease;
+  letter-spacing:.5em; text-indent:.34em;
+}
+.sting-sub.in span{opacity:.92; letter-spacing:.34em;}
+
+/* ---------- main menu layout (§2.3) ---------- */
+#screen-menu{z-index:10;}
+.menu-lockup{position:absolute; left:6%; top:8%; display:flex; flex-direction:column; gap:.9vh; align-items:flex-start;}
+.menu-emblem{width:calc(9vh * .86); opacity:.95;}
+.menu-emblem svg{width:100%; display:block;}
+.menu-word{display:flex; gap:.045em; font-family:var(--font-display); font-weight:700;
+  font-size:calc(9vh * .62); line-height:1; letter-spacing:.04em;}
+.menu-word span{
+  background:linear-gradient(178deg, #d9a463 8%, var(--bronze) 46%, #7d5222 92%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  -webkit-text-stroke:1px rgba(16,20,24,.8);
+}
+.menu-word span.vd{transform:translateY(.055em);}
+.menu-emblem.flicker .emblem-step{animation:stepFlick .5s steps(2,end) 1;}
+@keyframes stepFlick{0%{opacity:1; stroke:var(--obelisk);} 50%{opacity:.3;} 100%{opacity:.35;}}
+#menu-nav{position:absolute; left:6%; top:34%; display:flex; flex-direction:column; gap:1.2vh;}
+.mitem{
+  position:relative; text-align:left; padding:.28em 0;
+  font-family:var(--font-display); font-weight:600;
+  font-size:clamp(22px, 4.6vh, 40px); letter-spacing:.12em; color:var(--parchment);
+  text-shadow:0 2px 10px rgba(8,11,14,.7);
+  transition:color .15s ease, transform .15s ease;
+}
+.mitem::after{
+  content:""; position:absolute; left:0; bottom:.1em; height:2px; width:100%;
+  background:var(--bronze); transform:scaleX(0); transform-origin:left; transition:transform .18s ease;
+}
+.mitem:hover::after, .mitem.sel::after{transform:scaleX(1);}
+.mitem.sel{color:#fff7e4; transform:translateX(4px);}
+.mitem.sel::after{background:var(--bronze);}
+.mitem:active::after{transform:scaleX(1);}
+.mitem.dim{opacity:.4;}
+.mitem.dim:hover::after{transform:scaleX(0);}
+#menu-tip{
+  position:absolute; z-index:20; padding:7px 12px; font-size:13px; font-style:italic;
+  color:var(--ink); background:var(--parchment); border-radius:3px;
+  box-shadow:0 6px 18px rgba(0,0,0,.5); pointer-events:none; white-space:nowrap;
+}
+.menu-bl{
+  position:absolute; left:2%; bottom:4%; max-width:46%; font-size:11px; line-height:1.5;
+  color:var(--parchment); opacity:.6; text-shadow:0 1px 6px rgba(8,11,14,.8);
+}
+.menu-br{
+  position:absolute; right:2%; bottom:4%; font-family:var(--font-dice); font-size:12px;
+  color:var(--parchment); opacity:.75; text-shadow:0 1px 6px rgba(8,11,14,.8);
+}
+
+/* ---------- overlays & cards ---------- */
+.overlay{position:fixed; inset:0; z-index:30; display:grid; place-items:center;
+  background:rgba(10,14,18,.66); backdrop-filter:blur(2px); animation:ovin .3s ease;}
+@keyframes ovin{from{opacity:0;} to{opacity:1;}}
+.overlay[hidden]{display:none;}
+.card{
+  position:relative; width:min(680px, 92vw); padding:34px 40px 30px;
+  background:var(--parchment) center/cover; color:var(--ink);
+  border-radius:5px; box-shadow:0 24px 70px rgba(0,0,0,.65), inset 0 0 60px rgba(120,90,40,.14);
+  animation:cardin .32s cubic-bezier(.2,1.2,.4,1);
+}
+.card::before{ /* parchment grain overlay */
+  content:""; position:absolute; inset:0; border-radius:5px; pointer-events:none;
+  background:url("../assets/img/parchment.jpg") center/cover; opacity:.55; mix-blend-mode:multiply;
+}
+.card-s{width:min(480px, 90vw); text-align:center;}
+@keyframes cardin{from{opacity:0; transform:translateY(14px) scale(.97);} to{opacity:1; transform:none;}}
+.card h2{font-family:var(--font-display); font-weight:700; font-size:26px; letter-spacing:.06em; margin-bottom:12px; position:relative;}
+.card p{font-size:15.5px; line-height:1.6; position:relative;}
+.card-seal{position:absolute; top:14px; right:16px; width:44px; opacity:.85;}
+.card-seal svg{width:100%; display:block;}
+.card-btns{display:flex; gap:12px; margin-top:22px; position:relative;}
+.card-s .card-btns{justify-content:center;}
+.btn{
+  font-family:var(--font-display); font-weight:600; font-size:14px; letter-spacing:.14em;
+  background:var(--ink); color:var(--parchment); padding:11px 20px; border-radius:3px;
+  transition:transform .12s ease, box-shadow .12s ease;
+}
+.btn:hover{transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.35);}
+.btn.ghost{background:transparent; color:var(--ink); border:1px solid rgba(16,20,24,.65);}
+.btn.ghost:hover{background:rgba(16,20,24,.08); box-shadow:none;}
+
+/* ---------- first run sheet (§2.4.2) ---------- */
+#page-firstrun{z-index:20; display:grid; place-items:center; background:rgba(10,14,18,.55);}
+#page-firstrun.active{display:grid;}
+.sheet{
+  position:relative; width:min(780px, 94vw); max-height:88vh; overflow:auto;
+  padding:34px 44px 30px; background:var(--parchment) center/cover; color:var(--ink);
+  border-radius:5px; box-shadow:0 24px 70px rgba(0,0,0,.65), inset 0 0 70px rgba(120,90,40,.14);
+}
+.sheet::before{content:""; position:absolute; inset:0; pointer-events:none;
+  background:url("../assets/img/parchment.jpg") center/cover; opacity:.5; mix-blend-mode:multiply;}
+.sheet>*{position:relative;}
+.sheet-title{font-family:var(--font-display); font-weight:700; font-size:30px; letter-spacing:.08em;
+  text-align:center; margin-bottom:20px;}
+.sheet-title::after{content:""; display:block; width:120px; height:2px; background:var(--bronze); margin:10px auto 0;}
+.fgroup{margin:0 0 18px;}
+.flabel{display:block; font-family:var(--font-display); font-weight:600; font-size:15px; letter-spacing:.16em; margin-bottom:8px;}
+.opts{display:flex; flex-wrap:wrap; gap:10px;}
+.opt{
+  padding:9px 16px; border:1px solid rgba(16,20,24,.45); border-radius:3px;
+  font-size:14.5px; background:rgba(255,252,240,.35); transition:all .12s ease;
+}
+.opt:hover{background:rgba(255,252,240,.7);}
+.opt[aria-checked="true"]{background:var(--ink); color:var(--parchment); border-color:var(--ink);}
+.tag{font-family:var(--font-display); font-size:9px; letter-spacing:.18em; background:var(--blood);
+  color:var(--parchment); padding:2px 6px; border-radius:2px; vertical-align:1px; margin-left:6px;}
+.fhelp{font-size:13px; font-style:italic; line-height:1.5; opacity:.78; margin-top:8px; max-width:60ch;}
+.sheet-btns{justify-content:center; margin-top:26px;}
+
+/* ---------- end card seal ---------- */
+.end-seal{width:86px; margin:0 auto 14px; animation:stampIn .45s cubic-bezier(.2,1.7,.4,1);}
+.end-seal svg{width:100%; display:block; filter:drop-shadow(0 3px 6px rgba(0,0,0,.35));}
+@keyframes stampIn{from{transform:scale(2.1) rotate(-8deg); opacity:0;} to{transform:scale(1) rotate(0); opacity:1;}}
+#modal-end .card{text-align:center;}
+.end-set{font-family:var(--font-dice); font-size:13px; opacity:.8; margin-top:10px;}
+
+/* ---------- small screens ---------- */
+@media (max-width:640px){
+  .menu-bl{max-width:60%; font-size:9px;}
+  .mitem{font-size:24px;}
+  .sheet{padding:24px 22px;}
+  .card{padding:26px 22px;}
+}
