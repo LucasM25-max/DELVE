@@ -25,6 +25,10 @@ const ANIM_JUMP_LAND := "Jump_Land"
 
 func _ready() -> void:
 	arm.add_excluded_object(get_rid())
+	# FIX: Camera was in front of the player (SpringArm at -Z), so W moved towards camera.
+	# Rotate the arm 180° so the camera sits behind the player (+Z when yaw=0).
+	# Now W (-Z) moves away from the camera, S (+Z) moves towards it, as expected.
+	arm.rotation.y = PI
 	first_person = GameState.get_setting("cam.view") == "First person"
 	_build_animations()
 	apply_camera()
