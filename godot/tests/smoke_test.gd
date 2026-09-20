@@ -22,6 +22,9 @@ func _ready() -> void:
 
 func run_tests() -> void:
 	GameState.contracts.clear()
+	if FileAccess.file_exists(GameState.save_path):
+		DirAccess.remove_absolute(GameState.save_path)
+	GameState.set_setting("cam.reduced", "Off")
 	GameState.active_contract.clear()
 	GameState.persist()
 	var shell = load("res://scenes/ui/shell.tscn").instantiate()
@@ -46,6 +49,8 @@ func run_tests() -> void:
 	shell.sign_contract()
 	check(GameState.contracts.size() == 1, "Signing creates a contract")
 	check(shell.screen == "loading", "Signing starts real resource loading")
+	await get_tree().process_frame
+	check(is_instance_valid(shell.route_ctl) and "load_route" in shell.route_ctl.get_script().resource_path, "Loading screen keeps the ink route painter")
 	for frame in 240:
 		await get_tree().process_frame
 		if shell.screen == "threshold":
@@ -140,7 +145,8 @@ func run_tests() -> void:
 	check(get_tree().paused, "3D yard waits for explicit pointer-lock gesture")
 	check(yard.get_node("Player") is CharacterBody3D, "Editable player scene instanced")
 	check(yard.get_node("Art") is Node3D, "Future model integration slot exists")
-	check(yard.get_node("Blockout").get_child_count() > 30, "Editable blockout geometry exists")
+	check(yard.get_node_or_null("Blockout") == null, "Scenery blockout fully stripped")
+	check(yard.get_child_count() <= 7, "Yard node budget kept tiny")
 	get_tree().paused = false
 	yard.pause_overlay.hide()
 	yard.set_process(false) # Headless has no pointer capture; exercise physics independently.
@@ -160,6 +166,45 @@ func run_tests() -> void:
 	player.first_person = false
 	player.apply_camera()
 	check(player.arm.spring_length > 0 and player.visuals.visible, "Third-person camera restores placeholder")
+	# ---- Round 12: web-standard visual checks ----
+	shell.show_screen("threshold")
+	await get_tree().process_frame
+	var seals := 0
+	for node in shell.content.find_children("*", "TextureRect", true, false):
+		var tex_rect := node as TextureRect
+		if tex_rect.texture != null and "seal" in tex_rect.texture.resource_path:
+			seals += 1
+	check(seals >= 1, "Threshold sheet carries the wax seal")
+	shell.selected_codex = "rules"
+	shell.show_screen("codex")
+	await get_tree().process_frame
+	var rtl: RichTextLabel = null
+	for node in shell.content.find_children("*", "RichTextLabel", true, false):
+		rtl = node as RichTextLabel
+	check(rtl != null and rtl.bbcode_enabled, "Codex renders rich bbcode bodies")
+	var saw_rule := false
+	for node in shell.content.find_children("*", "RichTextLabel", true, false):
+		if (node as RichTextLabel).get_parsed_text().contains("Roll 1d20"):
+			saw_rule = true
+	check(saw_rule, "Codex bbcode parses rules tables")
+	shell.show_screen("options")
+	await get_tree().process_frame
+	var pills := 0
+	for node in shell.content.find_children("*", "Button", true, false):
+		var btn := node as Button
+		if btn.toggle_mode and btn.button_group != null:
+			pills += 1
+	check(pills >= 6, "Options choices are segmented pill toggles")
+	shell.show_screen("menu")
+	await get_tree().process_frame
+	var version_seen := false
+	for node in shell.content.find_children("*", "Label", true, false):
+		if (node as Label).text.contains("GODOT EDITION 0.2"):
+			version_seen = true
+	check(version_seen, "Menu shows the Godot edition string")
+	check(yard.get_node_or_null("Ground") != null and yard.get_child_count() <= 6, "Test yard is bean + white ground only")
+	var gmat: BaseMaterial3D = yard.get_node("Ground/Mesh").mesh.surface_get_material(0)
+	check(gmat != null and gmat.albedo_color.r > 0.9, "Yard ground is flat white")
 	yard.queue_free()
 	shell.queue_free()
 	Sound.music.stop()
@@ -170,4 +215,6 @@ func run_tests() -> void:
 	await get_tree().process_frame
 	await get_tree().create_timer(0.3).timeout
 	print("\nDELVE SMOKE TEST: %d checks, %d failures" % [checks, failures])
+	if failures == 0:
+		print("SMOKE_ALL_GREEN")
 	get_tree().quit(0 if failures == 0 else 1)

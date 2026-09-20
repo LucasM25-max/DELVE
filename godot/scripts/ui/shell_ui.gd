@@ -5,8 +5,45 @@ const INK := Color("172126")
 const PAPER := Color("eee3cb")
 const GOLD := Color("b88b50")
 const MINT := Color("74e0b4")
-const DISPLAY = preload("res://assets/fonts/cinzel.ttf")
-const BODY = preload("res://assets/fonts/alegreya.ttf")
+const DISPLAY = preload("res://assets/fonts/cinzel-600.ttf")
+const BODY = preload("res://assets/fonts/alegreya-400.ttf")
+
+static func display(weight := 600) -> Font:
+	match weight:
+		400: return preload("res://assets/fonts/cinzel-400.ttf")
+		700: return preload("res://assets/fonts/cinzel-700.ttf")
+		900: return preload("res://assets/fonts/cinzel-900.ttf")
+		_: return DISPLAY
+
+static func body(weight := 400, ital := false) -> Font:
+	if ital:
+		return preload("res://assets/fonts/alegreya-italic-600.ttf") if weight >= 550 else preload("res://assets/fonts/alegreya-italic-400.ttf")
+	return preload("res://assets/fonts/alegreya-600.ttf") if weight >= 550 else BODY
+
+static func flavor(ital := false) -> Font:
+	return preload("res://assets/fonts/imfell-italic-400.ttf") if ital else preload("res://assets/fonts/imfell-400.ttf")
+
+static func seal(size := 96) -> TextureRect:
+	var node := TextureRect.new()
+	node.texture = preload("res://assets/ui/seal.png")
+	node.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	node.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	node.custom_minimum_size = Vector2(size, size)
+	node.size = Vector2(size, size)
+	node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return node
+
+static func rich() -> RichTextLabel:
+	var node := RichTextLabel.new()
+	node.bbcode_enabled = true
+	node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	node.add_theme_font_override("normal_font", BODY)
+	node.add_theme_font_override("bold_font", preload("res://assets/fonts/alegreya-600.ttf"))
+	node.add_theme_font_override("italics_font", preload("res://assets/fonts/alegreya-italic-400.ttf"))
+	node.add_theme_font_override("bold_italics_font", preload("res://assets/fonts/alegreya-italic-600.ttf"))
+	node.add_theme_font_size_override("normal_font_size", 23)
+	node.add_theme_color_override("default_color", INK)
+	return node
 
 static func style(color: Color, border := Color.TRANSPARENT, width := 1) -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
@@ -86,6 +123,7 @@ static func image(path: String) -> TextureRect:
 
 static func centered_text(parent: Node, text: String, rect: Rect2, font_size := 24, display := false) -> Label:
 	var node := label(text, font_size, display)
+	node.autowrap_mode = TextServer.AUTOWRAP_OFF
 	node.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	node.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	at(node, parent, rect)

@@ -273,3 +273,75 @@ The original fan-work disclaimer is preserved. Non-commercial status does **not*
 grant permission to distribute Wizards of the Coast content. Confirm the applicable
 permissions/licenses for names, rule excerpts, artwork, music and later purchased assets
 before public distribution. See `THIRD_PARTY.md` and the included license notices.
+
+## 7. GitHub → Godot porting workflow (round 12 and later)
+
+The canonical source of truth for the game project is the GitHub repository
+(`github.com/LucasM25-max/DELVE`, folder `godot/`). This section explains exactly how a
+change travels from the repository into a running Godot editor and back again.
+
+### 7.1 Pull the repository
+
+```bash
+git clone https://github.com/LucasM25-max/DELVE.git
+cd DELVE/godot
+```
+
+If you already have a clone: `git pull --rebase`. The repository root also still contains
+the legacy HTML web shell (`index.html`, `js/`, `css/`); it is reference material only and
+is not needed by Godot.
+
+### 7.2 Open it in the correct engine
+
+1. Install **Godot 4.7.2 Standard** (not .NET, not 4.6/4.8). The project file pins
+   `config/features="4.7"` and the Compatibility renderer; other versions will re-import
+   every asset and may shift UI metrics.
+2. Godot editor → **Import** → select `godot/project.godot` → **Import & Edit**.
+3. On first open Godot rebuilds the `.godot/` import cache (fonts, textures, the wax seal,
+   the parchment alpha cut-out). Let it finish before pressing F5.
+4. F5 runs `scenes/ui/shell.tscn`: attribution → logo sting → menu → contract → loading
+   road → threshold → optional test yard.
+
+`.godot/` is a local cache: never commit it, never copy it between machines. Deleting it
+and reopening the project always reproduces it.
+
+### 7.3 Verify before pushing (headless CI)
+
+```bash
+# inside godot/
+godot --headless --path . --editor --quit          # import pass, catches parse errors
+godot --headless --path . res://tests/smoke_test.tscn -- --test-mode
+# expected tail: "DELVE SMOKE TEST: 65 checks, 0 failures" + "SMOKE_ALL_GREEN"
+```
+
+Visual evidence (needs any X11/display; 1600×900):
+
+```bash
+godot --path . --resolution 1600x900 res://tests/shot_walk.tscn -- --test-mode --shots=/tmp/shots
+godot --path . --resolution 1600x900 res://tests/yard_shot.tscn  -- --test-mode --shots=/tmp/shots
+```
+
+`shot_walk.gd` captures menu, contract, loading road, threshold, codex, options and
+credits; `yard_shot.gd` captures the paused and running test yard.
+
+### 7.4 Push changes back
+
+```bash
+git add godot/
+git commit -m "DELVE 0.2.x: <what changed>"
+git push
+```
+
+Rules that keep the port stable:
+
+- **Binary artifacts** (zips, web exports, export templates, engine binaries) belong in
+  GitHub **Releases**, never in the repository tree.
+- New assets must go through an editor import pass (7.2 step 3 or the headless equivalent)
+  before CI or exports will see them.
+- GDScript gotchas hit during this port, do not re-introduce them: `get`/`set` as member
+  names shadow built-ins (use `getv`/`setv`), `:=` cannot infer from Variant-returning
+  calls (`find_children`, `surface_get_material`), focused Buttons swallow `ui_cancel`,
+  and `TextureRect` needs `EXPAND_IGNORE_SIZE` to honour `custom_minimum_size`.
+- The test yard is intentionally **bean player + flat white ground + empty `Art/` Node3D
+  slot** only. Future Blender models attach under `Art/` (yard) and replace
+  `Player/Visuals` (bean capsule) without touching shell code.

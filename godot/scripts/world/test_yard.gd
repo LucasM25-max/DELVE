@@ -15,10 +15,15 @@ func _ready() -> void:
 	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(hud)
 	UI.fill(hud)
-	var heading := UI.label("NEVERWINTER  /  TEST YARD", 25, true)
+	var ink := Color("101418")
+	var heading := UI.label("TEST YARD  ·  BLOCKOUT 0.2", 25, true)
+	heading.add_theme_color_override("font_color", ink)
 	UI.at(heading, hud, Rect2(36, 24, 700, 40))
-	UI.at(UI.label("3D BLOCKOUT · No combat or quests yet", 22), hud, Rect2(36, 64, 700, 35))
+	var sub := UI.label("Bean player on flat white ground · movement & camera test only", 22)
+	sub.add_theme_color_override("font_color", Color("3c4046"))
+	UI.at(sub, hud, Rect2(36, 64, 900, 35))
 	hint = UI.label("Click to look around · WASD move · Shift sprint · Space jump\nV changes view · Esc pauses / releases the mouse", 23)
+	hint.add_theme_color_override("font_color", Color("3c4046"))
 	hud.add_child(hint)
 	hint.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	hint.offset_left = 36

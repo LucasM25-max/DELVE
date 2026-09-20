@@ -68,3 +68,25 @@ Web preset is single-threaded and uses Compatibility. Install matching templates
 4. Enter the yard, resume, move/jump/sprint, toggle view, test walls/camera collision and Escape.
 5. Export Web, serve over HTTP locally, repeat the flow in current Chrome/Firefox/Safari as applicable.
 6. Publish over HTTPS and repeat, including a full browser restart and iframe testing if embedded.
+
+## Round 12 — web-standard visual pass on Godot 4.7.2 (2026-09-20)
+
+Command: `godot --headless --path . res://tests/smoke_test.tscn -- --test-mode`
+Result: **DELVE SMOKE TEST: 65 checks, 0 failures / SMOKE_ALL_GREEN** (exit 0).
+
+New checks added this round: loading ink-route painter present during load; threshold
+sheet carries the wax seal; codex bodies render as bbcode RichTextLabel (parsed text
+contains the D20 rule bullets); options choices are segmented pill toggles (>=6); menu
+shows "GODOT EDITION 0.2"; test yard is bean + white ground only (<=7 nodes, `Art/`
+integration slot present, blockout scenery fully removed, ground albedo > 0.9 white).
+
+Visual evidence (1600x900, Godot 4.7.2, tests/shot_walk.tscn + tests/yard_shot.tscn):
+r2-01-menu, r2-02-contract, r2-03-loading, r2-04-threshold, r2-05-codex, r2-06-options,
+r2-07-credits, r2-08-yard-paused, r2-09-yard-walk.
+
+Changes validated: baked Cinzel/Alegreya/IM Fell static weights; wax seal asset and stamp
+animations; loading screen rebuilt to web standard (Sword Coast map, ink route with
+waypoints and progress nib, rotating seal, percent, pips, cycling FIELD ADVICE slip,
+weighted real progress 70/20/10, 1.2 s minimum); parchment alpha cut-out (white studio
+background removed); codex bbcode bodies; options pill toggles; test yard reduced to
+bean player on flat white ground with dark-ink HUD.

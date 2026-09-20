@@ -2,6 +2,11 @@
 
 **Open `project.godot` in Godot 4.7.2 Standard, then press F5.**
 
+Version **0.2.0-godot** — round 12: menu/loading/codex/options raised to the web-shell
+visual standard (parchment, wax seals, baked font weights, ink-route loading road); the
+3D test yard is now a bean player on flat white ground with an empty `Art/` slot for
+future Blender models.
+
 Start with **[GETTING_STARTED.md](GETTING_STARTED.md)** for step-by-step import, controls,
 Web export/hosting instructions and the Blender/model pipeline.
 

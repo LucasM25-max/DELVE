@@ -16,6 +16,14 @@ var state_time := 0.0
 var menu_buttons: Array[Button] = []
 var progress_bar: ProgressBar
 var load_label: Label
+var route_ctl: Control
+var tip_label: Label
+var tip_clock := 0.0
+var tip_index := 0
+var load_seal: TextureRect
+var load_pct: Label
+var load_pips: Array[ColorRect] = []
+var load_shown := 0.0
 var ready_world: PackedScene
 var load_mode := "signed"
 var loading_error := false
@@ -99,20 +107,53 @@ func begin_boot() -> void:
 
 func build_sting() -> void:
 	var word := UI.image("res://assets/images/logo_wordmark.png")
+	var atlas := AtlasTexture.new()
+	atlas.atlas = load("res://assets/images/logo_wordmark.png")
+	var full: Vector2 = atlas.atlas.get_size()
+	atlas.region = Rect2(0, 0, 0, full.y)
+	word.texture = atlas
 	UI.at(word, content, Rect2(365, 230, 870, 240))
 	var emblem := UI.image("res://assets/images/logo_emblem.png")
 	UI.at(emblem, content, Rect2(725, 490, 150, 190))
+	var glow := ColorRect.new()
+	glow.color = UI.MINT
+	UI.at(glow, content, Rect2(800, 470, 0, 2))
+	var bar_t := ColorRect.new()
+	bar_t.color = Color.BLACK
+	UI.at(bar_t, content, Rect2(0, 0, 1600, 0))
+	var bar_b := ColorRect.new()
+	bar_b.color = Color.BLACK
+	UI.at(bar_b, content, Rect2(0, 900, 1600, 0))
 	UI.centered_text(content, "A DUNGEONS & DRAGONS ADVENTURE", Rect2(300, 700, 1000, 36), 24, true)
 	UI.centered_text(content, "PHANDELVER AND BELOW · THE SHATTERED OBELISK", Rect2(300, 745, 1000, 30), 19, true)
 	word.modulate.a = 0.0
 	emblem.modulate.a = 0.0
 	sting_tween = create_tween()
-	sting_tween.tween_property(word, "modulate:a", 1.0, 1.3)
-	sting_tween.tween_property(emblem, "modulate:a", 1.0, 0.9)
+	sting_tween.tween_interval(0.5)
+	sting_tween.tween_property(emblem, "modulate:a", 1.0, 0.5)
+	sting_tween.parallel().tween_property(glow, "size:x", 520.0, 0.6).from(0.0)
+	sting_tween.parallel().tween_property(glow, "position:x", 540.0, 0.6).from(800.0)
+	sting_tween.tween_interval(0.7)
+	sting_tween.tween_property(word, "modulate:a", 1.0, 0.2)
+	for i in 5:
+		sting_tween.tween_callback(func() -> void:
+			atlas.region = Rect2(0, 0, full.x * (i + 1) / 5.0, full.y))
+		sting_tween.tween_interval(0.09)
+	sting_tween.tween_interval(0.5)
+	sting_tween.tween_property(bar_t, "size:y", 90.0, 0.45)
+	sting_tween.parallel().tween_property(bar_b, "size:y", 90.0, 0.45)
+	sting_tween.parallel().tween_property(bar_b, "position:y", 810.0, 0.45)
 
 func build_menu() -> void:
 	UI.at(UI.image("res://assets/images/logo_emblem.png"), content, Rect2(133, 104, 84, 130))
-	UI.at(UI.image("res://assets/images/logo_wordmark.png"), content, Rect2(243, 108, 425, 130))
+	var wordmark := UI.image("res://assets/images/logo_wordmark.png")
+	UI.at(wordmark, content, Rect2(243, 108, 425, 130))
+	if GameState.get_setting("cam.reduced") != "On":
+		var flick := create_tween().set_loops()
+		flick.tween_property(wordmark, "modulate", Color(1, 1, 1, 1), 2.2)
+		flick.tween_property(wordmark, "modulate", Color(0.82, 0.95, 1, 0.88), 0.12)
+		flick.tween_property(wordmark, "modulate", Color(1, 1, 1, 1), 0.1)
+		flick.tween_interval(1.4)
 	var kicker := UI.label("THE ROCKSEEKER CONTRACT", 18, true)
 	kicker.add_theme_color_override("font_color", UI.GOLD)
 	UI.at(kicker, content, Rect2(136, 262, 560, 40))
@@ -134,7 +175,7 @@ func build_menu() -> void:
 	var legal := UI.label(LEGAL, 16)
 	legal.modulate.a = 0.65
 	UI.at(legal, content, Rect2(50, 806, 895, 80))
-	UI.at(UI.label("DELVE · GODOT EDITION 0.1\nNATIVE UI / WEB-READY", 16, true), content, Rect2(1210, 823, 350, 50))
+	UI.at(UI.label("DELVE · GODOT EDITION 0.2\nNATIVE UI / WEB-READY", 16, true), content, Rect2(1210, 823, 350, 50))
 	if GameState.storage_error != "":
 		UI.at(UI.label(GameState.storage_error, 20), content, Rect2(860, 680, 620, 105))
 
@@ -155,7 +196,7 @@ func make_paper(title: String, subtitle := "", wide := false) -> Control:
 	paper = Panel.new()
 	paper.theme = UI.theme_for()
 	var skin := StyleBoxTexture.new()
-	skin.texture = preload("res://assets/images/parchment.jpg")
+	skin.texture = preload("res://assets/images/parchment.png")
 	paper.add_theme_stylebox_override("panel", skin)
 	UI.at(paper, content, Rect2((1600 - width) / 2, 46, width, 808))
 	var border := Panel.new()
@@ -184,6 +225,10 @@ func build_new() -> void:
 
 func build_contract() -> void:
 	var body := make_paper("Sign the Contract", "The Rockseeker Contract · Neverwinter muster-yard · dawn")
+	var seal := UI.seal(110)
+	seal.name = "ContractSeal"
+	seal.rotation_degrees = 8
+	UI.at(seal, paper, Rect2(900, 36, 110, 110))
 	var column := UI.scroll_column(body)
 	choice(column, "Difficulty", "play.diff", ["Story", "Balanced", "Tactical"])
 	column.add_child(UI.label("Story: forgiving foes. Balanced: the intended table. Tactical: sharper foes. These rules are planned, not yet playable.", 20))
@@ -272,11 +317,17 @@ func build_codex() -> void:
 	if selected_codex == "lore" and GameState.contracts.is_empty():
 		column.add_child(UI.label("The ledger is blank. Lore earns itself.", 28))
 		return
-	column.add_child(UI.label("Reference text carried over from the web preview. Combat is not implemented in this port.", 19))
 	for entry in GameState.content[selected_codex]:
-		column.add_child(UI.label(entry.k, 18))
+		column.add_child(UI.label(entry.k, 17))
 		column.add_child(UI.label(entry.t, 30, true))
-		column.add_child(UI.label(entry.body, 24))
+		if entry.has("bb"):
+			var rtl := UI.rich()
+			rtl.text = entry.bb
+			rtl.fit_content = true
+			rtl.custom_minimum_size.x = 880
+			column.add_child(rtl)
+		else:
+			column.add_child(UI.label(entry.body, 24))
 		column.add_child(UI.rule())
 
 func build_credits() -> void:
@@ -301,6 +352,14 @@ func build_credits() -> void:
 		var text := UI.label(entry[1] + "\n\n", 26)
 		text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		column.add_child(text)
+	var end_seal := UI.seal(130)
+	end_seal.rotation_degrees = -5
+	end_seal.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	column.add_child(end_seal)
+	var fin := UI.label("Made with love for the table. Never for sale.", 26)
+	fin.add_theme_font_override("font", UI.body(400, true))
+	fin.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(fin)
 
 func start_loading() -> void:
 	loading_error = false
@@ -316,16 +375,52 @@ func build_loading() -> void:
 	map.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	UI.at(map, content, Rect2(0, 0, 1600, 900))
 	var shade := ColorRect.new()
-	shade.color = Color(0.025, 0.035, 0.04, 0.64)
+	shade.color = Color(0.025, 0.035, 0.04, 0.6)
 	UI.at(shade, content, Rect2(0, 0, 1600, 900))
-	UI.centered_text(content, "NEVERWINTER — THE ROCKSEEKER CONTRACT", Rect2(150, 88, 1300, 100), 32, true)
-	UI.centered_text(content, "Preparing the threshold and optional 3D test yard", Rect2(250, 180, 1100, 50), 25)
-	progress_bar = ProgressBar.new()
-	progress_bar.show_percentage = true
-	progress_bar.custom_minimum_size.y = 34
-	UI.at(progress_bar, content, Rect2(290, 630, 1020, 34))
-	load_label = UI.centered_text(content, "Packing the wagon…", Rect2(250, 680, 1100, 95), 25)
-	UI.at(UI.button("RETURN TO MENU", func() -> void: show_screen("menu")), content, Rect2(630, 810, 340, 48))
+	route_ctl = Control.new()
+	route_ctl.set_script(preload("res://scripts/ui/load_route.gd"))
+	UI.at(route_ctl, content, Rect2(0, 0, 1600, 900))
+	var plate := Panel.new()
+	plate.add_theme_stylebox_override("panel", UI.style(Color("f3ebd8"), Color(0.37, 0.24, 0.1, 0.6)))
+	UI.at(plate, content, Rect2(430, 60, 740, 92))
+	var lt := UI.centered_text(content, "NEVERWINTER — THE ROCKSEEKER CONTRACT", Rect2(440, 72, 720, 36), 26, true)
+	lt.add_theme_color_override("font_color", UI.INK)
+	var ls := UI.centered_text(content, "Preparing the threshold and the test yard", Rect2(440, 110, 720, 30), 18)
+	ls.add_theme_color_override("font_color", Color("5b4630"))
+	ls.add_theme_font_override("font", UI.body(400, true))
+	var slip := Panel.new()
+	slip.add_theme_stylebox_override("panel", UI.style(Color("f3ebd8"), Color(0.37, 0.24, 0.1, 0.6)))
+	UI.at(slip, content, Rect2(64, 700, 600, 120))
+	var kick := UI.label("FIELD ADVICE", 15, true)
+	kick.add_theme_color_override("font_color", Color("6e4a1e"))
+	UI.at(kick, content, Rect2(82, 710, 300, 24))
+	var tips: Array = GameState.content.get("tips", [])
+	tip_label = UI.label(tips[0] if tips else "", 19, false)
+	tip_label.add_theme_font_override("font", UI.flavor(true))
+	tip_label.add_theme_color_override("font_color", UI.INK)
+	UI.at(tip_label, content, Rect2(82, 738, 566, 74))
+	load_label = UI.centered_text(content, "", Rect2(250, 640, 1100, 40), 20)
+	load_label.add_theme_font_override("font", UI.flavor(true))
+	load_label.add_theme_color_override("font_color", Color("241a12"))
+	load_seal = UI.seal(110)
+	load_seal.pivot_offset = Vector2(55, 55)
+	UI.at(load_seal, content, Rect2(745, 330, 110, 110))
+	load_pct = UI.centered_text(content, "0%", Rect2(720, 450, 160, 30), 22)
+	load_pct.add_theme_font_override("font", UI.flavor())
+	load_pct.add_theme_color_override("font_color", UI.PAPER)
+	var pip_row := HBoxContainer.new()
+	pip_row.add_theme_constant_override("separation", 12)
+	UI.at(pip_row, content, Rect2(754, 486, 92, 6))
+	load_pips.clear()
+	for i in 3:
+		var pip := ColorRect.new()
+		pip.color = Color(UI.PAPER, 0.25)
+		pip.custom_minimum_size = Vector2(22, 4)
+		pip_row.add_child(pip)
+		load_pips.append(pip)
+	load_shown = 0.0
+	tip_clock = 0.0
+	UI.at(UI.button("RETURN TO MENU", func() -> void: show_screen("menu")), content, Rect2(630, 830, 340, 48))
 
 func loading_failed(message: String) -> void:
 	loading_error = true
@@ -334,6 +429,12 @@ func loading_failed(message: String) -> void:
 
 func build_threshold() -> void:
 	var body := make_paper("Contract " + load_mode, "The wax is set, Recruit.")
+	var seal := UI.seal(120)
+	seal.rotation_degrees = -6
+	UI.at(seal, paper, Rect2(880, 40, 120, 120))
+	var stamp := create_tween()
+	stamp.tween_property(seal, "scale", Vector2(1.3, 1.3), 0.1)
+	stamp.tween_property(seal, "scale", Vector2(1, 1), 0.3)
 	var column := UI.scroll_column(body)
 	column.add_child(UI.label("Your contract rests in the ledger. The full adventure is not implemented yet; the original web preview ends at this threshold.", 29))
 	column.add_child(UI.rule())
@@ -357,7 +458,7 @@ func _setting_changed(key: String, _value: Variant) -> void:
 			paper.add_theme_stylebox_override("panel", UI.style(Color("fff4d8"), Color.BLACK, 3))
 		else:
 			var skin := StyleBoxTexture.new()
-			skin.texture = preload("res://assets/images/parchment.jpg")
+			skin.texture = preload("res://assets/images/parchment.png")
 			paper.add_theme_stylebox_override("panel", skin)
 
 func _save_failed(message: String) -> void:
@@ -379,19 +480,55 @@ func _process(delta: float) -> void:
 		return
 	var progress: Array = []
 	var status := ResourceLoader.THREAD_LOAD_LOADED if ready_world else ResourceLoader.load_threaded_get_status(WORLD, progress)
-	if not progress.is_empty():
-		progress_bar.value = float(progress[0]) * 100
+	var real := 0.0
 	if status == ResourceLoader.THREAD_LOAD_FAILED or status == ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
 		loading_failed("The test-yard scene could not be loaded.")
+		return
 	elif status == ResourceLoader.THREAD_LOAD_LOADED:
 		if not ready_world:
 			ready_world = ResourceLoader.load_threaded_get(WORLD)
-		progress_bar.value = 100
-		load_label.text = "The road is ready."
-		if state_time > 1.2:
-			show_screen("threshold")
-	elif state_time > 45:
+		real = 0.7
+		UI.display(900)
+		UI.body(600, true)
+		UI.flavor()
+		real = 0.9
+		if not GameState.content.is_empty():
+			real = 1.0
+	else:
+		real = 0.7 * clampf(progress[0] if not progress.is_empty() else 0.0, 0.0, 1.0)
+	if state_time < 1.2:
+		real = minf(real, state_time / 1.2 * 0.7)
+	load_shown = lerpf(load_shown, real, minf(1.0, delta * 3.2)) if GameState.get_setting("cam.reduced") != "On" else real
+	if real >= 1.0 and load_shown > 0.995:
+		load_shown = 1.0
+	if is_instance_valid(route_ctl):
+		route_ctl.progress = load_shown
+		route_ctl.queue_redraw()
+	if is_instance_valid(load_pct):
+		load_pct.text = "%d%%" % int(load_shown * 100.0)
+	for i in load_pips.size():
+		load_pips[i].color = UI.MINT if load_shown >= 0.33 * (i + 1) - 0.001 else Color(UI.PAPER, 0.25)
+	if is_instance_valid(load_seal) and GameState.get_setting("cam.reduced") != "On":
+		load_seal.rotation_degrees = fposmod(state_time * 24.0, 360.0)
+	tip_clock += delta
+	if tip_clock > 5.0 and is_instance_valid(tip_label):
+		tip_clock = 0.0
+		var tips: Array = GameState.content.get("tips", [])
+		if tips.size():
+			tip_index = (tip_index + 1) % tips.size()
+			var next_text: String = tips[tip_index]
+			var tw := create_tween()
+			tw.tween_property(tip_label, "modulate:a", 0.0, 0.35)
+			tw.tween_callback(func() -> void: tip_label.text = next_text)
+			tw.tween_property(tip_label, "modulate:a", 1.0, 0.35)
+	if state_time > 6.0 and real < 1.0 and is_instance_valid(load_label):
 		load_label.text = "Still packing the wagon… large loads take a moment on first visit."
+	if status == ResourceLoader.THREAD_LOAD_LOADED and state_time > 1.2:
+		if load_shown >= 1.0:
+			show_screen("threshold")
+		elif state_time > 8.0:
+			show_screen("threshold")
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.echo:
@@ -403,6 +540,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		show_screen("menu")
 	elif event.is_action_pressed("ui_cancel") and screen not in ["menu", "legal", "sting"]:
 		show_screen("menu")
+	elif screen == "menu" and event is InputEventKey and event.pressed and event.physical_keycode == KEY_C:
+		show_screen("codex")
 	elif screen == "menu" and event is InputEventKey and event.pressed and event.physical_keycode in [KEY_W, KEY_S]:
 		var focused := get_viewport().gui_get_focus_owner()
 		var index := menu_buttons.find(focused)

@@ -49,17 +49,20 @@ func build_row(parent: VBoxContainer, row: Dictionary) -> void:
 	line.add_child(ShellUI.label(row.label + (" †" if not row.live else ""), 23))
 	var key: String = row.key
 	if row.type == "choice":
-		var option := OptionButton.new()
-		option.custom_minimum_size.y = 46
-		option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var pills := FlowContainer.new()
+		pills.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		parent.add_child(pills)
+		var group := ButtonGroup.new()
 		for value in row.values:
-			option.add_item(value)
-			var index := option.item_count - 1
-			option.set_item_disabled(index, value in row.locked or (key == "gfx.rt" and value == "On"))
-			if str(GameState.get_setting(key)) == value:
-				option.select(index)
-		option.item_selected.connect(func(index: int) -> void: GameState.set_setting(key, row.values[index]))
-		line.add_child(option)
+			var locked: bool = value in row.locked or (key == "gfx.rt" and value == "On")
+			var pill := ShellUI.button(str(value), func() -> void: GameState.set_setting(key, value))
+			pill.toggle_mode = true
+			pill.button_group = group
+			pill.button_pressed = str(GameState.get_setting(key)) == str(value)
+			pill.disabled = locked
+			pill.custom_minimum_size.y = 42
+			pill.add_theme_font_size_override("font_size", 15 if str(value).length() > 22 else 18)
+			pills.add_child(pill)
 	elif row.type == "range":
 		var bar := HBoxContainer.new()
 		var slider := HSlider.new()
