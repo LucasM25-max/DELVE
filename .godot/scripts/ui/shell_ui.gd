@@ -277,11 +277,12 @@ static func motes() -> Control:
 	return root
 
 # Corner decoration — matches CSS var(--corner) SVG
-static func corner_decoration(parent: Control, flip: bool = false) -> Control:
+static func corner_decoration(_parent: Control, flip: bool = false) -> Control:
 	var c := Control.new()
 	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	c.custom_minimum_size = Vector2(54, 54)
 	c.size = Vector2(54, 54)
+	c.pivot_offset = Vector2(27, 27)
 	# Use a ColorRect with border to simulate corner — procedural, not image
 	var box := StyleBoxFlat.new()
 	box.bg_color = Color.TRANSPARENT
