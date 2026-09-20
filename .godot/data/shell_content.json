@@ -5,7 +5,9 @@
    "fps": "60",
    "quality": "High",
    "rt": "On",
-   "foliage": "High"
+   "foliage": "High",
+   "clouds": "Med",
+   "sky": "Slow"
   },
   "cam": {
    "view": "Third person",

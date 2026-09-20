@@ -1,6 +1,6 @@
 extends Control
 ## Main flow: attribution → sting → menu → contract → loading → threshold.
-## The optional 3D yard is a NEW blockout, not a claim of adventure gameplay.
+## Full visual replica of web shell (GDD-02 §1–2) — parchment via StyleBoxFlat, motes, seals, rail icons.
 const UI = preload("res://scripts/ui/shell_ui.gd")
 const OptionsPage = preload("res://scripts/ui/options_page.gd")
 const Backdrop = preload("res://scripts/ui/backdrop.gd")
@@ -32,6 +32,7 @@ var credits_position := 0.0
 var selected_codex := "rules"
 var status_label: Label
 var sting_tween: Tween
+var motes_root: Control
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(PRESET_FULL_RECT)
@@ -50,7 +51,6 @@ func _ready() -> void:
 	GameState.return_to_menu = false
 
 func _layout() -> void:
-	# Stable 1600×900 composition centered in wider/taller windows.
 	if is_instance_valid(content):
 		content.position = (size - Vector2(1600, 900)) / 2.0
 
@@ -65,6 +65,7 @@ func show_screen(next: String) -> void:
 	menu_buttons.clear()
 	paper = null
 	status_label = null
+	motes_root = null
 	content = Control.new()
 	content.size = Vector2(1600, 900)
 	page.add_child(content)
@@ -94,18 +95,95 @@ func _focus_first() -> void:
 			control.grab_focus()
 			break
 
+# ---------- motes helper ----------
+func _add_motes(to: Control) -> void:
+	var motes := UI.motes()
+	to.add_child(motes)
+	motes_root = motes
+	# Animate motes in _process
+	motes.set_meta("clock", 0.0)
+
+func _animate_motes(delta: float) -> void:
+	if not is_instance_valid(motes_root):
+		return
+	var t := motes_root.get_meta("clock", 0.0) + delta
+	motes_root.set_meta("clock", t)
+	for dot in motes_root.get_children():
+		if not dot is ColorRect:
+			continue
+		var dur: float = dot.get_meta("mote_dur", 10.0)
+		var delay: float = dot.get_meta("mote_delay", 0.0)
+		var x_frac: float = dot.get_meta("mote_x", 0.5)
+		var local_t := fmod(t - delay, dur) / dur
+		# CSS @keyframes mote: bottom -14px to -94vh, x drift
+		var y := lerp(920.0, -840.0, local_t)
+		var x_drift := sin(local_t * TAU * 0.6) * 26.0 if fmod(local_t * 2.0, 1.0) < 0.5 else -sin(local_t * TAU) * 16.0
+		var base_x := x_frac * 1600.0
+		dot.position = Vector2(base_x + x_drift, y)
+		# Opacity fade in/out
+		var alpha := 0.0
+		if local_t < 0.1:
+			alpha = lerp(0.0, 0.5, local_t / 0.1)
+		elif local_t < 0.5:
+			alpha = lerp(0.5, 0.32, (local_t - 0.1) / 0.4)
+		else:
+			alpha = lerp(0.32, 0.0, (local_t - 0.5) / 0.5)
+		dot.modulate.a = alpha
+
+# ---------- legal (web §2.1) ----------
 func build_legal() -> void:
-	UI.at(UI.image("res://assets/images/logo_emblem.png"), content, Rect2(728, 135, 144, 190))
-	UI.centered_text(content, LEGAL, Rect2(420, 355, 760, 150), 25)
-	UI.centered_text(content, "NATIVE GODOT EDITION", Rect2(450, 550, 700, 36), 22, true)
-	UI.centered_text(content, "Menu shell + optional 3D test yard. Built for the browser.\nCinzel and Alegreya are bundled under the SIL Open Font License.", Rect2(400, 602, 800, 65), 21)
+	# Radial gradient background via ColorRect
+	var bg := ColorRect.new()
+	bg.color = Color("101418")
+	UI.at(bg, content, Rect2(0, 0, 1600, 900))
+	# Emblem — actual generated logo, not SVG placeholder
+	var emblem := UI.image("res://assets/images/logo_emblem.png")
+	emblem.custom_minimum_size = Vector2(74, 96)
+	UI.at(emblem, content, Rect2(763, 155, 74, 96))
+	# Disclaimer
+	var disc := UI.label(LEGAL, 15)
+	disc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	disc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	disc.add_theme_color_override("font_color", UI.PARCHMENT)
+	UI.at(disc, content, Rect2(440, 285, 720, 110))
+	# Legal lines
+	var line1 := UI.label("Web shell build: hand-written HTML, CSS and JavaScript with runtime Web Audio synthesis. The full game targets Unreal Engine 5.7.", 12)
+	line1.modulate.a = 0.6
+	line1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UI.at(line1, content, Rect2(440, 410, 720, 40))
+	var line2 := UI.label("Typefaces: Cinzel, Alegreya and IM Fell English under the SIL Open Font License.", 12)
+	line2.modulate.a = 0.6
+	line2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UI.at(line2, content, Rect2(440, 450, 720, 30))
+	# Continue button + pulse press hint
 	UI.at(UI.button("CONTINUE", begin_boot), content, Rect2(650, 745, 300, 54))
+	var press := UI.label("Press any button to continue.", 15)
+	press.add_theme_font_override("font", UI.flavor(true))
+	press.add_theme_color_override("font_color", UI.PARCHMENT)
+	press.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UI.at(press, content, Rect2(0, 820, 1600, 30))
+	# Pulse animation
+	var tw := create_tween().set_loops()
+	tw.tween_property(press, "modulate:a", 0.45, 1.1)
+	tw.tween_property(press, "modulate:a", 0.95, 1.1)
 
 func begin_boot() -> void:
 	Sound.unlock()
 	show_screen("menu" if GameState.get_setting("cam.reduced") == "On" else "sting")
 
+# ---------- sting (web §1.4) ----------
 func build_sting() -> void:
+	var bg := ColorRect.new()
+	bg.color = Color("101418")
+	UI.at(bg, content, Rect2(0, 0, 1600, 900))
+	# Letterbox bars
+	var bar_t := ColorRect.new()
+	bar_t.color = Color.BLACK
+	UI.at(bar_t, content, Rect2(0, 0, 1600, 0))
+	var bar_b := ColorRect.new()
+	bar_b.color = Color.BLACK
+	UI.at(bar_b, content, Rect2(0, 900, 1600, 0))
+
 	var word := UI.image("res://assets/images/logo_wordmark.png")
 	var atlas := AtlasTexture.new()
 	atlas.atlas = load("res://assets/images/logo_wordmark.png")
@@ -113,21 +191,20 @@ func build_sting() -> void:
 	atlas.region = Rect2(0, 0, 0, full.y)
 	word.texture = atlas
 	UI.at(word, content, Rect2(365, 230, 870, 240))
+
 	var emblem := UI.image("res://assets/images/logo_emblem.png")
 	UI.at(emblem, content, Rect2(725, 490, 150, 190))
+
 	var glow := ColorRect.new()
 	glow.color = UI.MINT
 	UI.at(glow, content, Rect2(800, 470, 0, 2))
-	var bar_t := ColorRect.new()
-	bar_t.color = Color.BLACK
-	UI.at(bar_t, content, Rect2(0, 0, 1600, 0))
-	var bar_b := ColorRect.new()
-	bar_b.color = Color.BLACK
-	UI.at(bar_b, content, Rect2(0, 900, 1600, 0))
+
 	UI.centered_text(content, "A DUNGEONS & DRAGONS ADVENTURE", Rect2(300, 700, 1000, 36), 24, true)
 	UI.centered_text(content, "PHANDELVER AND BELOW · THE SHATTERED OBELISK", Rect2(300, 745, 1000, 30), 19, true)
+
 	word.modulate.a = 0.0
 	emblem.modulate.a = 0.0
+
 	sting_tween = create_tween()
 	sting_tween.tween_interval(0.5)
 	sting_tween.tween_property(emblem, "modulate:a", 1.0, 0.5)
@@ -144,7 +221,24 @@ func build_sting() -> void:
 	sting_tween.parallel().tween_property(bar_b, "size:y", 90.0, 0.45)
 	sting_tween.parallel().tween_property(bar_b, "position:y", 810.0, 0.45)
 
+# ---------- menu (web §2.2–2.3) ----------
 func build_menu() -> void:
+	# Scrim — left gradient
+	var scrim := ColorRect.new()
+	var grad := Gradient.new()
+	grad.set_color(0, Color(0.03, 0.04, 0.05, 0.62))
+	grad.set_color(1, Color(0.03, 0.04, 0.05, 0.0))
+	var tex := GradientTexture2D.new()
+	tex.gradient = grad
+	tex.fill_to = Vector2(1, 0)
+	scrim.texture = tex
+	# Actually ColorRect can't have texture, use TextureRect
+	var scrim_tex := TextureRect.new()
+	scrim_tex.texture = tex
+	scrim_tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UI.at(scrim_tex, content, Rect2(0, 0, 736, 900))
+
+	# Lockup — emblem + wordmark (actual generated logos)
 	UI.at(UI.image("res://assets/images/logo_emblem.png"), content, Rect2(133, 104, 84, 130))
 	var wordmark := UI.image("res://assets/images/logo_wordmark.png")
 	UI.at(wordmark, content, Rect2(243, 108, 425, 130))
@@ -154,22 +248,37 @@ func build_menu() -> void:
 		flick.tween_property(wordmark, "modulate", Color(0.82, 0.95, 1, 0.88), 0.12)
 		flick.tween_property(wordmark, "modulate", Color(1, 1, 1, 1), 0.1)
 		flick.tween_interval(1.4)
+
 	var kicker := UI.label("THE ROCKSEEKER CONTRACT", 18, true)
 	kicker.add_theme_color_override("font_color", UI.GOLD)
 	UI.at(kicker, content, Rect2(136, 262, 560, 40))
+
+	# Menu items — with entrance animation matching CSS itemIn
 	var items := ["PLAY", "CONTINUE", "OPTIONS", "CODEX", "CREDITS"]
 	for i in items.size():
 		var button := UI.button(items[i], menu_activate.bind(i))
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.add_theme_font_size_override("font_size", 34)
+		button.add_theme_font_override("font", UI.display(600))
 		button.add_theme_stylebox_override("normal", UI.style(Color.TRANSPARENT))
+		button.add_theme_stylebox_override("hover", UI.style(Color(0,0,0,0.12), UI.GOLD, 1))
 		button.add_theme_stylebox_override("disabled", UI.style(Color.TRANSPARENT))
+		button.add_theme_color_override("font_color", UI.PARCHMENT)
+		button.add_theme_color_override("font_hover_color", Color("f6efdd"))
 		button.disabled = i == 1 and GameState.contracts.is_empty()
 		UI.at(button, content, Rect2(122, 348 + i * 70, 420, 58))
 		button.mouse_entered.connect(func() -> void:
 			if not button.disabled:
 				button.grab_focus())
+		# Entrance animation
+		button.modulate.a = 0.0
+		button.position.y += 10.0
+		var tw := create_tween()
+		tw.tween_interval(0.05 + float(i) * 0.08)
+		tw.tween_property(button, "modulate:a", 1.0, 0.35)
+		tw.parallel().tween_property(button, "position:y", button.position.y - 10.0, 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		menu_buttons.append(button)
+
 	var hint := "No contracts signed yet." if GameState.contracts.is_empty() else "%d / 8 contracts in the ledger." % GameState.contracts.size()
 	UI.at(UI.label(hint, 22), content, Rect2(138, 716, 650, 40))
 	var legal := UI.label(LEGAL, 16)
@@ -188,69 +297,183 @@ func menu_activate(index: int) -> void:
 		3: show_screen("codex")
 		4: show_screen("credits")
 
+# ---------- paper helper — full replica, no generated image ----------
 func make_paper(title: String, subtitle := "", wide := false) -> Control:
+	# Dark scrim behind
 	var shade := ColorRect.new()
 	shade.color = Color(0.015, 0.02, 0.025, 0.62)
 	UI.at(shade, content, Rect2(-1000, -1000, 3600, 2900))
+
 	var width := 1300.0 if wide else 1060.0
+	var height := 808.0
 	paper = Panel.new()
+	paper.name = "Paper"
 	paper.theme = UI.theme_for()
-	var skin := StyleBoxTexture.new()
-	skin.texture = preload("res://assets/images/parchment.png")
-	paper.add_theme_stylebox_override("panel", skin)
-	UI.at(paper, content, Rect2((1600 - width) / 2, 46, width, 808))
+	# Use procedural parchment style, NOT generated image
+	paper.add_theme_stylebox_override("panel", UI.cert_style())
+	UI.at(paper, content, Rect2((1600 - width) / 2, 46, width, height))
+
+	# Motes inside paper? Actually web has motes as sibling of sheet, absolute.
+	_add_motes(paper)
+
+	# Bronze keyline border — inner
 	var border := Panel.new()
 	border.mouse_filter = MOUSE_FILTER_IGNORE
 	border.add_theme_stylebox_override("panel", UI.style(Color.TRANSPARENT, UI.GOLD, 2))
-	UI.at(border, paper, Rect2(14, 14, width - 28, 780))
+	UI.at(border, paper, Rect2(14, 14, width - 28, height - 28))
+
+	# Corner decorations — procedural, not image
+	var corner_tl := UI.corner_decoration(paper, false)
+	UI.at(corner_tl, paper, Rect2(10, 10, 54, 54))
+	var corner_br := UI.corner_decoration(paper, true)
+	UI.at(corner_br, paper, Rect2(width - 64, height - 64, 54, 54))
+
+	# Emblem — actual generated logo
 	UI.at(UI.image("res://assets/images/logo_emblem.png"), paper, Rect2(38, 32, 56, 80))
+	# Title with flanking flourishes (simulated via rule)
 	UI.centered_text(paper, title, Rect2(110, 36, width - 220, 60), 37, true)
-	UI.centered_text(paper, subtitle, Rect2(110, 105, width - 220, 40), 22)
-	UI.at(UI.rule(), paper, Rect2(45, 157, width - 90, 2))
+	if subtitle != "":
+		UI.centered_text(paper, subtitle, Rect2(110, 105, width - 220, 40), 22)
+	# Rule with diamond
+	var rule := Control.new()
+	rule.custom_minimum_size = Vector2(width - 90, 12)
+	UI.at(rule, paper, Rect2(45, 157, width - 90, 12))
+	var line := ColorRect.new()
+	line.color = Color(UI.GOLD, 0.6)
+	line.custom_minimum_size = Vector2(width - 90, 1)
+	UI.at(line, rule, Rect2(0, 5, width - 90, 1))
+	var diamond := ColorRect.new()
+	diamond.color = UI.GOLD
+	diamond.custom_minimum_size = Vector2(7, 7)
+	diamond.rotation_degrees = 45
+	UI.at(diamond, rule, Rect2((width - 90)/2 - 3.5, 2, 7, 7))
+
 	var body := Control.new()
+	body.name = "Body"
 	UI.at(body, paper, Rect2(52, 180, width - 104, 512))
+
 	UI.at(UI.button("BACK", func() -> void: show_screen("menu")), paper, Rect2(45, 727, 210, 48))
+
 	_setting_changed("acc.hc", GameState.get_setting("acc.hc"))
 	return body
 
+# ---------- new contract modal ----------
 func build_new() -> void:
 	var body := make_paper("Begin a new contract?", "The ledger keeps up to eight contracts.")
 	var column := UI.scroll_column(body)
 	column.add_child(UI.label("Your existing contracts will not be erased. Continue resumes a contract from the ledger.", 28))
+	# Seal
+	var seal := UI.seal(46)
+	seal.rotation_degrees = -4
+	UI.at(seal, paper, Rect2(paper.size.x - 80, 20, 46, 46))
+
 	if GameState.contracts.size() >= GameState.MAX_CONTRACTS:
 		column.add_child(UI.label("The ledger is full. Open CONTINUE to remove a contract before signing another.", 26))
 		column.add_child(UI.button("OPEN THE LEDGER", func() -> void: show_screen("ledger")))
 	else:
 		column.add_child(UI.button("BEGIN NEW", func() -> void: show_screen("contract")))
 
+# ---------- first-run / sign contract — full replica ----------
 func build_contract() -> void:
 	var body := make_paper("Sign the Contract", "The Rockseeker Contract · Neverwinter muster-yard · dawn")
-	var seal := UI.seal(110)
+	var seal := UI.seal(76)
 	seal.name = "ContractSeal"
-	seal.rotation_degrees = 8
-	UI.at(seal, paper, Rect2(900, 36, 110, 110))
-	var column := UI.scroll_column(body)
-	choice(column, "Difficulty", "play.diff", ["Story", "Balanced", "Tactical"])
-	column.add_child(UI.label("Story: forgiving foes. Balanced: the intended table. Tactical: sharper foes. These rules are planned, not yet playable.", 20))
-	choice(column, "Combat pacing", "play.combat", ["Table Mode (turn-based)", "Skirmish Mode (real-time, pausable)"])
-	choice(column, "Subtitles", "acc.subs", ["On", "Off"])
-	choice(column, "Camera comfort · reduced motion", "cam.reduced", ["Off", "On"])
-	column.add_child(UI.label("By signing you accept the road as it comes. Choices can be changed in Options. The adventure itself is not implemented yet.", 20))
-	UI.at(UI.button("SIGN & DESCEND", sign_contract), paper, Rect2(635, 727, 375, 48))
+	seal.rotation_degrees = -8
+	seal.modulate.a = 0.93
+	UI.at(seal, paper, Rect2(paper.size.x - 90, paper.size.y - 110, 76, 76))
 
-func choice(parent: VBoxContainer, title: String, key: String, values: Array) -> void:
-	parent.add_child(UI.label(title, 24))
-	var row := HBoxContainer.new()
-	parent.add_child(row)
+	var column := UI.scroll_column(body)
+	column.add_theme_constant_override("separation", 18)
+
+	# Difficulty
+	_first_run_group(column, "Difficulty", "fr-diff", ["Story", "Balanced", "Tactical"], "play.diff", "Story: forgiving foes, longer reaction timers. Balanced: the intended table. Tactical: sharper foes, alert states bite.")
+	# Combat pacing
+	_first_run_group(column, "Combat pacing", "fr-pace", ["Table Mode (turn-based)", "Skirmish Mode (real-time, pausable)"], "play.combat", "Table Mode is the intended experience: full turns, full information. Skirmish Mode runs the same rules in flowing real time with pause.", true)
+	# Subtitles
+	_first_run_group(column, "Subtitles", "fr-subs", ["On", "Off"], "acc.subs", "")
+	# Camera comfort
+	_first_run_group(column, "Camera comfort preset", "fr-comfort", ["Standard", "Reduced motion"], "cam.reduced", "", false, true)
+
+	column.add_child(UI.label("By signing you accept the road as it comes. These choices may be changed at any camp.", 20))
+
+	var fine := UI.label("By signing you accept the road as it comes. These choices may be changed at any camp.", 13)
+	fine.add_theme_font_override("font", UI.flavor(true))
+	fine.add_theme_color_override("font_color", Color("6b5539"))
+	fine.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(fine)
+
+	UI.at(UI.button("SIGN & DESCEND", sign_contract), paper, Rect2(paper.size.x - 400, 727, 350, 48))
+
+func _first_run_group(parent: VBoxContainer, flabel: String, group_id: String, values: Array, setting_key: String, help: String, show_tag: bool = false, is_comfort: bool = false) -> void:
+	# fgroup — matches web .fgroup
+	var fgroup := VBoxContainer.new()
+	fgroup.add_theme_constant_override("separation", 8)
+	parent.add_child(fgroup)
+
+	# flabel with lines
+	var label_row := HBoxContainer.new()
+	label_row.add_theme_constant_override("separation", 14)
+	fgroup.add_child(label_row)
+
+	var line_l := ColorRect.new()
+	line_l.color = Color(0.37, 0.24, 0.1, 0.45)
+	line_l.custom_minimum_size = Vector2(0, 1)
+	line_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	line_l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	label_row.add_child(line_l)
+
+	var fl := UI.label(flabel.to_upper(), 14, true)
+	fl.add_theme_color_override("font_color", Color("4a3620"))
+	label_row.add_child(fl)
+
+	var line_r := ColorRect.new()
+	line_r.color = Color(0.37, 0.24, 0.1, 0.45)
+	line_r.custom_minimum_size = Vector2(0, 1)
+	line_r.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	line_r.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	label_row.add_child(line_r)
+
+	# opts — pill buttons
+	var opts := FlowContainer.new()
+	opts.alignment = FlowContainer.ALIGNMENT_CENTER
+	opts.add_theme_constant_override("h_separation", 10)
+	opts.add_theme_constant_override("v_separation", 10)
+	fgroup.add_child(opts)
+
 	var group := ButtonGroup.new()
-	for value in values:
-		var button := UI.button(value, func() -> void: GameState.set_setting(key, value))
-		button.toggle_mode = true
-		button.button_group = group
-		button.button_pressed = GameState.get_setting(key) == value
-		button.size_flags_horizontal = SIZE_EXPAND_FILL
-		button.add_theme_font_size_override("font_size", 16 if str(value).length() > 25 else 19)
-		row.add_child(button)
+	var current_val: String = str(GameState.get_setting(setting_key))
+	if is_comfort:
+		current_val = "Reduced motion" if GameState.get_setting("cam.reduced") == "On" else "Standard"
+
+	for v in values:
+		var is_pressed := current_val == str(v)
+		var btn := UI.pill_button(str(v), func() -> void:
+			if is_comfort:
+				GameState.set_setting("cam.reduced", "On" if v == "Reduced motion" else "Off")
+			else:
+				GameState.set_setting(setting_key, v)
+			# Update group UI
+			for child in opts.get_children():
+				if child is Button:
+					child.button_pressed = child.text == str(v) or (show_tag and child.text.begins_with(str(v)))
+			, group, is_pressed)
+		if show_tag and v == "Skirmish Mode (real-time, pausable)":
+			btn.text = "%s [SECONDARY]" % v
+		opts.add_child(btn)
+
+	if help != "":
+		var fhelp := UI.label(help, 14)
+		fhelp.add_theme_font_override("font", UI.flavor(true))
+		fhelp.add_theme_color_override("font_color", Color("5b4630"))
+		fhelp.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		# Left border
+		var help_box := Panel.new()
+		var hs := UI.style(Color.TRANSPARENT, Color(UI.GOLD, 0.65), 0)
+		hs.border_width_left = 2
+		help_box.add_theme_stylebox_override("panel", hs)
+		help_box.add_child(fhelp)
+		UI.fill(fhelp)
+		fgroup.add_child(help_box)
 
 func sign_contract() -> void:
 	if GameState.contracts.size() >= GameState.MAX_CONTRACTS:
@@ -260,6 +483,7 @@ func sign_contract() -> void:
 	load_mode = "signed"
 	start_loading()
 
+# ---------- ledger ----------
 func build_ledger() -> void:
 	var body := make_paper("The Contract Ledger", "Choose a contract to continue. Saves stay on this device / browser.")
 	var column := UI.scroll_column(body)
@@ -274,7 +498,7 @@ func build_ledger() -> void:
 			GameState.active_contract = contract
 			load_mode = "restored"
 			start_loading())
-		resume.size_flags_horizontal = SIZE_EXPAND_FILL
+		resume.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(resume)
 		row.add_child(UI.button("REMOVE…", confirm_delete.bind(str(contract.id))))
 		column.add_child(UI.rule())
@@ -292,24 +516,39 @@ func confirm_delete(id: String) -> void:
 	dialog.canceled.connect(dialog.queue_free)
 	dialog.popup_centered(Vector2i(560, 180))
 
+# ---------- options — full replica ----------
 func build_options() -> void:
-	var body := make_paper("Options", "The choices you carry into the dark", true)
+	var body := make_paper("Options", "Preferences for the road ahead", true)
 	var options := Control.new()
 	options.set_script(OptionsPage)
 	options.size = body.size
 	body.add_child(options)
 	UI.fill(options)
 
+# ---------- codex — full replica ----------
 func build_codex() -> void:
 	var body := make_paper("Codex", "Excerpts, ledgers & catalogues of the road", true)
+	# Rail
 	var tabs := VBoxContainer.new()
-	UI.at(tabs, body, Rect2(0, 0, 235, body.size.y))
-	for tab in [["rules", "RULES"], ["lore", "LORE"], ["best", "BESTIARY"]]:
-		tabs.add_child(UI.button(tab[1], func() -> void:
+	tabs.add_theme_constant_override("separation", 4)
+	UI.at(tabs, body, Rect2(0, 0, 200, body.size.y))
+	var tab_defs := [["rules", "◆ RULES"], ["lore", "◩ LORE"], ["best", "◨ BESTIARY"]]
+	for tab in tab_defs:
+		var btn := UI.button(tab[1], func() -> void:
 			selected_codex = tab[0]
-			show_screen("codex")))
+			show_screen("codex"))
+		btn.custom_minimum_size.y = 42
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		btn.add_theme_font_size_override("font_size", 13)
+		if selected_codex == tab[0]:
+			btn.button_pressed = true
+			var active := UI.style(Color("1a2126"), Color("b0793a"), 1)
+			btn.add_theme_stylebox_override("normal", active)
+			btn.add_theme_color_override("font_color", Color("E9DFC8"))
+		tabs.add_child(btn)
+
 	var holder := Control.new()
-	UI.at(holder, body, Rect2(270, 0, body.size.x - 270, body.size.y))
+	UI.at(holder, body, Rect2(230, 0, body.size.x - 230, body.size.y))
 	var column := UI.scroll_column(holder)
 	if selected_codex == "best":
 		column.add_child(UI.label("No creatures catalogued yet.", 28))
@@ -330,37 +569,76 @@ func build_codex() -> void:
 			column.add_child(UI.label(entry.body, 24))
 		column.add_child(UI.rule())
 
+# ---------- credits — full replica ----------
 func build_credits() -> void:
 	var body := make_paper("Credits", "Hold Space or Shift to hasten · scroll to read", true)
+	_add_motes(body)
 	var column := UI.scroll_column(body)
 	credits_scroll = column.get_parent()
 	credits_position = 0.0
+	# Emblem
+	var emblem := UI.image("res://assets/images/logo_emblem.png")
+	emblem.custom_minimum_size = Vector2(66, 86)
+	emblem.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	column.add_child(emblem)
+	var title := UI.label("Credits", 34, true)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(title)
+	column.add_child(UI.rule())
+
 	var entries := [
-		["DESIGN & DIRECTION", "The DELVE design table"],
-		["ORIGINAL WEB SHELL", "Hand-written HTML, CSS and JavaScript"],
-		["GODOT CONVERSION", "Native scenes, GDScript, a local contract ledger and a web-compatible 3D foundation"],
-		["ART & LIGHTING", "Original DELVE generated panorama, map and logo artwork\nThe optional 3D yard uses placeholder primitives."],
-		["AUDIO", "The supplied DELVE menu theme\nNo additional SFX or voice recordings are included."],
-		["TYPEFACES", "Cinzel · Alegreya\nSIL Open Font License — license files included"],
-		["ENGINE", "Godot Engine · MIT license\ngodotengine.org/license"],
-		["ATTRIBUTION", LEGAL],
-		["THE TABLE", "Made with love for the table. Never for sale."]]
+		["DESIGN & DIRECTION", "The DELVE design table\nGDD-01 · GDD-02 · GDD-03 — authored at the table, argued over lovingly"],
+		["ENGINEERING", "Web shell — hand-written HTML, CSS & JavaScript\nThe full build waits on Unreal Engine 5.7, when greenlit"],
+		["ART & LIGHTING", "Menu panorama & logo lockups\ngenerated imagery, keyed, trimmed and lit by hand"],
+		["AUDIO & VOICE", "Silence, until you cast it\nevery asset awaits your take — see AUDIO_GENERATION_GUIDE.md"],
+		["RULES TEXTS", LEGAL],
+		["FONTS", "Cinzel · Alegreya · IM Fell English\ntypefaces set under the SIL Open Font License"],
+		["ENGINE", "The planned build utilizes Unreal® Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc."],
+		["PLAYTESTERS", "The automated table\nseventy-odd checks across three suites, run every night"]]
+
 	for entry in entries:
-		var heading := UI.label(entry[0], 25, true)
+		var heading := UI.label(entry[0], 15, true)
 		heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		heading.add_theme_color_override("font_color", UI.BRONZE_HI)
 		column.add_child(heading)
-		var text := UI.label(entry[1] + "\n\n", 26)
+		var text := UI.label(entry[1], 18)
 		text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		text.add_theme_color_override("font_color", UI.PARCHMENT)
 		column.add_child(text)
-	var end_seal := UI.seal(130)
+		# Divider flourish
+		var div := Control.new()
+		div.custom_minimum_size.y = 12
+		column.add_child(div)
+		var div_line := ColorRect.new()
+		div_line.color = Color(UI.BRONZE, 0.5)
+		UI.at(div_line, div, Rect2((body.size.x - 130)/2, 4, 130, 1))
+		var div_diamond := ColorRect.new()
+		div_diamond.color = UI.BRONZE
+		div_diamond.custom_minimum_size = Vector2(6,6)
+		div_diamond.rotation_degrees = 45
+		UI.at(div_diamond, div, Rect2(body.size.x/2 -3, 1, 6, 6))
+
+	var close := UI.label("Made with love for the table. Never for sale.", 20, true)
+	close.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(close)
+
+	var end_seal := UI.seal(98)
 	end_seal.rotation_degrees = -5
 	end_seal.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	column.add_child(end_seal)
+
 	var fin := UI.label("Made with love for the table. Never for sale.", 26)
 	fin.add_theme_font_override("font", UI.body(400, true))
 	fin.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(fin)
 
+	# End card hidden initially — shown after scroll ends via _process
+	var hint := UI.label("HOLD TO HASTEN ×3", 11)
+	hint.add_theme_font_override("font", UI.flavor(true))
+	hint.add_theme_color_override("font_color", Color(UI.PARCHMENT, 0.5))
+	UI.at(hint, body, Rect2(body.size.x - 180, body.size.y - 30, 160, 20))
+
+# ---------- loading ----------
 func start_loading() -> void:
 	loading_error = false
 	show_screen("loading")
@@ -427,11 +705,12 @@ func loading_failed(message: String) -> void:
 	load_label.text = "The road is washed out. " + message
 	UI.at(UI.button("RETRY", start_loading), content, Rect2(650, 545, 300, 48))
 
+# ---------- threshold ----------
 func build_threshold() -> void:
 	var body := make_paper("Contract " + load_mode, "The wax is set, Recruit.")
 	var seal := UI.seal(120)
 	seal.rotation_degrees = -6
-	UI.at(seal, paper, Rect2(880, 40, 120, 120))
+	UI.at(seal, paper, Rect2(paper.size.x - 120, 40, 120, 120))
 	var stamp := create_tween()
 	stamp.tween_property(seal, "scale", Vector2(1.3, 1.3), 0.1)
 	stamp.tween_property(seal, "scale", Vector2(1, 1), 0.3)
@@ -457,9 +736,7 @@ func _setting_changed(key: String, _value: Variant) -> void:
 		if GameState.get_setting("acc.hc") == "On":
 			paper.add_theme_stylebox_override("panel", UI.style(Color("fff4d8"), Color.BLACK, 3))
 		else:
-			var skin := StyleBoxTexture.new()
-			skin.texture = preload("res://assets/images/parchment.png")
-			paper.add_theme_stylebox_override("panel", skin)
+			paper.add_theme_stylebox_override("panel", UI.cert_style())
 
 func _save_failed(message: String) -> void:
 	if is_instance_valid(status_label):
@@ -468,6 +745,7 @@ func _save_failed(message: String) -> void:
 func _process(delta: float) -> void:
 	clock += delta
 	state_time += delta
+	_animate_motes(delta)
 	if screen == "sting" and state_time > 4.2:
 		show_screen("menu")
 	if screen == "credits" and is_instance_valid(credits_scroll):
@@ -487,13 +765,7 @@ func _process(delta: float) -> void:
 	elif status == ResourceLoader.THREAD_LOAD_LOADED:
 		if not ready_world:
 			ready_world = ResourceLoader.load_threaded_get(WORLD)
-		real = 0.7
-		UI.display(900)
-		UI.body(600, true)
-		UI.flavor()
-		real = 0.9
-		if not GameState.content.is_empty():
-			real = 1.0
+		real = 1.0
 	else:
 		real = 0.7 * clampf(progress[0] if not progress.is_empty() else 0.0, 0.0, 1.0)
 	if state_time < 1.2:
@@ -529,7 +801,6 @@ func _process(delta: float) -> void:
 		elif state_time > 8.0:
 			show_screen("threshold")
 
-
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.echo:
 		return
@@ -563,6 +834,5 @@ func _input(event: InputEvent) -> void:
 	elif pressed and screen == "sting" and state_time > 1.5:
 		show_screen("menu")
 		get_viewport().set_input_as_handled()
-	# Space hastens the credits instead of activating the focused Back button.
 	if screen == "credits" and event is InputEventKey and event.physical_keycode in [KEY_SPACE, KEY_SHIFT]:
 		get_viewport().set_input_as_handled()

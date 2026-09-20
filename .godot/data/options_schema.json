@@ -66,6 +66,31 @@
           "High"
         ],
         "locked": []
+      },
+      {
+        "key": "gfx.clouds",
+        "label": "Cloud quality (Sky3D)",
+        "live": true,
+        "type": "choice",
+        "values": [
+          "Off",
+          "Low",
+          "Med",
+          "High"
+        ],
+        "locked": []
+      },
+      {
+        "key": "gfx.sky",
+        "label": "Sky time progression",
+        "live": true,
+        "type": "choice",
+        "values": [
+          "Paused",
+          "Slow",
+          "Real-time"
+        ],
+        "locked": []
       }
     ]
   },

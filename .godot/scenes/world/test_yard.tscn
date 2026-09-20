@@ -1,35 +1,64 @@
-[gd_scene load_steps=6 format=3 uid="uid://delve-testyard-02"]
+[gd_scene load_steps=14 format=3 uid="uid://delve-testyard-02"]
 
 [ext_resource type="Script" path="res://scripts/world/test_yard.gd" id="1_yard"]
 [ext_resource type="PackedScene" path="res://scenes/actors/player.tscn" id="2_player"]
+[ext_resource type="Script" path="res://addons/sky_3d/src/Sky3D.gd" id="3_sky3d]
 
 [sub_resource type="WorldBoundaryShape3D" id="GroundShape"]
 
 [sub_resource type="StandardMaterial3D" id="GroundMat"]
 albedo_color = Color(0.96, 0.96, 0.96, 1)
-roughness = 1.0
+roughness = 0.9
 
 [sub_resource type="PlaneMesh" id="GroundMesh"]
 material = SubResource("GroundMat")
 size = Vector2(400, 400)
 
-[sub_resource type="Environment" id="WhiteEnv"]
-background_mode = 1
-background_color = Color(0.96, 0.96, 0.96, 1)
-ambient_light_source = 1
-ambient_light_color = Color(1, 1, 1, 1)
-ambient_light_energy = 0.7
-tonemap_mode = 0
+[sub_resource type="StandardMaterial3D" id="StrawMat"]
+albedo_color = Color(0.85, 0.75, 0.45, 1)
+roughness = 1.0
+
+[sub_resource type="StandardMaterial3D" id="WoodMat"]
+albedo_color = Color(0.55, 0.35, 0.18, 1)
+roughness = 0.8
+
+[sub_resource type="StandardMaterial3D" id="StoneMat"]
+albedo_color = Color(0.55, 0.55, 0.58, 1)
+roughness = 0.9
+
+[sub_resource type="CapsuleMesh" id="DummyMesh"]
+radius = 0.32
+height = 1.6
+material = SubResource("StrawMat")
+
+[sub_resource type="BoxMesh" id="CrateMesh"]
+size = Vector3(1, 1, 1)
+material = SubResource("WoodMat")
+
+[sub_resource type="BoxMesh" id="WallMesh"]
+size = Vector3(20, 3, 0.5)
+material = SubResource("StoneMat")
+
+[sub_resource type="BoxShape3D" id="BoxShape"]
+size = Vector3(1, 1, 1)
+
+[sub_resource type="BoxShape3D" id="WallShape"]
+size = Vector3(20, 3, 0.5)
 
 [node name="TestYard" type="Node3D"]
 script = ExtResource("1_yard")
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
-environment = SubResource("WhiteEnv")
-
-[node name="Sun" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.866, -0.354, 0.354, 0, 0.707, 0.707, -0.5, -0.612, 0.612, 0, 0, 0)
-shadow_enabled = true
+[node name="Sky3D" type="WorldEnvironment" parent="."]
+script = ExtResource("3_sky3d")
+sky_contribution = 0.75
+current_time = 6.5
+minutes_per_day = 30.0
+clouds_enabled = true
+fog_enabled = true
+lights_enabled = true
+sky_enabled = true
+editor_time_enabled = false
+game_time_enabled = true
 
 [node name="Ground" type="StaticBody3D" parent="."]
 
@@ -40,5 +69,86 @@ mesh = SubResource("GroundMesh")
 shape = SubResource("GroundShape")
 
 [node name="Art" type="Node3D" parent="."]
+
+[node name="Dummy1" type="StaticBody3D" parent="Art"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, -12)
+
+[node name="Mesh" type="MeshInstance3D" parent="Art/Dummy1"]
+mesh = SubResource("DummyMesh")
+
+[node name="Collision" type="CollisionShape3D" parent="Art/Dummy1"]
+shape = SubResource("BoxShape")
+
+[node name="Dummy2" type="StaticBody3D" parent="Art"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, -12)
+
+[node name="Mesh" type="MeshInstance3D" parent="Art/Dummy2"]
+mesh = SubResource("DummyMesh")
+
+[node name="Collision" type="CollisionShape3D" parent="Art/Dummy2"]
+shape = SubResource("BoxShape")
+
+[node name="Dummy3" type="StaticBody3D" parent="Art"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -12)
+
+[node name="Mesh" type="MeshInstance3D" parent="Art/Dummy3"]
+mesh = SubResource("DummyMesh")
+
+[node name="Collision" type="CollisionShape3D" parent="Art/Dummy3"]
+shape = SubResource("BoxShape")
+
+[node name="Dummy4" type="StaticBody3D" parent="Art"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0, -12)
+
+[node name="Mesh" type="MeshInstance3D" parent="Art/Dummy4"]
+mesh = SubResource("DummyMesh")
+
+[node name="Collision" type="CollisionShape3D" parent="Art/Dummy4"]
+shape = SubResource("BoxShape")
+
+[node name="Dummy5" type="StaticBody3D" parent="Art"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, -12)
+
+[node name="Mesh" type="MeshInstance3D" parent="Art/Dummy5"]
+mesh = SubResource("DummyMesh")
+
+[node name="Collision" type="CollisionShape3D" parent="Art/Dummy5"]
+shape = SubResource("BoxShape")
+
+[node name="Crate1" type="StaticBody3D" parent="Art"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0.5, -6)
+
+[node name="Mesh" type="MeshInstance3D" parent="Art/Crate1"]
+mesh = SubResource("CrateMesh")
+
+[node name="Collision" type="CollisionShape3D" parent="Art/Crate1"]
+shape = SubResource("BoxShape")
+
+[node name="Crate2" type="StaticBody3D" parent="Art"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, -6)
+
+[node name="Mesh" type="MeshInstance3D" parent="Art/Crate2"]
+mesh = SubResource("CrateMesh")
+
+[node name="Collision" type="CollisionShape3D" parent="Art/Crate2"]
+shape = SubResource("BoxShape")
+
+[node name="Crate3" type="StaticBody3D" parent="Art"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0.5, -6)
+
+[node name="Mesh" type="MeshInstance3D" parent="Art/Crate3"]
+mesh = SubResource("CrateMesh")
+
+[node name="Collision" type="CollisionShape3D" parent="Art/Crate3"]
+shape = SubResource("BoxShape")
+
+[node name="WallNorth" type="StaticBody3D" parent="Art"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -20)
+
+[node name="Mesh" type="MeshInstance3D" parent="Art/WallNorth"]
+mesh = SubResource("WallMesh")
+
+[node name="Collision" type="CollisionShape3D" parent="Art/WallNorth"]
+shape = SubResource("WallShape")
 
 [node name="Player" parent="." instance=ExtResource("2_player")]
