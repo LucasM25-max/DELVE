@@ -1,5 +1,10 @@
 # DELVE — Web Shell (Main Menu, Boot Sequence, First Run)
 
+> **Native Godot edition:** see [`godot/GETTING_STARTED.md`](godot/GETTING_STARTED.md)
+> for the importable Godot 4.7.2 project, play instructions and browser export guide.
+> The original web preview below is preserved; the Godot version lives independently in `godot/`.
+> Rebuild its ZIP with `python3 godot/tools/package_project.py`.
+
 Production-ready web build of the **DELVE** game shell: boot/attribution screen, animated
 logo sting, main menu over the Neverwinter training-yard dawn scene, the PLAY →
 **First Run contract page** flow, and the signed-contract end card.

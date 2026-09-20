@@ -1,0 +1,170 @@
+{
+  "defaults": {
+    "gfx": {
+      "res": "Native",
+      "fps": "60",
+      "quality": "High",
+      "rt": "On",
+      "foliage": "High"
+    },
+    "cam": {
+      "view": "Third person",
+      "fov": 95,
+      "boom": 3.8,
+      "bob": "Off",
+      "shake": 70,
+      "snap": "Off",
+      "framing": "Auto two-shot",
+      "reduced": "Off"
+    },
+    "play": {
+      "hitch": "On",
+      "grid": "Off",
+      "pace": "Cinematic",
+      "react": "Ask always",
+      "rtimer": "6 s",
+      "autoend": "Off",
+      "tells": "On",
+      "diff": "Balanced",
+      "combat": "Table Mode (turn-based)",
+      "fast": "Off"
+    },
+    "acc": {
+      "subs": "On",
+      "subsize": "M",
+      "names": "On",
+      "cb": "Off",
+      "hc": "Off",
+      "sr": "Off",
+      "dt": "Subtle",
+      "cover": "On-hover"
+    },
+    "aud": {
+      "master": 90,
+      "music": 80,
+      "sfx": 90,
+      "voice": 100,
+      "mute": "On"
+    },
+    "binds": {
+      "sprint": "ShiftLeft",
+      "jump": "Space",
+      "interact": "KeyF",
+      "view": "KeyV",
+      "folio": "Tab",
+      "journal": "KeyJ",
+      "codex": "KeyC",
+      "hide": "KeyH",
+      "endturn": "Space",
+      "pause": "Escape"
+    },
+    "pad": "Standard"
+  },
+  "rules": [
+    {
+      "k": "Core mechanic · PHB 2024, ch. 1",
+      "t": "The D20 Test",
+      "body": "When the outcome of an action is uncertain, the game uses a d20 roll to determine success or failure. These rolls are called D20 Tests, and they come in three kinds: ability checks, saving throws, and attack rolls. They follow these steps:\n\n• Roll 1d20. You always want to roll high. If the roll has Advantage or Disadvantage, you roll two d20s, but you use the number from only one of them—the higher one if you have Advantage or the lower one if you have Disadvantage.\n• Add Modifiers. The relevant ability modifier; your Proficiency Bonus if relevant; and any circumstantial bonuses or penalties from a class feature, a spell, or another rule.\n• Compare the Total to a Target Number. If the total of the d20 and its modifiers equals or exceeds the target number, the D20 Test succeeds. Otherwise, it fails.\nThe target number for an ability check or a saving throw is called a Difficulty Class (DC). The target number for an attack roll is called an Armor Class (AC)."
+    },
+    {
+      "k": "Core mechanic · PHB 2024, ch. 1",
+      "t": "Advantage & Disadvantage",
+      "body": "Advantage reflects the positive circumstances surrounding a d20 roll, while Disadvantage reflects negative circumstances. You usually acquire them through the use of special abilities and actions; the DM can also decide that circumstances grant Advantage or impose Disadvantage.\n\nRoll Two D20s. When a roll has either Advantage or Disadvantage, roll a second d20 when you make the roll. Use the higher of the two rolls if you have Advantage, and use the lower roll if you have Disadvantage. For example, if you have Disadvantage and roll an 18 and a 3, use the 3.\n\nThey Don’t Stack. If multiple situations affect a roll and they all grant Advantage on it, you still roll only two d20s. If circumstances cause a roll to have both Advantage and Disadvantage, the roll has neither of them, and you roll one d20."
+    },
+    {
+      "k": "Combat · PHB 2024, ch. 1",
+      "t": "Attack Rolls & Armor Class",
+      "body": "An attack roll determines whether an attack hits a target. An attack roll hits if the roll equals or exceeds the target’s Armor Class.\n\nA creature’s Armor Class represents how well the creature avoids being wounded in combat. All creatures start with the same base AC calculation:\n\nBase AC = 10 + the creature’s Dexterity modifier\n\nA creature’s AC can then be modified by armor, magic items, spells, and more. Melee weapon attacks use Strength; ranged weapon attacks use Dexterity; spell attacks use the ability determined by the spellcasting feature."
+    },
+    {
+      "k": "Core mechanic · PHB 2024, ch. 1",
+      "t": "Ability Checks & Difficulty Classes",
+      "body": "An ability check represents a creature using talent and training to try to overcome a challenge, such as forcing open a stuck door, picking a lock, entertaining a crowd, or deciphering a cipher. The DM and the rules often call for an ability check when a creature attempts something other than an attack that has a chance of meaningful failure.\n\nThe Difficulty Class of an ability check represents the task’s difficulty. The more difficult the task, the higher its DC. The rules provide DCs for certain checks, but the DM ultimately sets them.\n\nTask DifficultyDCVery easy5Easy10Medium15Hard20Very hard25Nearly impossible30"
+    },
+    {
+      "k": "Core mechanic · PHB 2024, ch. 1",
+      "t": "Passive Scores",
+      "body": "Sometimes the DM determines whether your character notices something without asking for a Wisdom (Perception) check; the DM uses your Passive Perception instead. Passive Perception is a score that reflects a general awareness of your surroundings when you’re not actively looking for something.\n\nPassive Perception = 10 + Wisdom (Perception) check modifier\n\nInclude all modifiers that apply to your Wisdom (Perception) checks. For example, if your character has a Wisdom of 15 and proficiency in the Perception skill, you have a Passive Perception of 14 (10 + 2 for your Wisdom modifier + 2 for proficiency)."
+    },
+    {
+      "k": "Combat · PHB 2024, ch. 1",
+      "t": "Surprise",
+      "body": "If a combatant is surprised by combat starting, that combatant has Disadvantage on their Initiative roll. For example, if an ambusher starts combat while hidden from a foe who is unaware that combat is starting, that foe is surprised.\n\nOn the trail to Phandalin, an unseen bowstring is the whole difference between a story and a funeral. Watch the treeline."
+    },
+    {
+      "k": "Exploration · PHB 2024, ch. 1",
+      "t": "Hiding & Unseen Foes",
+      "body": "Adventurers and monsters often hide, whether to spy on one another, sneak past a guardian, or set an ambush. The Dungeon Master decides when circumstances are appropriate for hiding. When you try to hide, you take the Hide action.\n\nWhen you make an attack roll against a target you can’t see, you have Disadvantage on the roll. When a creature can’t see you, you have Advantage on attack rolls against it. If you are hidden when you make an attack roll, you give away your location when the attack hits or misses."
+    },
+    {
+      "k": "Combat · PHB 2024, ch. 1",
+      "t": "Cover",
+      "body": "Walls, trees, creatures, and other obstacles can provide cover, making a target more difficult to harm. There are three degrees of cover, each of which gives a different benefit to a target.\n\nA target can benefit from cover only when an attack or other effect originates on the opposite side of the cover. If a target is behind multiple sources of cover, only the most protective degree of cover applies; the degrees aren’t added together.\n\nDegreeBenefit to TargetOffered By…Half+2 bonus to AC and Dex savesAnother creature or an object that covers at least half of the targetThree-Quarters+5 bonus to AC and Dex savesAn object that covers at least three-quarters of the targetTotalCan’t be targeted directlyAn object that covers the whole target"
+    },
+    {
+      "k": "Movement · PHB 2024, ch. 1",
+      "t": "Difficult Terrain",
+      "body": "Combatants are often slowed down by Difficult Terrain. Low furniture, rubble, undergrowth, steep stairs, snow, and shallow bogs are examples of Difficult Terrain.\n\nEvery foot of movement in Difficult Terrain costs 1 extra foot, even if multiple things in a space count as Difficult Terrain."
+    },
+    {
+      "k": "Rules glossary · PHB 2024",
+      "t": "Conditions Glossary",
+      "body": "Many effects impose a condition, a temporary state that alters the recipient’s capabilities. The following conditions are defined in the rules glossary:\n\n• Blinded\n• Charmed\n• Deafened\n• Exhaustion\n• Frightened\n• Grappled\n• Incapacitated\n• Invisible\n• Paralyzed\n• Petrified\n• Poisoned\n• Prone\n• Restrained\n• Stunned\n• Unconscious\nTable note: conditions don’t stack — if two effects impose the same condition, the recipient has it once; and a creature reduced to 0 hit points is dying, not merely unconscious, unless a foe chose mercy (see Knocking Out a Creature)."
+    },
+    {
+      "k": "Combat · PHB 2024, ch. 1",
+      "t": "Anatomy of a Turn",
+      "body": "On your turn, you can move a distance up to your Speed and take one action. You decide whether to move first or take your action first.\n\nYou can communicate however you are able—through brief utterances and gestures—as you take your turn. Doing so uses neither your action nor your move. Extended communication, such as a detailed explanation or an attempt to persuade a foe, requires an action.\n\nIn Table Mode the yard bell keeps this rhythm: your turn, their turn, no arguments. In Skirmish Mode the same anatomy flows in real time, pausable at a raised hand."
+    },
+    {
+      "k": "Combat · PHB 2024, ch. 1",
+      "t": "Reactions & Opportunity Attacks",
+      "body": "Certain special abilities, spells, and situations allow you to take a special action called a Reaction: an instant response to a trigger of some kind, which can occur on your turn or on someone else’s. When you take a Reaction, you can’t take another one until the start of your next turn.\n\nYou can make an Opportunity Attack when a creature that you can see leaves your reach. To make the attack, take a Reaction to make one melee attack with a weapon or an Unarmed Strike against that creature. The attack occurs right before it leaves your reach.\n\nYou can avoid provoking an Opportunity Attack by taking the Disengage action. You also don’t provoke when you Teleport or when you are moved without using your movement, action, Bonus Action, or Reaction."
+    },
+    {
+      "k": "Recovery · PHB 2024, ch. 1",
+      "t": "Resting",
+      "body": "Adventurers can’t spend every hour adventuring. They need rest. Any creature can take hour-long Short Rests in the midst of a day and an 8-hour Long Rest to end it. Regaining Hit Points is one of the main benefits of a rest.\n\nYou can spend Hit Dice during a Short Rest to recover Hit Points. Temporary Hit Points last until they’re depleted or you finish a Long Rest."
+    },
+    {
+      "k": "Mercy · PHB 2024, ch. 1",
+      "t": "Knocking Out a Creature",
+      "body": "When you would reduce a creature to 0 Hit Points with a melee attack, you can instead reduce the creature to 1 Hit Point and give it the Unconscious condition. It then starts a Short Rest, at the end of which that condition ends on it.\n\nThe condition ends early if the creature regains any Hit Points or if someone takes an action to administer first aid to it, making a successful DC 10 Wisdom (Medicine) check. A live prisoner answers questions; a dead one only haunts them."
+    },
+    {
+      "k": "Weapon properties · PHB 2024, ch. 6",
+      "t": "Weapon Masteries",
+      "body": "Each weapon has a mastery property, usable only by a character who has a feature, such as Weapon Mastery, that unlocks the property for the character. The properties are defined below.\n\nCleave: If you hit a creature with a melee attack roll using this weapon, you can make a melee attack roll with the weapon against a second creature within 5 feet of the first that is also within your reach. On a hit, the second creature takes the weapon’s damage, but don’t add your ability modifier to that damage unless that modifier is negative. Once per turn.\n\nGraze: If your attack roll with this weapon misses a creature, you can deal damage to that creature equal to the ability modifier you used to make the attack roll. This damage is the same type dealt by the weapon.\n\nNick: When you make the extra attack of the Light property, you can make it as part of the Attack action instead of as a Bonus Action. Once per turn.\n\nPush: If you hit a creature with this weapon, you can push the creature up to 10 feet straight away from yourself if it is Large or smaller.\n\nSap: If you hit a creature with this weapon, that creature has Disadvantage on its next attack roll before the start of your next turn.\n\nSlow: If you hit a creature with this weapon and deal damage to it, you can reduce its Speed by 10 feet until the start of your next turn.\n\nTopple: If you hit a creature with this weapon, you can force it to make a Constitution saving throw (DC 8 + the ability modifier used for the attack roll + your Proficiency Bonus). On a failed save, the creature has the Prone condition.\n\nVex: If you hit a creature with this weapon and deal damage to it, you have Advantage on your next attack roll against that creature before the end of your next turn."
+    }
+  ],
+  "lore": [
+    {
+      "k": "Prologue · earned at signing",
+      "t": "The Rockseeker Contract",
+      "body": "Three lines of ink and a wax seal: escort the supplies, report the road, ask no wages beyond the dwarf’s promise. Gundren Rockseeker signs without hesitation, which tells you either that the road is safe or that he needs you badly enough to pretend it is.\n\nContracts of this kind are the oldest magic in the Sword Coast. Nothing is enchanted about them; and still, once signed, they pull a body south like a hook in the lip."
+    },
+    {
+      "k": "Prologue · earned at signing",
+      "t": "The Muster-Yard at Dawn",
+      "body": "Neverwinter keeps its training yard between the wall and the water: five straw dummies in a row, a bell that counts the watch, gulls arguing over the fish market. Every blade in the city learned its first cut here, including yours.\n\nThe yardmaster’s rule is written over the gate in chipped paint: slow is smooth, smooth is fast. The dummies have never disagreed."
+    }
+  ],
+  "tips": [
+    "Goblins fight to the death until only one remains — and that one runs. Catch it, and the trail is yours.",
+    "Half cover adds +2 to AC and Dexterity saves; three-quarters cover adds +5. Shoot through thickets at your peril.",
+    "A surprised creature skips its first turn entirely. Stealth is a weapon — spend it well.",
+    "Weapon masteries: Push shoves 10 feet. Topple knocks Prone. Vex grants Advantage on your next hit. Learn their manners.",
+    "Falling Prone costs half your Speed to stand, and attacks from Prone have Disadvantage. Mind the fire pit.",
+    "You can knock a creature unconscious instead of killing it with any bludgeoning hit that would drop it — prisoners talk.",
+    "High ground grants Advantage on ranged attacks; low ground imposes Disadvantage. The archery loft exists for a reason.",
+    "Reactions refresh at the start of YOUR turn, not the round’s. Budget them like coins.",
+    "Difficult terrain costs double movement. Briars, rubble and knee-deep streams all bite.",
+    "A short rest lets you spend Hit Dice to heal. A long rest returns everything — if the place is safe. The cave mouth is not.",
+    "Darkvision is not daylight: beyond 60 feet even dwarves guess. Carry a lantern, or carry a wizard.",
+    "Hiding beats passive Perception, not eyes: break line of sight first, then roll.",
+    "Concentration breaks on damage unless you pass a Constitution save. Protect your casters’ focus.",
+    "The die is the truth: every roll in DELVE is a real d20 simulation. Watch the dice theatre — it never lies.",
+    "Press V to see the world through your hero’s own eyes. Press it again to shoulder the camera back.",
+    "Turn-based is the intended rhythm. Skirmish Mode waits in Options for the impatient."
+  ]
+}

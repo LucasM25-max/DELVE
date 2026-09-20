@@ -1,0 +1,6 @@
+# Godot caches / exports are rebuilt locally.
+godot/.godot/
+godot/exports/
+deliverables/
+__pycache__/
+*.pyc

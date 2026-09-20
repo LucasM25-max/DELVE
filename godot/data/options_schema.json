@@ -1,0 +1,521 @@
+[
+  {
+    "id": "graphics",
+    "title": "Graphics",
+    "rows": [
+      {
+        "key": "gfx.res",
+        "label": "Resolution",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "Native",
+          "720p",
+          "900p",
+          "1080p",
+          "1440p"
+        ],
+        "locked": []
+      },
+      {
+        "key": "gfx.fps",
+        "label": "Frame rate cap",
+        "live": true,
+        "type": "choice",
+        "values": [
+          "30",
+          "60",
+          "90",
+          "120",
+          "Unlocked"
+        ],
+        "locked": []
+      },
+      {
+        "key": "gfx.quality",
+        "label": "Quality preset",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "Low",
+          "Medium",
+          "High",
+          "Epic"
+        ],
+        "locked": []
+      },
+      {
+        "key": "gfx.rt",
+        "label": "Ray-traced shadows",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "On",
+          "Off"
+        ],
+        "locked": []
+      },
+      {
+        "key": "gfx.foliage",
+        "label": "Foliage density",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "Low",
+          "Med",
+          "High"
+        ],
+        "locked": []
+      }
+    ]
+  },
+  {
+    "id": "camera",
+    "title": "Camera",
+    "rows": [
+      {
+        "key": "cam.view",
+        "label": "Default view",
+        "live": true,
+        "type": "choice",
+        "values": [
+          "Third person",
+          "First person"
+        ],
+        "locked": []
+      },
+      {
+        "key": "binds.view",
+        "label": "Toggle-view key",
+        "type": "binding",
+        "live": true
+      },
+      {
+        "key": "cam.fov",
+        "label": "Field of view (first person)",
+        "live": true,
+        "type": "range",
+        "min": 80.0,
+        "max": 110.0,
+        "step": 5.0
+      },
+      {
+        "key": "cam.boom",
+        "label": "Boom length (third person)",
+        "live": true,
+        "type": "range",
+        "min": 2.5,
+        "max": 6.0,
+        "step": 0.1
+      },
+      {
+        "key": "cam.bob",
+        "label": "Head bob",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "Off",
+          "Low",
+          "High"
+        ],
+        "locked": []
+      },
+      {
+        "key": "cam.shake",
+        "label": "Camera shake",
+        "live": false,
+        "type": "range",
+        "min": 0.0,
+        "max": 100.0,
+        "step": 5.0
+      },
+      {
+        "key": "cam.snap",
+        "label": "Snap turn (pad, first person)",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "Off",
+          "15°",
+          "30°"
+        ],
+        "locked": []
+      },
+      {
+        "key": "cam.framing",
+        "label": "Combat framing",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "Auto two-shot",
+          "Follow actor",
+          "Manual"
+        ],
+        "locked": []
+      },
+      {
+        "key": "cam.reduced",
+        "label": "Reduced motion",
+        "live": true,
+        "type": "choice",
+        "values": [
+          "On",
+          "Off"
+        ],
+        "locked": []
+      }
+    ]
+  },
+  {
+    "id": "gameplay",
+    "title": "Gameplay",
+    "rows": [
+      {
+        "key": "play.hitch",
+        "label": "Show hit chances",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "On",
+          "Off"
+        ],
+        "locked": []
+      },
+      {
+        "key": "play.grid",
+        "label": "Rules grid overlay",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "Off",
+          "On-hover targeting",
+          "Always"
+        ],
+        "locked": []
+      },
+      {
+        "key": "play.pace",
+        "label": "Enemy turn pace",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "Cinematic",
+          "Brisk",
+          "Instant"
+        ],
+        "locked": []
+      },
+      {
+        "key": "play.react",
+        "label": "Reaction prompts",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "Ask always",
+          "Auto-take",
+          "Auto-pass"
+        ],
+        "locked": []
+      },
+      {
+        "key": "play.rtimer",
+        "label": "Reaction timer",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "Off",
+          "6 s",
+          "10 s"
+        ],
+        "locked": []
+      },
+      {
+        "key": "play.autoend",
+        "label": "Auto-end turn",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "On",
+          "Off"
+        ],
+        "locked": []
+      },
+      {
+        "key": "play.tells",
+        "label": "Companion trap tells",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "On",
+          "Off"
+        ],
+        "locked": []
+      },
+      {
+        "key": "play.diff",
+        "label": "Difficulty",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "Story",
+          "Balanced",
+          "Tactical"
+        ],
+        "locked": []
+      },
+      {
+        "key": "play.combat",
+        "label": "Combat pacing",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "Table Mode (turn-based)",
+          "Skirmish Mode (real-time, pausable)"
+        ],
+        "locked": []
+      },
+      {
+        "key": "play.fast",
+        "label": "Fast travel",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "Off",
+          "Map"
+        ],
+        "locked": [
+          "Map"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "accessibility",
+    "title": "Accessibility",
+    "rows": [
+      {
+        "key": "acc.subs",
+        "label": "Subtitles",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "On",
+          "Off"
+        ],
+        "locked": []
+      },
+      {
+        "key": "acc.subsize",
+        "label": "Subtitle size",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "S",
+          "M",
+          "L"
+        ],
+        "locked": []
+      },
+      {
+        "key": "acc.names",
+        "label": "Speaker names in subtitles",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "On",
+          "Off"
+        ],
+        "locked": []
+      },
+      {
+        "key": "acc.cb",
+        "label": "Colourblind filter",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "Off",
+          "Protanopia",
+          "Deuteranopia",
+          "Tritanopia"
+        ],
+        "locked": []
+      },
+      {
+        "key": "acc.hc",
+        "label": "High-contrast UI",
+        "live": true,
+        "type": "choice",
+        "values": [
+          "On",
+          "Off"
+        ],
+        "locked": []
+      },
+      {
+        "key": "acc.sr",
+        "label": "Screen-reader UI labels",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "On",
+          "Off"
+        ],
+        "locked": []
+      },
+      {
+        "key": "acc.dt",
+        "label": "Difficult-terrain outline",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "Off",
+          "Subtle",
+          "On"
+        ],
+        "locked": []
+      },
+      {
+        "key": "acc.cover",
+        "label": "Cover outlines",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "Off",
+          "On-hover",
+          "Always"
+        ],
+        "locked": []
+      }
+    ]
+  },
+  {
+    "id": "audio",
+    "title": "Audio",
+    "rows": [
+      {
+        "key": "aud.master",
+        "label": "Master",
+        "live": true,
+        "type": "range",
+        "min": 0.0,
+        "max": 100.0,
+        "step": 5.0
+      },
+      {
+        "key": "aud.music",
+        "label": "Music",
+        "live": true,
+        "type": "range",
+        "min": 0.0,
+        "max": 100.0,
+        "step": 5.0
+      },
+      {
+        "key": "aud.sfx",
+        "label": "SFX",
+        "live": false,
+        "type": "range",
+        "min": 0.0,
+        "max": 100.0,
+        "step": 5.0
+      },
+      {
+        "key": "aud.voice",
+        "label": "Voice",
+        "live": false,
+        "type": "range",
+        "min": 0.0,
+        "max": 100.0,
+        "step": 5.0
+      },
+      {
+        "key": "aud.mute",
+        "label": "Mute when unfocused",
+        "live": true,
+        "type": "choice",
+        "values": [
+          "On",
+          "Off"
+        ],
+        "locked": []
+      }
+    ]
+  },
+  {
+    "id": "controls",
+    "title": "Controls",
+    "rows": [
+      {
+        "key": "binds.sprint",
+        "label": "Sprint",
+        "type": "binding",
+        "live": true
+      },
+      {
+        "key": "binds.jump",
+        "label": "Jump",
+        "type": "binding",
+        "live": true
+      },
+      {
+        "key": "binds.interact",
+        "label": "Interact",
+        "type": "binding",
+        "live": false
+      },
+      {
+        "key": "binds.view",
+        "label": "View toggle",
+        "type": "binding",
+        "live": true
+      },
+      {
+        "key": "binds.folio",
+        "label": "Folio",
+        "type": "binding",
+        "live": false
+      },
+      {
+        "key": "binds.journal",
+        "label": "Journal",
+        "type": "binding",
+        "live": false
+      },
+      {
+        "key": "binds.codex",
+        "label": "Codex",
+        "type": "binding",
+        "live": false
+      },
+      {
+        "key": "binds.hide",
+        "label": "Hide action",
+        "type": "binding",
+        "live": false
+      },
+      {
+        "key": "binds.endturn",
+        "label": "End turn",
+        "type": "binding",
+        "live": false
+      },
+      {
+        "key": "binds.pause",
+        "label": "Pause",
+        "type": "binding",
+        "live": false
+      },
+      {
+        "key": "pad",
+        "label": "Pad layout",
+        "live": false,
+        "type": "choice",
+        "values": [
+          "Standard",
+          "Swapped A/B"
+        ],
+        "locked": []
+      }
+    ]
+  }
+]
