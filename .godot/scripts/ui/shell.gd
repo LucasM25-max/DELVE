@@ -90,8 +90,9 @@ func _focus_first() -> void:
 	if not is_instance_valid(content):
 		return
 	var controls := content.find_children("*", "Button", true, false)
-	for control in controls:
-		if not control.disabled and control.is_visible_in_tree():
+	for node in controls:
+		var control := node as Button
+		if control and not control.disabled and control.is_visible_in_tree():
 			control.grab_focus()
 			break
 
@@ -106,28 +107,28 @@ func _add_motes(to: Control) -> void:
 func _animate_motes(delta: float) -> void:
 	if not is_instance_valid(motes_root):
 		return
-	var t := motes_root.get_meta("clock", 0.0) + delta
+	var t: float = float(motes_root.get_meta("clock", 0.0)) + delta
 	motes_root.set_meta("clock", t)
 	for dot in motes_root.get_children():
 		if not dot is ColorRect:
 			continue
-		var dur: float = dot.get_meta("mote_dur", 10.0)
-		var delay: float = dot.get_meta("mote_delay", 0.0)
-		var x_frac: float = dot.get_meta("mote_x", 0.5)
-		var local_t := fmod(t - delay, dur) / dur
+		var dur: float = float(dot.get_meta("mote_dur", 10.0))
+		var delay: float = float(dot.get_meta("mote_delay", 0.0))
+		var x_frac: float = float(dot.get_meta("mote_x", 0.5))
+		var local_t: float = fmod(t - delay, dur) / dur
 		# CSS @keyframes mote: bottom -14px to -94vh, x drift
-		var y := lerp(920.0, -840.0, local_t)
-		var x_drift := sin(local_t * TAU * 0.6) * 26.0 if fmod(local_t * 2.0, 1.0) < 0.5 else -sin(local_t * TAU) * 16.0
-		var base_x := x_frac * 1600.0
+		var y: float = lerpf(920.0, -840.0, local_t)
+		var x_drift: float = sin(local_t * TAU * 0.6) * 26.0 if fmod(local_t * 2.0, 1.0) < 0.5 else -sin(local_t * TAU) * 16.0
+		var base_x: float = x_frac * 1600.0
 		dot.position = Vector2(base_x + x_drift, y)
 		# Opacity fade in/out
-		var alpha := 0.0
+		var alpha: float = 0.0
 		if local_t < 0.1:
-			alpha = lerp(0.0, 0.5, local_t / 0.1)
+			alpha = lerpf(0.0, 0.5, local_t / 0.1)
 		elif local_t < 0.5:
-			alpha = lerp(0.5, 0.32, (local_t - 0.1) / 0.4)
+			alpha = lerpf(0.5, 0.32, (local_t - 0.1) / 0.4)
 		else:
-			alpha = lerp(0.32, 0.0, (local_t - 0.5) / 0.5)
+			alpha = lerpf(0.32, 0.0, (local_t - 0.5) / 0.5)
 		dot.modulate.a = alpha
 
 # ---------- legal (web §2.1) ----------
@@ -213,8 +214,9 @@ func build_sting() -> void:
 	sting_tween.tween_interval(0.7)
 	sting_tween.tween_property(word, "modulate:a", 1.0, 0.2)
 	for i in 5:
-		sting_tween.tween_callback(func() -> void:
-			atlas.region = Rect2(0, 0, full.x * (i + 1) / 5.0, full.y))
+		var update_region := func(step: int) -> void:
+			atlas.region = Rect2(0, 0, full.x * (step + 1) / 5.0, full.y)
+		sting_tween.tween_callback(update_region.bind(i))
 		sting_tween.tween_interval(0.09)
 	sting_tween.tween_interval(0.5)
 	sting_tween.tween_property(bar_t, "size:y", 90.0, 0.45)
@@ -224,15 +226,12 @@ func build_sting() -> void:
 # ---------- menu (web §2.2–2.3) ----------
 func build_menu() -> void:
 	# Scrim — left gradient
-	var scrim := ColorRect.new()
 	var grad := Gradient.new()
 	grad.set_color(0, Color(0.03, 0.04, 0.05, 0.62))
 	grad.set_color(1, Color(0.03, 0.04, 0.05, 0.0))
 	var tex := GradientTexture2D.new()
 	tex.gradient = grad
 	tex.fill_to = Vector2(1, 0)
-	scrim.texture = tex
-	# Actually ColorRect can't have texture, use TextureRect
 	var scrim_tex := TextureRect.new()
 	scrim_tex.texture = tex
 	scrim_tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -254,7 +253,7 @@ func build_menu() -> void:
 	UI.at(kicker, content, Rect2(136, 262, 560, 40))
 
 	# Menu items — with entrance animation matching CSS itemIn
-	var items := ["PLAY", "CONTINUE", "OPTIONS", "CODEX", "CREDITS"]
+	var items: Array[String] = ["PLAY", "CONTINUE", "OPTIONS", "CODEX", "CREDITS"]
 	for i in items.size():
 		var button := UI.button(items[i], menu_activate.bind(i))
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -270,13 +269,14 @@ func build_menu() -> void:
 		button.mouse_entered.connect(func() -> void:
 			if not button.disabled:
 				button.grab_focus())
-		# Entrance animation
-		button.modulate.a = 0.0
-		button.position.y += 10.0
-		var tw := create_tween()
-		tw.tween_interval(0.05 + float(i) * 0.08)
-		tw.tween_property(button, "modulate:a", 1.0, 0.35)
-		tw.parallel().tween_property(button, "position:y", button.position.y - 10.0, 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		if GameState.get_setting("cam.reduced") != "On":
+			# Entrance animation
+			button.modulate.a = 0.0
+			button.position.y += 10.0
+			var tw := create_tween()
+			tw.tween_interval(0.05 + float(i) * 0.08)
+			tw.tween_property(button, "modulate:a", 1.0, 0.35)
+			tw.parallel().tween_property(button, "position:y", button.position.y - 10.0, 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		menu_buttons.append(button)
 
 	var hint := "No contracts signed yet." if GameState.contracts.is_empty() else "%d / 8 contracts in the ledger." % GameState.contracts.size()
@@ -346,6 +346,7 @@ func make_paper(title: String, subtitle := "", wide := false) -> Control:
 	diamond.color = UI.GOLD
 	diamond.custom_minimum_size = Vector2(7, 7)
 	diamond.rotation_degrees = 45
+	diamond.pivot_offset = Vector2(3.5, 3.5)
 	UI.at(diamond, rule, Rect2((width - 90)/2 - 3.5, 2, 7, 7))
 
 	var body := Control.new()
@@ -393,8 +394,6 @@ func build_contract() -> void:
 	_first_run_group(column, "Subtitles", "fr-subs", ["On", "Off"], "acc.subs", "")
 	# Camera comfort
 	_first_run_group(column, "Camera comfort preset", "fr-comfort", ["Standard", "Reduced motion"], "cam.reduced", "", false, true)
-
-	column.add_child(UI.label("By signing you accept the road as it comes. These choices may be changed at any camp.", 20))
 
 	var fine := UI.label("By signing you accept the road as it comes. These choices may be changed at any camp.", 13)
 	fine.add_theme_font_override("font", UI.flavor(true))
@@ -446,19 +445,19 @@ func _first_run_group(parent: VBoxContainer, flabel: String, group_id: String, v
 		current_val = "Reduced motion" if GameState.get_setting("cam.reduced") == "On" else "Standard"
 
 	for v in values:
-		var is_pressed := current_val == str(v)
-		var btn := UI.pill_button(str(v), func() -> void:
+		var val_str: String = str(v)
+		var is_pressed := current_val == val_str
+		var on_pressed := func() -> void:
 			if is_comfort:
-				GameState.set_setting("cam.reduced", "On" if v == "Reduced motion" else "Off")
+				GameState.set_setting("cam.reduced", "On" if val_str == "Reduced motion" else "Off")
 			else:
-				GameState.set_setting(setting_key, v)
-			# Update group UI
+				GameState.set_setting(setting_key, val_str)
 			for child in opts.get_children():
 				if child is Button:
-					child.button_pressed = child.text == str(v) or (show_tag and child.text.begins_with(str(v)))
-			, group, is_pressed)
-		if show_tag and v == "Skirmish Mode (real-time, pausable)":
-			btn.text = "%s [SECONDARY]" % v
+					child.button_pressed = child.text == val_str or (show_tag and child.text.begins_with(val_str))
+		var btn := UI.pill_button(val_str, on_pressed, group, is_pressed)
+		if show_tag and val_str == "Skirmish Mode (real-time, pausable)":
+			btn.text = "%s [SECONDARY]" % val_str
 		opts.add_child(btn)
 
 	if help != "":
@@ -574,7 +573,7 @@ func build_credits() -> void:
 	var body := make_paper("Credits", "Hold Space or Shift to hasten · scroll to read", true)
 	_add_motes(body)
 	var column := UI.scroll_column(body)
-	credits_scroll = column.get_parent()
+	credits_scroll = column.get_parent() as ScrollContainer
 	credits_position = 0.0
 	# Emblem
 	var emblem := UI.image("res://assets/images/logo_emblem.png")

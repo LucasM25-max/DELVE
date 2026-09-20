@@ -75,10 +75,10 @@ func _process(delta: float) -> void:
 	# Panorama drift — 90s cycle + handheld 9s
 	var drift_t := clock / 90.0
 	# Simulate CSS @keyframes drift with sin/cos
-	var scale := 1.12 + 0.20 * (0.5 + 0.5 * sin(drift_t * TAU * 0.7))
+	var zoom_scale := 1.12 + 0.20 * (0.5 + 0.5 * sin(drift_t * TAU * 0.7))
 	var tx := sin(drift_t * TAU) * 0.15 + sin(clock / 28.0) * 0.025
 	var ty := cos(drift_t * TAU * 0.8) * 0.04 + cos(clock / 34.0) * 0.015
-	image.size = size * scale
+	image.size = size * zoom_scale
 	image.position = Vector2(tx * size.x, ty * size.y) - size * 0.15
 
 	# Handheld noise on whole backdrop
@@ -95,12 +95,13 @@ func _process(delta: float) -> void:
 		mist2.position = Vector2(sin(clock / 91.0 + 1.3) * size.x * 0.025, 0)
 
 	# Gulls — fly across
+	var base_fractions: Array[float] = [0.16, 0.22, 0.12]
 	for i in gulls.size():
 		var gull: Control = gulls[i]
 		var speed := 0.02 + float(i) * 0.008
-		var base_y := [0.16, 0.22, 0.12][i] * size.y
+		var base_y: float = base_fractions[i] * size.y
 		var t := fmod(clock * speed + float(i) * 12.0, 1.2) - 0.1 # -0.1 to 1.1
-		var x := lerp(-0.06 * size.x, 1.06 * size.x, t) if i != 1 else lerp(1.06 * size.x, -0.06 * size.x, t)
+		var x: float = lerpf(-0.06 * size.x, 1.06 * size.x, t) if i != 1 else lerpf(1.06 * size.x, -0.06 * size.x, t)
 		var y := base_y + sin(clock * 0.8 + float(i) * 2.1) * 14.0
 		gull.position = Vector2(x, y)
 

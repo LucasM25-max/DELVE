@@ -101,19 +101,21 @@ func build_pause() -> void:
 
 func set_paused(value: bool) -> void:
 	get_tree().paused = value
-	pause_overlay.visible = value
+	if is_instance_valid(pause_overlay):
+		pause_overlay.visible = value
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if value else Input.MOUSE_MODE_CAPTURED
 	# Pause/resume Sky3D time
-	var sky3d := get_node_or_null("Sky3D")
+	var sky3d := get_node_or_null("Sky3D") as Sky3D
 	if sky3d:
 		if value:
 			sky3d.pause()
 		else:
 			sky3d.resume()
 	if value:
-		resume_button.grab_focus()
+		if is_instance_valid(resume_button):
+			resume_button.grab_focus()
 	else:
-		var focused := get_viewport().gui_get_focus_owner()
+		var focused := get_viewport().gui_get_focus_owner() if get_viewport() else null
 		if focused:
 			focused.release_focus()
 
@@ -135,14 +137,14 @@ func _process(_delta: float) -> void:
 	if not get_tree().paused and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 		set_paused(true)
 	# Update HUD sky info
-	var sky3d := get_node_or_null("Sky3D")
+	var sky3d := get_node_or_null("Sky3D") as Sky3D
 	if sky3d and is_instance_valid(sky_info):
 		var t: float = sky3d.current_time if "current_time" in sky3d else DAWN_TIME
 		var h := int(t)
 		var m := int(fmod(t, 1.0) * 60.0)
-		sky_info.text = "Time: %02d:%02d (%.2f) · Lat %.1f°N Lon %.1f° · %s" % [h, m, t, NW_LAT_DEG, NW_LON_DEG, "Day" if sky3d.is_day() else "Night" if sky3d.has_method("is_day") else "Dawn"]
+		sky_info.text = "Time: %02d:%02d (%.2f) · Lat %.1f°N Lon %.1f° · %s" % [h, m, t, NW_LAT_DEG, NW_LON_DEG, "Day" if sky3d.is_day() else "Night"]
 	if is_instance_valid(weather_info):
-		var wname := ["Clear", "Overcast", "Storm"][current_weather]
+		var wname: String = ["Clear", "Overcast", "Storm"][current_weather]
 		weather_info.text = "Weather: %s · Wind %.1f m/s · Clouds Med" % [wname, 2.0]
 
 func _notification(what: int) -> void:
@@ -151,11 +153,15 @@ func _notification(what: int) -> void:
 
 # Phase 1 & 2 full implementation
 func _configure_sky3d_phase1_2() -> void:
-	var sky3d := get_node_or_null("Sky3D")
+	var sky3d := get_node_or_null("Sky3D") as Sky3D
 	if not sky3d:
+		return
+	if not is_inside_tree():
 		return
 	await get_tree().process_frame # wait for Sky3D to build its children
 	await get_tree().process_frame
+	if not is_inside_tree() or not is_instance_valid(sky3d):
+		return
 
 	# --- Phase 1: Neverwinter dawn staging ---
 	# Compatibility renderer tweaks
@@ -181,9 +187,7 @@ func _configure_sky3d_phase1_2() -> void:
 	sky3d.update_interval = 0.1 # 10fps enough for 30m day, saves CPU for Web
 
 	# TimeOfDay node holds lat/lon/utc
-	var tod := sky3d.tod
-	if not tod:
-		tod = sky3d.get_node_or_null("TimeOfDay")
+	var tod: TimeOfDay = (sky3d.tod if sky3d.tod else sky3d.get_node_or_null("TimeOfDay")) as TimeOfDay
 	if tod:
 		tod.latitude = deg_to_rad(NW_LAT_DEG)
 		tod.longitude = deg_to_rad(NW_LON_DEG)
@@ -191,12 +195,10 @@ func _configure_sky3d_phase1_2() -> void:
 		tod.year = 1491 # Forgotten Realms DR year — arbitrary, for flavor
 		tod.month = 6
 		tod.day = 15
-		tod.celestials_calculations = tod.CelestialMode.REALISTIC
+		tod.celestials_calculations = TimeOfDay.CelestialMode.REALISTIC
 
 	# SkyDome tuning for dawn — warm horizon
-	var skydome := sky3d.sky
-	if not skydome:
-		skydome = sky3d.get_node_or_null("SkyDome")
+	var skydome: SkyDome = (sky3d.sky if sky3d.sky else sky3d.get_node_or_null("SkyDome")) as SkyDome
 	if skydome:
 		# Ground below horizon — dark stone, not white
 		if "ground_color" in skydome:
@@ -235,12 +237,10 @@ func _configure_sky3d_phase1_2() -> void:
 	sky3d.pause()
 
 func _apply_cloud_quality() -> void:
-	var sky3d := get_node_or_null("Sky3D")
+	var sky3d := get_node_or_null("Sky3D") as Sky3D
 	if not sky3d:
 		return
-	var skydome := sky3d.sky
-	if not skydome:
-		skydome = sky3d.get_node_or_null("SkyDome")
+	var skydome: SkyDome = (sky3d.sky if sky3d.sky else sky3d.get_node_or_null("SkyDome")) as SkyDome
 	if not skydome:
 		return
 

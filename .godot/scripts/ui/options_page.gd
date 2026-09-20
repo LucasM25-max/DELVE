@@ -24,13 +24,14 @@ func _ready() -> void:
 
 	# Build rail buttons — text only, no icons, no SVGs
 	for section in GameState.schema:
-		var id: String = section.id
-		var title: String = section.title
+		var id: String = str(section.get("id", ""))
+		var title: String = str(section.get("title", ""))
 		var btn := Button.new()
 		btn.text = title
 		btn.name = "RBtn_%s" % id
 		btn.custom_minimum_size.y = 42
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		btn.toggle_mode = true
 		btn.add_theme_font_override("font", ShellUI.display(600))
 		btn.add_theme_font_size_override("font_size", 13)
 		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -78,16 +79,16 @@ func show_category(id: String) -> void:
 	# Update rail visual state
 	for child in rail_host.get_children():
 		if child is Button:
-			var is_on := child.name == "RBtn_%s" % id
-			child.button_pressed = is_on
+			var btn := child as Button
+			var is_on: bool = btn.name == "RBtn_%s" % id
+			btn.button_pressed = is_on
 			# Add left bronze bar when on — via border
 			if is_on:
 				var active := StyleBoxFlat.new()
 				active.bg_color = Color("1a2126")
-				active.border_color = Color("b0793a")
+				active.border_color = Color("d9a463")
 				active.set_border_width_all(1)
 				active.border_width_left = 3
-				active.border_color = Color("d9a463")
 				active.corner_radius_top_left = 3
 				active.corner_radius_top_right = 3
 				active.corner_radius_bottom_left = 3
@@ -96,7 +97,8 @@ func show_category(id: String) -> void:
 				active.content_margin_right = 12
 				active.content_margin_top = 9
 				active.content_margin_bottom = 9
-				child.add_theme_stylebox_override("normal", active)
+				btn.add_theme_stylebox_override("normal", active)
+				btn.add_theme_color_override("font_color", Color("E9DFC8"))
 			else:
 				var normal := StyleBoxFlat.new()
 				normal.bg_color = Color.TRANSPARENT
@@ -108,7 +110,8 @@ func show_category(id: String) -> void:
 				normal.corner_radius_top_right = 3
 				normal.corner_radius_bottom_left = 3
 				normal.corner_radius_bottom_right = 3
-				child.add_theme_stylebox_override("normal", normal)
+				btn.add_theme_stylebox_override("normal", normal)
+				btn.add_theme_color_override("font_color", Color("4a3620"))
 
 	# Clear content
 	for child in content_host.get_children():
@@ -132,9 +135,9 @@ func show_category(id: String) -> void:
 	column.add_child(ShellUI.rule())
 
 	for section in GameState.schema:
-		if section.id != id:
+		if str(section.get("id", "")) != id:
 			continue
-		for row in section.rows:
+		for row in section.get("rows", []):
 			build_row(column, row)
 
 	# Section-specific footers — matches web shell ohelp
@@ -195,16 +198,16 @@ func build_row(parent: VBoxContainer, row: Dictionary) -> void:
 		pills.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		octl.add_child(pills)
 		var group := ButtonGroup.new()
-		for value in row.values:
+		for value in row.get("values", []):
 			var locked: bool = value in row.get("locked", []) or (key == "gfx.rt" and value == "On")
-			var pill := ShellUI.pill_button(str(value), func() -> void: GameState.set_setting(key, value), group, str(GameState.get_setting(key)) == str(value))
+			var pill := ShellUI.pill_button(str(value), GameState.set_setting.bind(key, value), group, str(GameState.get_setting(key)) == str(value))
 			pill.disabled = locked
 			pills.add_child(pill)
 	elif row.type == "range":
 		var slider := HSlider.new()
-		slider.min_value = row.min
-		slider.max_value = row.max
-		slider.step = row.step
+		slider.min_value = float(row.get("min", 0.0))
+		slider.max_value = float(row.get("max", 100.0))
+		slider.step = float(row.get("step", 1.0))
 		slider.value = float(GameState.get_setting(key))
 		slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		slider.custom_minimum_size = Vector2(200, 26)
