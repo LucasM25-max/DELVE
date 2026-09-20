@@ -1,7 +1,8 @@
-[gd_scene load_steps=6 format=3 uid="uid://delve-testyard-02"]
+[gd_scene load_steps=7 format=3 uid="uid://delve-testyard-02"]
 
 [ext_resource type="Script" path="res://scripts/world/test_yard.gd" id="1_yard"]
 [ext_resource type="PackedScene" path="res://scenes/actors/player.tscn" id="2_player"]
+[ext_resource type="Script" path="res://addons/sky_3d/src/Sky3D.gd" id="3_sky3d]
 
 [sub_resource type="WorldBoundaryShape3D" id="GroundShape"]
 
@@ -13,23 +14,18 @@ roughness = 1.0
 material = SubResource("GroundMat")
 size = Vector2(400, 400)
 
-[sub_resource type="Environment" id="WhiteEnv"]
-background_mode = 1
-background_color = Color(0.96, 0.96, 0.96, 1)
-ambient_light_source = 1
-ambient_light_color = Color(1, 1, 1, 1)
-ambient_light_energy = 0.7
-tonemap_mode = 0
-
 [node name="TestYard" type="Node3D"]
 script = ExtResource("1_yard")
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
-environment = SubResource("WhiteEnv")
-
-[node name="Sun" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.866, -0.354, 0.354, 0, 0.707, 0.707, -0.5, -0.612, 0.612, 0, 0, 0)
-shadow_enabled = true
+[node name="Sky3D" type="WorldEnvironment" parent="."]
+script = ExtResource("3_sky3d")
+sky_contribution = 0.75
+current_time = 8.0
+minutes_per_day = 15.0
+clouds_enabled = true
+fog_enabled = true
+lights_enabled = true
+sky_enabled = true
 
 [node name="Ground" type="StaticBody3D" parent="."]
 

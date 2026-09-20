@@ -8,6 +8,15 @@ var hud: Control
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	# Configure Sky3D for Compatibility renderer if present
+	var sky3d := get_node_or_null("Sky3D")
+	if sky3d:
+		# Compatibility note from Sky3D README
+		if sky3d.has_method("set"):
+			sky3d.sky_contribution = 0.75
+		# Defer SkyDome fog tweak until it is built
+		call_deferred("_configure_sky3d")
+
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	hud = Control.new()
@@ -16,10 +25,10 @@ func _ready() -> void:
 	layer.add_child(hud)
 	UI.fill(hud)
 	var ink := Color("101418")
-	var heading := UI.label("TEST YARD  ·  HUMANOID 0.3", 25, true)
+	var heading := UI.label("TEST YARD  ·  SKY3D 2.1 + HUMANOID 0.3", 25, true)
 	heading.add_theme_color_override("font_color", ink)
 	UI.at(heading, hud, Rect2(36, 24, 700, 40))
-	var sub := UI.label("CC0 Quaternius humanoid + Universal Animation Library · flat white ground")
+	var sub := UI.label("Sky3D day/night + CC0 Quaternius humanoid + Universal Animation Library")
 	sub.add_theme_color_override("font_color", Color("3c4046"))
 	UI.at(sub, hud, Rect2(36, 64, 900, 35))
 	hint = UI.label("Click to look around · WASD move · Shift sprint · Space jump\nV changes view · Esc pauses / releases the mouse", 23)
@@ -99,3 +108,22 @@ func _process(_delta: float) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and is_instance_valid(pause_overlay):
 		set_paused(true)
+
+func _configure_sky3d() -> void:
+	var sky3d := get_node_or_null("Sky3D")
+	if not sky3d:
+		return
+	# SkyDome is auto-created as child of Sky3D; wait a frame for it
+	await get_tree().process_frame
+	var skydome := sky3d.get_node_or_null("SkyDome")
+	if not skydome:
+		# Sky3D stores reference in property 'sky'
+		skydome = sky3d.sky
+	if skydome:
+		# Compatibility renderer tweak per README
+		if "fog_density" in skydome:
+			skydome.fog_density = 0.01
+		# Set dawn time for Neverwinter muster-yard
+		if sky3d.has_method("set"):
+			sky3d.current_time = 6.5 # dawn
+

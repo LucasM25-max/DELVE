@@ -9,18 +9,8 @@ var sections: Dictionary = {}
 var listening_key := ""
 var listening_button: Button
 
-# Icons matching web shell inline SVGs — using Unicode approximations for native UI
-const ICONS := {
-	"graphics": "▭",       # monitor rect
-	"camera": "◎",          # eye
-	"gameplay": "◆",        # diamond
-	"accessibility": "♿",  # accessibility person
-	"audio": "♫",           # bell
-	"controls": "◑"         # gamepad half
-}
-
 func _ready() -> void:
-	# Layout: left rail 200px + right content
+	# Layout: left rail 200px + right content — NO ICONS per user request
 	rail_host = VBoxContainer.new()
 	rail_host.name = "Rail"
 	rail_host.custom_minimum_size = Vector2(200, 0)
@@ -32,13 +22,12 @@ func _ready() -> void:
 	content_host.name = "Content"
 	ShellUI.at(content_host, self, Rect2(230, 0, size.x - 230, size.y))
 
-	# Build rail buttons
+	# Build rail buttons — text only, no icons, no SVGs
 	for section in GameState.schema:
 		var id: String = section.id
 		var title: String = section.title
-		var icon: String = ICONS.get(id, "•")
 		var btn := Button.new()
-		btn.text = "%s %s" % [icon, title]
+		btn.text = title
 		btn.name = "RBtn_%s" % id
 		btn.custom_minimum_size.y = 42
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
