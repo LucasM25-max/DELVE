@@ -1,5 +1,5 @@
 extends Control
-## Main flow: attribution → sting → menu → contract → loading → threshold.
+## Main flow: attribution → sting → menu → contract → loading → test yard (no menu in between).
 ## Full visual replica of web shell (GDD-02 §1–2) — parchment via StyleBoxFlat, motes, seals, rail icons.
 const UI = preload("res://scripts/ui/shell_ui.gd")
 const OptionsPage = preload("res://scripts/ui/options_page.gd")
@@ -25,6 +25,10 @@ var load_pct: Label
 var load_pips: Array[ColorRect] = []
 var load_shown := 0.0
 var ready_world: PackedScene
+## Test hook (smoke_test.gd): while true, the loading screen never drops into
+## the yard, so the suite can keep inspecting the shell screens. The real
+## straight-to-yard drop is verified at the end of the suite with this cleared.
+var freeze_drop := false
 var load_mode := "signed"
 var loading_error := false
 var credits_scroll: ScrollContainer
@@ -82,7 +86,6 @@ func show_screen(next: String) -> void:
 		"codex": build_codex()
 		"credits": build_credits()
 		"loading": build_loading()
-		"threshold": build_threshold()
 	_setting_changed("acc.hc", GameState.get_setting("acc.hc"))
 	call_deferred("_focus_first")
 
@@ -377,11 +380,14 @@ func build_new() -> void:
 # ---------- first-run / sign contract — full replica ----------
 func build_contract() -> void:
 	var body := make_paper("Sign the Contract", "The Rockseeker Contract · Neverwinter muster-yard · dawn")
+	# Plain red wax seal (no emblem), rotated about its centre and kept clear of the
+	# SIGN & DESCEND button below — mirrors the web .fr-seal bottom-right placement.
 	var seal := UI.seal(76)
 	seal.name = "ContractSeal"
+	seal.pivot_offset = seal.size / 2.0
 	seal.rotation_degrees = -8
 	seal.modulate.a = 0.93
-	UI.at(seal, paper, Rect2(paper.size.x - 90, paper.size.y - 110, 76, 76))
+	UI.at(seal, paper, Rect2(paper.size.x - 120, 640, 76, 76))
 
 	var column := UI.scroll_column(body)
 	column.add_theme_constant_override("separation", 18)
@@ -421,7 +427,10 @@ func _first_run_group(parent: VBoxContainer, flabel: String, group_id: String, v
 	line_l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	label_row.add_child(line_l)
 
+	# One line only: in Godot 4.7 an autowrapped Label reports a 1px minimum width,
+	# which the HBox would honour and stack the letters vertically between the rules.
 	var fl := UI.label(flabel.to_upper(), 14, true)
+	fl.autowrap_mode = TextServer.AUTOWRAP_OFF
 	fl.add_theme_color_override("font_color", Color("4a3620"))
 	label_row.add_child(fl)
 
@@ -662,7 +671,7 @@ func build_loading() -> void:
 	UI.at(plate, content, Rect2(430, 60, 740, 92))
 	var lt := UI.centered_text(content, "NEVERWINTER — THE ROCKSEEKER CONTRACT", Rect2(440, 72, 720, 36), 26, true)
 	lt.add_theme_color_override("font_color", UI.INK)
-	var ls := UI.centered_text(content, "Preparing the threshold and the test yard", Rect2(440, 110, 720, 30), 18)
+	var ls := UI.centered_text(content, "Preparing the test yard", Rect2(440, 110, 720, 30), 18)
 	ls.add_theme_color_override("font_color", Color("5b4630"))
 	ls.add_theme_font_override("font", UI.body(400, true))
 	var slip := Panel.new()
@@ -698,31 +707,18 @@ func build_loading() -> void:
 	load_shown = 0.0
 	tip_clock = 0.0
 	UI.at(UI.button("RETURN TO MENU", func() -> void: show_screen("menu")), content, Rect2(630, 830, 340, 48))
+	# The old threshold card surfaced save failures here; keep the diagnostic visible
+	# on the last screen before the yard.
+	if GameState.storage_error != "":
+		status_label = UI.centered_text(content, GameState.storage_error, Rect2(300, 158, 1000, 40), 17)
+		status_label.add_theme_color_override("font_color", UI.BRONZE_HI)
 
 func loading_failed(message: String) -> void:
 	loading_error = true
 	load_label.text = "The road is washed out. " + message
 	UI.at(UI.button("RETRY", start_loading), content, Rect2(650, 545, 300, 48))
 
-# ---------- threshold ----------
-func build_threshold() -> void:
-	var body := make_paper("Contract " + load_mode, "The wax is set, Recruit.")
-	var seal := UI.seal(120)
-	seal.rotation_degrees = -6
-	UI.at(seal, paper, Rect2(paper.size.x - 120, 40, 120, 120))
-	var stamp := create_tween()
-	stamp.tween_property(seal, "scale", Vector2(1.3, 1.3), 0.1)
-	stamp.tween_property(seal, "scale", Vector2(1, 1), 0.3)
-	var column := UI.scroll_column(body)
-	column.add_child(UI.label("Your contract rests in the ledger. The full adventure is not implemented yet; the original web preview ends at this threshold.", 29))
-	column.add_child(UI.rule())
-	column.add_child(UI.label("OPTIONAL · 3D TEST YARD", 27, true))
-	column.add_child(UI.label("Try movement, collision and first/third-person cameras in a simple blockout. This is a development foundation, not a finished Neverwinter level. No combat, quests or final 3D assets yet.", 25))
-	column.add_child(UI.label("WASD move · Shift sprint · Space jump · Mouse look\nV changes view · Esc pauses / releases the mouse", 23))
-	column.add_child(UI.button("ENTER THE TEST YARD", enter_yard))
-	status_label = UI.label(GameState.storage_error, 22)
-	column.add_child(status_label)
-
+# ---------- yard entry ----------
 func enter_yard() -> void:
 	if ready_world:
 		GameState.persist()
@@ -794,11 +790,10 @@ func _process(delta: float) -> void:
 			tw.tween_property(tip_label, "modulate:a", 1.0, 0.35)
 	if state_time > 6.0 and real < 1.0 and is_instance_valid(load_label):
 		load_label.text = "Still packing the wagon… large loads take a moment on first visit."
-	if status == ResourceLoader.THREAD_LOAD_LOADED and state_time > 1.2:
-		if load_shown >= 1.0:
-			show_screen("threshold")
-		elif state_time > 8.0:
-			show_screen("threshold")
+	if status == ResourceLoader.THREAD_LOAD_LOADED and state_time > 1.2 and not freeze_drop:
+		# Straight into the yard — no menu between the loading screen and the 3D scene.
+		if load_shown >= 1.0 or state_time > 8.0:
+			enter_yard()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.echo:

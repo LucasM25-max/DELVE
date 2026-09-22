@@ -9,8 +9,8 @@ in the repository root; `godot/` is independently importable.
 This port is not pixel-for-pixel CSS emulation. It retains the art, palette, typography,
 menu structure and contract flow while adopting native Godot layout/focus controls.
 The original preview's incomplete/contradictory eight-slot claim is implemented as an
-actual eight-contract ledger here. The loading route now ends at an explicit threshold
-instead of silently returning to the menu. The optional 3D blockout is new.
+actual eight-contract ledger here. The loading route now drops the player straight
+into the test yard — no menu in between. The optional 3D blockout is new.
 
 ## Layout
 
@@ -44,9 +44,10 @@ are authored `.tscn` hierarchies and can be edited directly in the scene dock.
 
 ## Runtime flow
 
-`legal → sting → menu → contract → loading → threshold → optional test_yard`
+`legal → sting → menu → contract → loading → test_yard`
 
-- Continue chooses an existing contract through the ledger and loads the same threshold.
+- Continue chooses an existing contract through the ledger and enters the test yard
+  from the same loading screen.
 - Options/codex/credits return to the menu; Escape leaves the menu itself unchanged.
 - Threaded `ResourceLoader` progress refers to the actual test-yard PackedScene. Cached
   assets can load immediately; a short minimum dwell keeps the transition readable.

@@ -29,22 +29,38 @@ func run() -> void:
 	await shot(shell, "r2-01-menu")
 	shell.show_screen("contract")
 	await shot(shell, "r2-02-contract")
+	shell.show_screen("codex")
+	await shot(shell, "r2-03-codex")
+	shell.show_screen("options")
+	await shot(shell, "r2-04-options")
+	shell.show_screen("credits")
+	await get_tree().create_timer(1.2).timeout
+	await shot(shell, "r2-05-credits")
+	shell.show_screen("contract")
 	GameState.set_setting("cam.reduced", "Off")
 	shell.sign_contract()
 	await get_tree().process_frame
 	await get_tree().create_timer(0.7).timeout
-	await shot(shell, "r2-03-loading")
-	for i in 600:
-		await get_tree().process_frame
-		if shell.screen == "threshold":
-			break
-	await shot(shell, "r2-04-threshold")
-	shell.show_screen("codex")
-	await shot(shell, "r2-05-codex")
-	shell.show_screen("options")
-	await shot(shell, "r2-06-options")
-	shell.show_screen("credits")
-	await get_tree().create_timer(1.2).timeout
-	await shot(shell, "r2-07-credits")
-	print("SHOTS_DONE")
-	get_tree().quit(0)
+	await shot(shell, "r2-06-loading")
+	# The loading screen now ends straight in the test yard; the scene change frees
+	# this harness, so a SceneTree-bound watcher waits for the yard, lets the sky
+	# settle, then takes the final shot.
+	var tree := get_tree()
+	var counter := [-1]
+	var done := [false]
+	tree.process_frame.connect(func() -> void:
+		if done[0]:
+			return
+		var current := tree.current_scene
+		if current == null or current.scene_file_path != "res://scenes/world/test_yard.tscn":
+			return
+		counter[0] += 1
+		if counter[0] < 90:
+			return
+		done[0] = true
+		var image := tree.root.get_texture().get_image()
+		image.save_png("%s/r2-07-yard.png" % out_dir)
+		print("SHOT r2-07-yard")
+		print("SHOTS_DONE")
+		tree.quit(0)
+	)

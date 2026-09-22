@@ -1,9 +1,9 @@
 # DELVE Godot delivery — validation report
 
 **Date:** 2026-09-20  
-**Engine:** Godot 4.7.2 stable, official build `ed1daf0bf` (Linux x86_64)  
+**Engine:** Godot 4.7.2 stable, build `ed1daf0bf` (Linux x86_64, built from source)  
 **Mode:** headless, native Godot runtime  
-**Result:** **56 checks passed, 0 failures**
+**Result:** **70 checks passed, 0 failures**
 
 ## Verified
 
@@ -11,8 +11,11 @@
 - Attribution → logo sting → menu; reduced motion skips the sting.
 - Audio player initialization/user-gesture flag (not audible playback quality).
 - All five menu actions and Continue's disabled/enabled state.
-- Play, first-run contract, new-contract notice, ledger, threshold, options, codex and credits creation.
-- Real threaded loading of the optional yard PackedScene.
+- Play, first-run contract, new-contract notice, ledger, options, codex and credits creation.
+- First-run sheet layout audit: group labels stay on a single line between the rules and
+  the plain wax seal sits clear of the SIGN & DESCEND button.
+- Real threaded loading of the yard PackedScene, then the loading screen drops the player
+  straight into the test yard with no menu in between.
 - Six settings categories build successfully.
 - Native binding changes reach InputMap; WASD stays reserved; Escape cancels; reset works.
 - Loading-error recovery UI and Escape-to-menu route.
