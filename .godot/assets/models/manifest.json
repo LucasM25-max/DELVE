@@ -1,0 +1,378 @@
+{
+ "M_YRD_WALL_STONE": {
+  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_WALL_STONE.glb",
+  "mesh": "M_YRD_WALL_STONE",
+  "primitives": [
+   {
+    "vertices": 60,
+    "triangles": 30,
+    "bounds": [
+     [
+      -2,
+      0,
+      -0.4
+     ],
+     [
+      2,
+      4.2,
+      0.4
+     ]
+    ]
+   }
+  ]
+ },
+ "M_YRD_WALL_STONE_START": {
+  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_WALL_STONE_START.glb",
+  "mesh": "M_YRD_WALL_STONE_START",
+  "primitives": [
+   {
+    "vertices": 44,
+    "triangles": 22,
+    "bounds": [
+     [
+      -2,
+      0,
+      -0.4
+     ],
+     [
+      2,
+      4.2,
+      0.4
+     ]
+    ]
+   }
+  ]
+ },
+ "M_YRD_WALL_STONE_HALF": {
+  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_WALL_STONE_HALF.glb",
+  "mesh": "M_YRD_WALL_STONE_HALF",
+  "primitives": [
+   {
+    "vertices": 40,
+    "triangles": 20,
+    "bounds": [
+     [
+      -1,
+      0,
+      -0.4
+     ],
+     [
+      1,
+      4.2,
+      0.4
+     ]
+    ]
+   }
+  ]
+ },
+ "M_YRD_WALL_STONE_END": {
+  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_WALL_STONE_END.glb",
+  "mesh": "M_YRD_WALL_STONE_END",
+  "primitives": [
+   {
+    "vertices": 40,
+    "triangles": 20,
+    "bounds": [
+     [
+      -0.4,
+      0,
+      -0.4
+     ],
+     [
+      0.4,
+      4.2,
+      0.4
+     ]
+    ]
+   }
+  ]
+ },
+ "M_YRD_GATEHOUSE": {
+  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_GATEHOUSE.glb",
+  "mesh": "M_YRD_GATEHOUSE",
+  "primitives": [
+   {
+    "vertices": 184,
+    "triangles": 92,
+    "bounds": [
+     [
+      -4,
+      0,
+      0
+     ],
+     [
+      4,
+      5,
+      3
+     ]
+    ]
+   }
+  ]
+ },
+ "M_YRD_PORTCULLIS": {
+  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_PORTCULLIS.glb",
+  "mesh": "M_YRD_PORTCULLIS",
+  "primitives": [
+   {
+    "vertices": 394,
+    "triangles": 186,
+    "bounds": [
+     [
+      -1.78,
+      0,
+      -0.1
+     ],
+     [
+      1.78,
+      4,
+      0.1
+     ]
+    ]
+   }
+  ]
+ },
+ "M_YRD_GATE_DOOR": {
+  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_GATE_DOOR.glb",
+  "mesh": "M_YRD_GATE_DOOR",
+  "primitives": [
+   {
+    "vertices": 112,
+    "triangles": 56,
+    "bounds": [
+     [
+      0,
+      0,
+      0
+     ],
+     [
+      2,
+      3.4,
+      0.15
+     ]
+    ]
+   },
+   {
+    "vertices": 60,
+    "triangles": 30,
+    "bounds": [
+     [
+      -0.02,
+      0.7,
+      0.15
+     ],
+     [
+      2.02,
+      2.65,
+      0.19
+     ]
+    ]
+   }
+  ]
+ },
+ "M_YRD_GATE_DOOR_R": {
+  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_GATE_DOOR_R.glb",
+  "mesh": "M_YRD_GATE_DOOR_R",
+  "primitives": [
+   {
+    "vertices": 112,
+    "triangles": 56,
+    "bounds": [
+     [
+      -2,
+      0,
+      0
+     ],
+     [
+      0,
+      3.4,
+      0.15
+     ]
+    ]
+   },
+   {
+    "vertices": 60,
+    "triangles": 30,
+    "bounds": [
+     [
+      -2.02,
+      0.7,
+      0.15
+     ],
+     [
+      0.02,
+      2.65,
+      0.19
+     ]
+    ]
+   }
+  ]
+ },
+ "M_YRD_GUARD_BOX": {
+  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_GUARD_BOX.glb",
+  "mesh": "M_YRD_GUARD_BOX",
+  "primitives": [
+   {
+    "vertices": 304,
+    "triangles": 150,
+    "bounds": [
+     [
+      -0.7,
+      0,
+      -0.7
+     ],
+     [
+      0.7,
+      2.4,
+      1.0
+     ]
+    ]
+   },
+   {
+    "vertices": 8,
+    "triangles": 4,
+    "bounds": [
+     [
+      -0.36,
+      0.17,
+      -0.53
+     ],
+     [
+      0.36,
+      1.85,
+      0.53
+     ]
+    ]
+   }
+  ]
+ },
+ "M_YRD_NOTICE_BOARD": {
+  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_NOTICE_BOARD.glb",
+  "mesh": "M_YRD_NOTICE_BOARD",
+  "primitives": [
+   {
+    "vertices": 104,
+    "triangles": 52,
+    "bounds": [
+     [
+      -0.74,
+      0,
+      -0.26
+     ],
+     [
+      0.74,
+      1.8,
+      0.26
+     ]
+    ]
+   },
+   {
+    "vertices": 4,
+    "triangles": 2,
+    "bounds": [
+     [
+      -0.66,
+      0.84,
+      0.105
+     ],
+     [
+      0.66,
+      1.66,
+      0.105
+     ]
+    ]
+   }
+  ]
+ },
+ "M_YRD_BARREL": {
+  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_BARREL.glb",
+  "mesh": "M_YRD_BARREL",
+  "primitives": [
+   {
+    "vertices": 304,
+    "triangles": 144,
+    "bounds": [
+     [
+      -0.3,
+      0.0,
+      -0.3
+     ],
+     [
+      0.3,
+      0.9,
+      0.3
+     ]
+    ]
+   },
+   {
+    "vertices": 192,
+    "triangles": 96,
+    "bounds": [
+     [
+      -0.312,
+      0.14,
+      -0.312
+     ],
+     [
+      0.312,
+      0.78,
+      0.312
+     ]
+    ]
+   }
+  ]
+ },
+ "M_YRD_LANTERN_POST": {
+  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_LANTERN_POST.glb",
+  "mesh": "M_YRD_LANTERN_POST",
+  "primitives": [
+   {
+    "vertices": 88,
+    "triangles": 40,
+    "bounds": [
+     [
+      -0.1,
+      0.0,
+      -0.1
+     ],
+     [
+      0.1,
+      2.12,
+      0.1
+     ]
+    ]
+   },
+   {
+    "vertices": 140,
+    "triangles": 68,
+    "bounds": [
+     [
+      -0.13,
+      2.05,
+      -0.13
+     ],
+     [
+      0.13,
+      2.6,
+      0.13
+     ]
+    ]
+   },
+   {
+    "vertices": 24,
+    "triangles": 12,
+    "bounds": [
+     [
+      -0.07,
+      2.14,
+      -0.07
+     ],
+     [
+      0.07,
+      2.42,
+      0.07
+     ]
+    ]
+   }
+  ]
+ }
+}

@@ -13,7 +13,7 @@ The existing web preview is a menu shell, not a finished game. This conversion i
 
 - Attribution screen and animated logo introduction.
 - The dawn training-yard menu with the original DELVE artwork and supplied music.
-- Play → contract choices → real resource-loading screen → signed-contract threshold.
+- Play → contract choices → real resource-loading screen → straight into the test yard.
 - Continue with a local ledger of up to eight contracts, including confirmed deletion.
 - Six options categories, keyboard rebinding, codex rules/lore/bestiary, scrolling credits.
 - **An optional new 3D test yard:** walking, sprinting, jumping, collision and first/third-person cameras.
@@ -300,7 +300,7 @@ is not needed by Godot.
 3. On first open Godot rebuilds the `.godot/` import cache (fonts, textures, the wax seal,
    the parchment alpha cut-out). Let it finish before pressing F5.
 4. F5 runs `scenes/ui/shell.tscn`: attribution → logo sting → menu → contract → loading
-   road → threshold → optional test yard.
+   road → test yard.
 
 `.godot/` is a local cache: never commit it, never copy it between machines. Deleting it
 and reopening the project always reproduces it.
@@ -311,7 +311,7 @@ and reopening the project always reproduces it.
 # inside godot/
 godot --headless --path . --editor --quit          # import pass, catches parse errors
 godot --headless --path . res://tests/smoke_test.tscn -- --test-mode
-# expected tail: "DELVE SMOKE TEST: 65 checks, 0 failures" + "SMOKE_ALL_GREEN"
+# expected tail: "DELVE SMOKE TEST: 70 checks, 0 failures" + "SMOKE_ALL_GREEN"
 ```
 
 Visual evidence (needs any X11/display; 1600×900):
@@ -321,8 +321,9 @@ godot --path . --resolution 1600x900 res://tests/shot_walk.tscn -- --test-mode -
 godot --path . --resolution 1600x900 res://tests/yard_shot.tscn  -- --test-mode --shots=/tmp/shots
 ```
 
-`shot_walk.gd` captures menu, contract, loading road, threshold, codex, options and
-credits; `yard_shot.gd` captures the paused and running test yard.
+`shot_walk.gd` captures menu, contract, codex, options, credits, the loading road and
+the test yard (reached automatically when loading finishes); `yard_shot.gd` captures
+the paused and running test yard.
 
 ### 7.4 Push changes back
 

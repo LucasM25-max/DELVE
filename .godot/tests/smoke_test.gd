@@ -44,6 +44,9 @@ func run_tests() -> void:
 	check(shell.menu_buttons[1].disabled, "Continue disabled without a contract")
 	shell.menu_activate(0)
 	check(shell.screen == "contract", "Play opens first-run contract")
+	# Hold the shell on the loading screen so the straight-to-yard drop (which
+	# frees this harness's scene) cannot fire while the suite still inspects it.
+	shell.freeze_drop = true
 	GameState.set_setting("play.diff", "Tactical")
 	GameState.set_setting("cam.reduced", "On")
 	shell.sign_contract()
@@ -51,17 +54,20 @@ func run_tests() -> void:
 	check(shell.screen == "loading", "Signing starts real resource loading")
 	await get_tree().process_frame
 	check(is_instance_valid(shell.route_ctl) and "load_route" in shell.route_ctl.get_script().resource_path, "Loading screen keeps the ink route painter")
-	for frame in 240:
+	for frame in 600:
 		await get_tree().process_frame
-		if shell.screen == "threshold":
+		if shell.ready_world is PackedScene:
 			break
-	check(shell.screen == "threshold", "Threaded loading reaches threshold")
-	check(shell.ready_world is PackedScene, "Optional yard is a loaded PackedScene")
+	check(shell.ready_world is PackedScene, "Threaded loading fetches the yard PackedScene")
+	# The shell now drops straight into the yard once the loading dwell finishes.
+	# Freeze it so the rest of the suite can still inspect the screens; the real drop
+	# is verified at the very end, once nothing else needs this harness.
+	shell.set_process(false)
 	shell.show_screen("menu")
 	check(not shell.menu_buttons[1].disabled, "Continue enabled after signing")
 	shell.menu_activate(0)
 	check(shell.screen == "new", "New contract warns that an existing ledger exists")
-	for screen in ["contract", "ledger", "options", "codex", "credits", "threshold"]:
+	for screen in ["contract", "ledger", "options", "codex", "credits"]:
 		shell.show_screen(screen)
 		await get_tree().process_frame
 		check(shell.screen == screen and shell.paper != null, screen + " native screen builds")
@@ -151,6 +157,7 @@ func run_tests() -> void:
 	yard.pause_overlay.hide()
 	yard.set_process(false) # Headless has no pointer capture; exercise physics independently.
 	var player = yard.get_node("Player")
+	check(absf(player.position.x) < 0.3 and absf(player.position.z - 5.0) < 0.3, "Player spawns inside the yard, short of the gate")
 	for frame in 45:
 		await get_tree().physics_frame
 	check(player.is_on_floor(), "Player settles onto collidable floor")
@@ -172,14 +179,14 @@ func run_tests() -> void:
 	player.apply_camera()
 	check(player.arm.spring_length > 0 and player.visuals.visible, "Third-person camera restores placeholder")
 	# ---- Round 12: web-standard visual checks ----
-	shell.show_screen("threshold")
+	shell.show_screen("contract")
 	await get_tree().process_frame
 	var seals := 0
 	for node in shell.content.find_children("*", "TextureRect", true, false):
 		var tex_rect := node as TextureRect
 		if tex_rect.texture != null and "seal" in tex_rect.texture.resource_path:
 			seals += 1
-	check(seals >= 1, "Threshold sheet carries the wax seal")
+	check(seals >= 1, "Contract sheet carries the wax seal")
 	shell.selected_codex = "rules"
 	shell.show_screen("codex")
 	await get_tree().process_frame
@@ -207,19 +214,81 @@ func run_tests() -> void:
 		if (node as Label).text.contains("GODOT EDITION 0.3"):
 			version_seen = true
 	check(version_seen, "Menu shows the Godot edition string")
-	check(yard.get_node_or_null("Ground") != null and yard.get_child_count() <= 6, "Test yard is bean + white ground only")
+	check(yard.get_node_or_null("Ground") != null and yard.get_child_count() <= 6, "Yard keeps its five-node budget")
 	var gmat: BaseMaterial3D = yard.get_node("Ground/Mesh").mesh.surface_get_material(0)
-	check(gmat != null and gmat.albedo_color.r > 0.9, "Yard ground is flat white")
+	check(gmat != null and gmat.albedo_color.r > 0.9, "Yard ground is flat white (no ground texture)")
+	check(yard.get_node("Art").get_child_count() == 0, "Art slot stays clear (spec props are placed under Level)")
+	var walls: Node3D = yard.get_node_or_null("Level/Walls")
+	check(walls != null, "Perimeter wall modules live under Level/Walls")
+	var wall_instances := 0
+	if walls != null:
+		for child in walls.get_children():
+			for prefix in ["South", "North", "West", "East"]:
+				if child.name.begins_with(prefix):
+					wall_instances += 1
+					break
+	check(wall_instances == 47, "Perimeter uses the 47 spec wall modules")
+	check(yard.get_node_or_null("Level/Gatehouse") != null, "Gatehouse arch block present")
+	var port: Node3D = yard.get_node_or_null("Level/Portcullis")
+	check(port != null, "Portcullis present")
+	if port != null:
+		var port_mi: MeshInstance3D = port.get_node("Mesh/M_YRD_PORTCULLIS")
+		var port_aabb := port_mi.get_aabb()
+		check(absf(port_aabb.position.y + port.position.y - 1.0) < 0.01, "Portcullis raised: bottom 1 m above floor")
+	check(yard.get_node_or_null("Level/GateDoorL") != null and yard.get_node_or_null("Level/GateDoorR") != null, "Gate doors pinned open against the pier faces")
+	var prop_tags := ["GuardBox", "NoticeBoard", "BarrelA", "BarrelB", "LanternE", "LanternW"]
+	var props_ok := true
+	for tag in prop_tags:
+		if yard.get_node_or_null("Level/" + tag) == null:
+			props_ok = false
+	check(props_ok, "Props A1-A4 present: guard box, board, barrels x2, lanterns x2")
+	var lantern_lights := 0
+	for tag in ["LanternE", "LanternW"]:
+		if yard.get_node_or_null("Level/%s/LanternLight" % tag) is OmniLight3D:
+			lantern_lights += 1
+	check(lantern_lights == 2, "Both lanterns carry their 2400 K practical")
 	yard.queue_free()
-	shell.queue_free()
-	Sound.music.stop()
-	Sound.music.stream = null
-	GameState.write_timer.stop()
-	DirAccess.remove_absolute(GameState.save_path)
 	await get_tree().process_frame
-	await get_tree().process_frame
-	await get_tree().create_timer(0.3).timeout
-	print("\nDELVE SMOKE TEST: %d checks, %d failures" % [checks, failures])
-	if failures == 0:
-		print("SMOKE_ALL_GREEN")
-	get_tree().quit(0 if failures == 0 else 1)
+	# ---- Final check: the loading screen drops the player straight into the yard. ----
+	# enter_yard() changes the main scene, which frees this harness, so a watcher bound
+	# to the SceneTree finishes the run and reports the combined result.
+	var report := {"checks": checks, "failures": failures}
+	var tree := get_tree()
+	var sound := Sound
+	var state := GameState
+	var done := [false]
+	tree.process_frame.connect(func() -> void:
+		if done[0]:
+			return
+		var current := tree.current_scene
+		if current == null or current.scene_file_path != "res://scenes/world/test_yard.tscn":
+			return
+		done[0] = true
+		var direct := [
+			[true, "Loading screen ends in the test yard with no menu in between"],
+			[current.get_node_or_null("Player") is CharacterBody3D, "Direct entry lands on the yard with its player"],
+			[tree.paused, "Direct entry pauses the yard for the pointer-lock gesture"],
+		]
+		var passed := 0
+		var failed := 0
+		for c in direct:
+			passed += 1
+			if c[0]:
+				print("PASS: " + c[1])
+			else:
+				failed += 1
+				push_error("FAIL: " + c[1])
+		report["checks"] += passed
+		report["failures"] += failed
+		sound.music.stop()
+		sound.music.stream = null
+		state.write_timer.stop()
+		DirAccess.remove_absolute(state.save_path)
+		print("\nDELVE SMOKE TEST: %d checks, %d failures" % [report["checks"], report["failures"]])
+		if report["failures"] == 0:
+			print("SMOKE_ALL_GREEN")
+		tree.quit(0 if report["failures"] == 0 else 1)
+	)
+	shell.freeze_drop = false
+	shell.set_process(true)
+	shell.start_loading()
