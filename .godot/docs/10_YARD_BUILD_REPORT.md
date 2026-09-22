@@ -19,25 +19,25 @@ walls.
 | A2 notice board | 1.4 × 0.1 × 1.8, readable | 58 tris; parchment face with legible-look muster writing + wax seal; faces gate (D3) |
 | A3 barrels ×2 | 0.6⌀ × 0.9 @ (3.4,2.2)/(3.6,2.9) r15/40 | 240 tris each; bulged 16-stave body, 3 iron hoops (D5) |
 | A4 lanterns ×2 | 0.2⌀ × 2.6 @ (±3.2,0.8), 2400 K practicals | 120 tris each; iron post, bronze fittings, emissive glass insert + `OmniLight3D` (1, 0.588, 0.314) E3 D7 |
-| Textures | 1 K sets per GDD-03 §6 | 10 new procedural PBR PNGs (barrel oak, crate pine, bronze sets + parchment albedo); 9 wall-era PNGs unchanged |
+| Textures | 1 K sets per GDD-03 §6 | 10 authored raster PBR PNGs (barrel oak, crate pine, bronze sets + parchment albedo); 4 authored ground PNGs (cobble and packed dirt); 9 wall-era PNGs unchanged |
 | Player | spawn at forecourt after T0 fade | (0, 0.5, 5) facing the gate |
 
 All 12 GLBs: `assets/models/` (manifest.json authoritative).
-All 19 textures: `assets/textures/` (T_YRD_*).
+All 25 textures: `assets/textures/` (T_YRD_*).
 
 ## Pipeline
 
 * **Meshes** — `tools/meshes/gltf_lib.py` (builders + minimal GLB
   writer, stdlib only) → `tools/meshes/build_all.py` → 12 deterministic
   GLBs + manifest; signed-volume winding assertion per model.
-* **Textures** — `tools/tex/make_pbr.py` (seeded seamless value-noise
-  fBm; normal maps derived from height; deterministic, byte-stable per
-  run). Prop sets: barrel oak (4 staves/tile), crate pine (weathered
-  planks, plain per spec), bronze (patina + wear), parchment (aged
-  paper, faint writing, seal).
+* **Textures** — all materials use committed raster image maps. Prop sets: barrel oak
+  (4 staves/tile), crate pine (weathered planks, plain per spec), bronze
+  (patina + wear), parchment (aged paper, faint writing, seal). Ground maps
+  include authored cobble and packed dirt albedo, normal, and roughness images.
+  No runtime or build-time procedural texture generator remains in the project.
 * **Scene** — `tools/scene/build_test_yard.py` regenerates
-  `scenes/world/test_yard.tscn` byte-for-byte (load_steps 59: 34 ext +
-  24 sub resources; 206 node blocks; 61 collision shapes; 2 lights).
+  `scenes/world/test_yard.tscn` byte-for-byte (load_steps 69: 40 ext +
+  28 sub resources; 206 node blocks; 61 collision shapes; 2 lights).
 * **QA** — `tools/qa_yard.gd` (headless, 16 checks): import structure,
   47 walls, gate AABBs (gatehouse/portcullis/doors), all prop AABBs,
   7 material overrides, collision count, lantern lights, spawn.
@@ -91,6 +91,8 @@ All 19 textures: `assets/textures/` (T_YRD_*).
 * Trigger/logic layer for Area A (`TR_A_ARRIVE`, `TR_A_LANE`,
   `TR_A_CITYGATE`, `TR_A_DEPART`), audio/VFX beds, the `UI_A_*` cards
   (the board parchment is the visual placeholder for `UI_A_BOARD`).
-* YARD texture list items for other areas (T_YRD_COBBLE, T_YRD_DIRT
-  etc. — floor is currently the neutral 96% plane pending GDD-03 §10
-  dawn lighting pass).
+* Remaining area-specific texture variants from GDD-03 §6 (worn dock cobble,
+  sand-circle and decal families) are still deferred; the training-yard floor
+  itself is now split into a 14 × 6 m forecourt cobble and a 44 × 38 m packed-
+  dirt interior. The scene includes a Terrain3D-by-Tokisan source-map adapter
+  and portable raster-mesh fallback when the desktop GDExtension is unavailable.
