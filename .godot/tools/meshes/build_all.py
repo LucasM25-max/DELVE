@@ -46,6 +46,12 @@ def build() -> dict:
         ("M_YRD_BARREL", G.barrel),
         ("M_YRD_LANTERN_POST", G.lantern_post),
     ]
+    # Open heightfield ground pieces: signed volume is not meaningful for
+    # unclosed surfaces, so they skip the inside-out check.
+    surfaces = [
+        ("M_YRD_GROUND_YARD", G.ground_yard),
+        ("M_YRD_GROUND_FORECOURT", G.ground_forecourt),
+    ]
     manifest = {}
     for name, fn in assets:
         mesh = fn()
@@ -56,6 +62,12 @@ def build() -> dict:
         tris = sum(len(p.indices) // 3 for p in mesh.prims)
         verts = sum(len(p.positions) for p in mesh.prims)
         print(f"{name}: {verts} verts, {tris} tris, signed volume {vol:.3f} m^3")
+        manifest[name] = G.write_glb(str(OUT / f"{name}.glb"), mesh, name)
+    for name, fn in surfaces:
+        mesh = fn()
+        tris = sum(len(p.indices) // 3 for p in mesh.prims)
+        verts = sum(len(p.positions) for p in mesh.prims)
+        print(f"{name}: {verts} verts, {tris} tris, displaced heightfield")
         manifest[name] = G.write_glb(str(OUT / f"{name}.glb"), mesh, name)
     (OUT / "manifest.json").write_text(json.dumps(manifest, indent=1))
     return manifest

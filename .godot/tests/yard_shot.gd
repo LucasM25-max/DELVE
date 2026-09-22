@@ -1,5 +1,5 @@
 extends Node
-## Captures the test yard: paused overlay, then running bean on white ground.
+## Captures the test yard: paused overlay, then running bean on textured 3D ground.
 var out_dir := "/tmp/shots"
 
 func _ready() -> void:

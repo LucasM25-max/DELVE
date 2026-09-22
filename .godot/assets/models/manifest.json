@@ -374,5 +374,49 @@
     ]
    }
   ]
+ },
+ "M_YRD_GROUND_YARD": {
+  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_GROUND_YARD.glb",
+  "mesh": "M_YRD_GROUND_YARD",
+  "primitives": [
+   {
+    "vertices": 7921,
+    "triangles": 15488,
+    "bounds": [
+     [
+      -22.0,
+      -0.097,
+      0.0
+     ],
+     [
+      22.0,
+      0.09,
+      44.0
+     ]
+    ]
+   }
+  ]
+ },
+ "M_YRD_GROUND_FORECOURT": {
+  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_GROUND_FORECOURT.glb",
+  "mesh": "M_YRD_GROUND_FORECOURT",
+  "primitives": [
+   {
+    "vertices": 1639,
+    "triangles": 2896,
+    "bounds": [
+     [
+      -7.0,
+      -0.068,
+      0.0
+     ],
+     [
+      7.0,
+      0.055,
+      6.0
+     ]
+    ]
+   }
+  ]
  }
 }
