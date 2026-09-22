@@ -211,6 +211,42 @@ func main() -> void:
 	ck(absf(player.position.z - 5.0) < 0.01 and absf(player.position.x) < 0.01,
 		"player spawn at (0, 0.5, 5) in the forecourt")
 
+	# 17) 3D ground: displaced heightfield GLBs + runtime trimesh collision
+	var dirt_mi := yard.get_node("Terrain3D/DirtGround/Ground/M_YRD_GROUND_YARD") as MeshInstance3D
+	var cob_mi := yard.get_node("Terrain3D/ForecourtCobble/Ground/M_YRD_GROUND_FORECOURT") as MeshInstance3D
+	ck(dirt_mi != null and dirt_mi.mesh != null and cob_mi != null and cob_mi.mesh != null,
+		"ground heightfield meshes present under Terrain3D")
+	if dirt_mi and dirt_mi.mesh:
+		var da := dirt_mi.mesh.get_aabb()
+		ck(absf(da.position.x - (-22.0)) < 0.02 and absf(da.end.x - 22.0) < 0.02
+			and absf(da.position.z - 0.0) < 0.02 and absf(da.end.z - 44.0) < 0.02,
+			"dirt spans x -22..22, z 0..44 (got " + aabb_s(da) + ")")
+		ck(da.end.y - da.position.y > 0.12,
+			"dirt is displaced in 3D, not a flat plane (y span %.3f)" % (da.end.y - da.position.y))
+		ck(da.position.y >= -0.2 and da.end.y <= 0.2,
+			"dirt relief stays within +/-0.2 m (got %.3f..%.3f)" % [da.position.y, da.end.y])
+	if cob_mi and cob_mi.mesh:
+		var ca := cob_mi.mesh.get_aabb()
+		ck(absf(ca.position.x - (-7.0)) < 0.02 and absf(ca.end.x - 7.0) < 0.02
+			and absf(ca.position.z - 0.0) < 0.02 and absf(ca.end.z - 6.0) < 0.02,
+			"forecourt spans x -7..7, z 0..6 (got " + aabb_s(ca) + ")")
+		ck(ca.end.y < 0.1 and ca.position.y > -0.15,
+			"forecourt camber + kerb skirts within bounds (got %.3f..%.3f)" % [ca.position.y, ca.end.y])
+	for tag: String in ["DirtGround", "ForecourtCobble"]:
+		var body := yard.get_node("Terrain3D/" + tag) as StaticBody3D
+		var col := body.get_node_or_null("Collision") as CollisionShape3D
+		ck(col != null and col.shape is ConcavePolygonShape3D,
+			tag + " has baked trimesh collision")
+	var dirt_mat := (dirt_mi.get_active_material(0) as StandardMaterial3D) if dirt_mi else null
+	var cob_mat := (cob_mi.get_active_material(0) as StandardMaterial3D) if cob_mi else null
+	ck(dirt_mat != null and dirt_mat.vertex_color_use_as_albedo
+		and dirt_mat.albedo_texture != null and dirt_mat.normal_enabled
+		and dirt_mat.texture_filter == BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC,
+		"dirt material: tiled maps + vertex tints + aniso mipmaps")
+	ck(cob_mat != null and cob_mat.vertex_color_use_as_albedo
+		and cob_mat.albedo_texture != null and cob_mat.normal_enabled,
+		"cobble material: tiled maps + vertex tints + normals")
+
 	yard.queue_free()
 	print("checks run: %d, failures: %d" % [checks, failures])
 	print("QA_YARD_" + ("PASS" if failures == 0 else "FAIL"))
