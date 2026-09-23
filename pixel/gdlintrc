@@ -1,0 +1,4 @@
+# gdlint configuration for the DELVE pixel build (gdtoolkit 4.x).
+# Run from pixel/:  gdlint scripts/
+max-line-length: 110
+function-arguments-number: 8

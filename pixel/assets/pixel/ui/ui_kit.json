@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "comment": "Nine-patch sources for the DELVE pixel UI kit (GDD-07 §7.4). `margin` is the number of pixels kept 1:1 on each side when stretched.",
+  "styles": {
+    "panel_parchment": {
+      "file": "panel_parchment.png",
+      "size": [
+        48,
+        48
+      ],
+      "margin": 8,
+      "use": "contract, ledger, tips, rule cards, stub cards"
+    },
+    "panel_oak": {
+      "file": "panel_oak.png",
+      "size": [
+        48,
+        48
+      ],
+      "margin": 6,
+      "use": "options, class cards"
+    },
+    "panel_ink": {
+      "file": "panel_ink.png",
+      "size": [
+        48,
+        48
+      ],
+      "margin": 4,
+      "use": "legal, pause, error"
+    },
+    "button": {
+      "file": "button_{state}.png",
+      "size": [
+        16,
+        16
+      ],
+      "margin": 4,
+      "states": [
+        "normal",
+        "hover",
+        "pressed",
+        "disabled"
+      ],
+      "use": "all confirm/back buttons in cards"
+    }
+  },
+  "sprites": {
+    "wax_seal": {
+      "file": "wax_seal.png",
+      "size": [
+        24,
+        24
+      ],
+      "use": "save stamps, cards"
+    },
+    "item_cursor": {
+      "file": "item_cursor.png",
+      "size": [
+        10,
+        10
+      ],
+      "use": "menu/list selection"
+    }
+  }
+}

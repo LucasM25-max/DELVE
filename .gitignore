@@ -8,3 +8,11 @@ deliverables/
 __pycache__/
 *.pyc
 *.tmp
+
+# Pixel build (pixel/): engine cache, exports and audio.
+# Audio lands cue by cue via `python3 pixel/tools/fetch_audio.py` — the tracks
+# already exist elsewhere in the repo, so they are not duplicated into Git.
+pixel/.godot/
+pixel/exports/
+pixel/assets/audio/
+pixel/preview/

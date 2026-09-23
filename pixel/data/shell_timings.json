@@ -1,0 +1,103 @@
+{
+  "schema": 1,
+  "description": "Timings and layout numbers for the shell, straight from GDD-07 §5.2 / §5.4. Every value is milliseconds or whole pixels — the shell never uses fractional positions.",
+  "boot": {
+    "legal_blink_ms": 800,
+    "sting": {
+      "total_ms": 4000,
+      "skippable_after_ms": 1500,
+      "emblem_draw_ms": 800,
+      "steps_light_ms": [
+        800,
+        1200,
+        1600
+      ],
+      "wordmark_chisel_ms": [
+        2000,
+        2200,
+        2400,
+        2600,
+        2800
+      ],
+      "sublock_fade_ms": 3000,
+      "bronze_sweep_ms": [
+        3000,
+        3600
+      ],
+      "hold_ms": 3600,
+      "crossfade_ms": 600,
+      "reduced_motion_min_ms": 1000,
+      "reduced_motion_hold_ms": 1200
+    },
+    "menu_fade_in_ms": 600
+  },
+  "menu": {
+    "column_x": 29,
+    "lockup_rect": [
+      29,
+      22,
+      96,
+      24
+    ],
+    "item_rect": [
+      29,
+      92,
+      140,
+      18
+    ],
+    "item_pitch": 21,
+    "item_count": 5,
+    "item_gap": 3,
+    "underline_offset_y": 14,
+    "underline_height": 2,
+    "underline_draw_ms": 180,
+    "emblem_flicker_ms": 200,
+    "disabled_dim": 0.4,
+    "disclaimer_alpha": 0.6,
+    "disclaimer_rect": [
+      10,
+      254,
+      348,
+      8
+    ],
+    "version_stamp_rect": [
+      140,
+      262,
+      330,
+      8
+    ],
+    "_footer_note": "GDD-07 §5.4 puts both footer lines on one row at y 259. At the shipped 5 px face the abridged disclaimer measures 360 px and the version stamp 252 px (612 px of 480), so one row would overprint. The two strings are stacked instead - disclaimer top-left, stamp bottom-right - both verbatim and both inside the canvas. The spec's original numbers are kept in spec_rects for reference.",
+    "spec_rects": {
+      "disclaimer": [
+        10,
+        259,
+        300,
+        8
+      ],
+      "version_stamp_right_x": 470,
+      "version_stamp_y": 259
+    }
+  },
+  "screens": {
+    "fade_ms": 600,
+    "stub_card_rect": [
+      100,
+      66,
+      280,
+      130
+    ]
+  },
+  "loading": {
+    "minimum_dwell_ms": 1200,
+    "tip_cycle_ms": 5000,
+    "tip_crossfade_ms": 400,
+    "slow_timeout_ms": 45000,
+    "complete_hold_ms": 500,
+    "fade_to_yard_ms": 600,
+    "progress_weights": {
+      "bundles": 0.7,
+      "scene": 0.2,
+      "data": 0.1
+    }
+  }
+}

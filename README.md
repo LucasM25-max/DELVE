@@ -1,4 +1,15 @@
-# DELVE — Web Shell (Main Menu, Boot Sequence, First Run)
+# DELVE
+
+A Dungeons & Dragons adventure — *Phandelver and Below: The Shattered Obelisk*. An
+unofficial, non-commercial fan project; never for sale.
+
+Three iterations live in this repository: the **pixel build** (`pixel/`, current work —
+see below), the earlier web shell (root `index.html`), and an older Godot 3D blockout
+(`godot/`). They share no code or assets.
+
+---
+
+## Legacy: web shell (Main Menu, Boot Sequence, First Run)
 
 > **Native Godot edition:** see [`godot/GETTING_STARTED.md`](godot/GETTING_STARTED.md)
 > for the importable Godot 4.7.2 project, play instructions and browser export guide.
@@ -16,6 +27,40 @@ Implements [`02_DELVE_SHELL_SPEC.md`](../SHATTERED_OBELISK_GAME/02_DELVE_SHELL_S
 contents, the credits scroll and the loading screen. Those menu items appear in the menu
 (as the spec's layout requires) and open a sealed-stub card; the loading screen's entry
 point is replaced by the signed-contract end card.
+
+---
+
+## Pixel build (`pixel/`) — **current work**
+
+The pixel version of DELVE (GDD-06 + GDD-07) lives in [`pixel/`](pixel/README.md) as a
+clean, self-contained Godot 4.7.2 project: 480×270 viewport, integer scaling, locked
+32 + 8 palette, two bitmap faces, deterministic asset builders.
+
+**Built so far:** the boot sequence (legal screen → 4.0 s logo sting) and the **main
+menu** (§5.4 layout, strings, timings and cues to the letter). The menu background is
+plain white for now, and the five menu items are inert — activating one opens a
+placeholder card.
+
+```bash
+godot --path pixel                    # play the boot sequence and menu
+godot --path pixel -- --screen=menu   # jump straight to the menu
+```
+
+Verification (all of it runs without Godot except the last line):
+
+```bash
+cd pixel
+python3 tools/build_all.py --check    # rebuild assets + run both checkers
+python3 tools/check_project.py        # paths, data, fonts, palette mirror, art lint
+python3 tools/check_strings.py        # byte-for-byte string parity with GDD-07
+godot --headless --path pixel res://tests/test_runner.tscn
+```
+
+Deviations from the spec (fonts, the wordmark's grid, the white background, placeholder
+cards) are listed with reasons in [`pixel/docs/PIXEL_MENU_BUILD_NOTES.md`](pixel/docs/PIXEL_MENU_BUILD_NOTES.md).
+
+The web shell below and the old 3D blockout in `godot/` are the previous iterations; the
+pixel build shares no code or assets with either.
 
 ## Run locally
 

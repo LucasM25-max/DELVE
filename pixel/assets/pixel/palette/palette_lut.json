@@ -1,0 +1,285 @@
+{
+  "schema": 1,
+  "description": "Surface->below palette remap for the 'infection' LUT shader (GDD-06 §5.3). Index i of `remap` is the below-ramp index that surface colour i swaps to.",
+  "surface": [
+    {
+      "index": 0,
+      "family": "ink",
+      "name": "ink_0",
+      "hex": "#0A0C10"
+    },
+    {
+      "index": 1,
+      "family": "ink",
+      "name": "ink_1",
+      "hex": "#101418"
+    },
+    {
+      "index": 2,
+      "family": "ink",
+      "name": "ink_2",
+      "hex": "#1A2126"
+    },
+    {
+      "index": 3,
+      "family": "ink",
+      "name": "ink_3",
+      "hex": "#263038"
+    },
+    {
+      "index": 4,
+      "family": "stone",
+      "name": "stone_0",
+      "hex": "#2C3238"
+    },
+    {
+      "index": 5,
+      "family": "stone",
+      "name": "stone_1",
+      "hex": "#474F55"
+    },
+    {
+      "index": 6,
+      "family": "stone",
+      "name": "stone_2",
+      "hex": "#6C757B"
+    },
+    {
+      "index": 7,
+      "family": "stone",
+      "name": "stone_3",
+      "hex": "#9AA3A8"
+    },
+    {
+      "index": 8,
+      "family": "parchment",
+      "name": "parchment_0",
+      "hex": "#B9A67F"
+    },
+    {
+      "index": 9,
+      "family": "parchment",
+      "name": "parchment_1",
+      "hex": "#D6C6A3"
+    },
+    {
+      "index": 10,
+      "family": "parchment",
+      "name": "parchment_2",
+      "hex": "#E9DFC8"
+    },
+    {
+      "index": 11,
+      "family": "parchment",
+      "name": "parchment_3",
+      "hex": "#F6EFDD"
+    },
+    {
+      "index": 12,
+      "family": "bronze",
+      "name": "bronze_0",
+      "hex": "#5E3D19"
+    },
+    {
+      "index": 13,
+      "family": "bronze",
+      "name": "bronze_1",
+      "hex": "#8A5A26"
+    },
+    {
+      "index": 14,
+      "family": "bronze",
+      "name": "bronze_2",
+      "hex": "#B0793A"
+    },
+    {
+      "index": 15,
+      "family": "bronze",
+      "name": "bronze_3",
+      "hex": "#D9A463"
+    },
+    {
+      "index": 16,
+      "family": "bronze",
+      "name": "bronze_4",
+      "hex": "#F0CD8E"
+    },
+    {
+      "index": 17,
+      "family": "oak",
+      "name": "oak_0",
+      "hex": "#3F2410"
+    },
+    {
+      "index": 18,
+      "family": "oak",
+      "name": "oak_1",
+      "hex": "#5A3418"
+    },
+    {
+      "index": 19,
+      "family": "oak",
+      "name": "oak_2",
+      "hex": "#7A4B2A"
+    },
+    {
+      "index": 20,
+      "family": "oak",
+      "name": "oak_3",
+      "hex": "#A06A3C"
+    },
+    {
+      "index": 21,
+      "family": "blood",
+      "name": "blood_0",
+      "hex": "#5C1C17"
+    },
+    {
+      "index": 22,
+      "family": "blood",
+      "name": "blood_1",
+      "hex": "#8E2F26"
+    },
+    {
+      "index": 23,
+      "family": "blood",
+      "name": "blood_2",
+      "hex": "#B4553F"
+    },
+    {
+      "index": 24,
+      "family": "moss",
+      "name": "moss_0",
+      "hex": "#3C4823"
+    },
+    {
+      "index": 25,
+      "family": "moss",
+      "name": "moss_1",
+      "hex": "#5B6B34"
+    },
+    {
+      "index": 26,
+      "family": "moss",
+      "name": "moss_2",
+      "hex": "#7F8F4A"
+    },
+    {
+      "index": 27,
+      "family": "skin",
+      "name": "skin_0",
+      "hex": "#8A5636"
+    },
+    {
+      "index": 28,
+      "family": "skin",
+      "name": "skin_1",
+      "hex": "#C08356"
+    },
+    {
+      "index": 29,
+      "family": "skin",
+      "name": "skin_2",
+      "hex": "#E8B58C"
+    },
+    {
+      "index": 30,
+      "family": "dawn_sky",
+      "name": "dawn_sky_0",
+      "hex": "#E0A06A"
+    },
+    {
+      "index": 31,
+      "family": "dawn_sky",
+      "name": "dawn_sky_1",
+      "hex": "#F2C98A"
+    }
+  ],
+  "below": [
+    {
+      "index": 0,
+      "name": "teal_0",
+      "hex": "#16343A"
+    },
+    {
+      "index": 1,
+      "name": "teal_1",
+      "hex": "#1C4F52"
+    },
+    {
+      "index": 2,
+      "name": "teal_2",
+      "hex": "#2F8F7A"
+    },
+    {
+      "index": 3,
+      "name": "mint",
+      "hex": "#74E0B4"
+    },
+    {
+      "index": 4,
+      "name": "violet_0",
+      "hex": "#2E2140"
+    },
+    {
+      "index": 5,
+      "name": "violet_1",
+      "hex": "#4B2E6B"
+    },
+    {
+      "index": 6,
+      "name": "violet_2",
+      "hex": "#8A4FD0"
+    },
+    {
+      "index": 7,
+      "name": "bone",
+      "hex": "#C9C2A8"
+    }
+  ],
+  "remap": [
+    4,
+    5,
+    5,
+    6,
+    0,
+    1,
+    2,
+    2,
+    7,
+    7,
+    7,
+    7,
+    3,
+    3,
+    3,
+    3,
+    3,
+    0,
+    1,
+    1,
+    2,
+    4,
+    5,
+    6,
+    0,
+    1,
+    2,
+    7,
+    7,
+    7,
+    1,
+    2
+  ],
+  "notes": {
+    "ink": "ink <-> violet (spec)",
+    "stone": "stone <-> teal (spec)",
+    "parchment": "parchment <-> bone (spec)",
+    "bronze": "bronze <-> mint (spec)",
+    "oak": "unmapped in spec; wood keys to the teal ramp by luminance",
+    "blood": "unmapped in spec; rust keys to the violet ramp by luminance",
+    "moss": "unmapped in spec; verge keys to the teal ramp by luminance",
+    "skin": "unmapped in spec; skin keys to bone",
+    "dawn_sky": "unmapped in spec; sky keys to the teal ramp by luminance"
+  }
+}
