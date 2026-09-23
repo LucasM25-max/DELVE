@@ -3,6 +3,15 @@
 **Version 1.0 · 2026-09-19 · status: AWAITING GREENLIGHT**
 Companion docs: `01_CHAPTER1_TUTORIAL_AND_TACTICAL_COMBAT.md` (GDD-01 v2.2), `02_DELVE_SHELL_SPEC.md` (GDD-02), `03_NEVERWINTER_YARD_LEVEL_SPEC.md` (GDD-03). Web shell: `delve-shell/` (v1.7.0, complete GDD-02 surface).
 
+> **SUPERSEDED (2026-09-23) by `06_BROWSER_PIXEL_CONVERSION_PLAN.md` (GDD-06).**
+> The pivot to a **2D pixel-art browser game** retires this plan's Blender→glTF toolchain (§2–§3),
+> its 3D art-direction/budget section (§1), the Sky3D/Terrain3D stack (§Addendum R13) and this
+> document's milestone ladder (§5): art becomes AI-generated + deterministically curated
+> (GDD-06 §5), no runtime GDExtension ships, and milestones **M0–M8 live in GDD-06 §12**.
+> The verification doctrine (§6) survives in spirit as GDD-06 §11. This document remains as the
+> record of the 3D-era build (archived at tag `archive/3d-v0.3.0` / Release `v0.3.0-godot-3d`).
+> GDD-06 is the single owner of pixel-tech decisions (GDD-06 §10.4).
+
 > **ENGINE DECISION (supersedes round-2):** the full build is **Godot 4.x (4.5 LTS track)**, not Unreal.
 > User instruction, 2026-09-19. All prior UE5.7 references in older docs are historical only.
 >

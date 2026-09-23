@@ -1172,8 +1172,12 @@ npm i --no-save ffmpeg-static && node godot/tools/audio/transcode.js
   `assets/models/manifest.json` becomes the 2D prop manifest (same names + 16-px footprints,
   §10.2.3); Web `exclude_filter` gains the four retired globs, proved by
   `godot/tools/verify_export_filters.py` (EXPORT_FILTER_TEST_PASS); THIRD_PARTY credits preserved.
-  Tracked tree ≈22 MB — **M0 <40 MB gate green**. The 3D yard scenes are frozen at the tag
-  (accepted per M0 "hygiene & freeze"; rebuilt as 2D at M3/M4).
+  Tracked tree: 108.1 MB → **24.5 MB — the M0 ≤40 MB gate green**. The 3D yard scenes are frozen at
+  the tag (accepted per M0 "hygiene & freeze"; rebuilt as 2D at M3/M4).
+- **T-05 (2026-09-23):** supersede banners added to GDD-00 Part 1 (and its header line) and
+  GDD-04; GDD-05 Way 1 rewritten to the `/play/` topology (§9.3) with the stale port-3100 preview
+  steps dropped, and its "where the game is" pointer re-aimed at GDD-06 §3.1/§12. Editor route
+  (Ways 2–3) left unchanged per §10.4.
 
 ---
 

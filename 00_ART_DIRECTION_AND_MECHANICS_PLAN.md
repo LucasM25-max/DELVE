@@ -3,6 +3,7 @@
 
 **Document status:** v0.9 — Foundation doc. Everything downstream (systems design docs, content plans, tech architecture) hangs off Part 2's architecture.
 **SUPERSEDED SECTIONS (2026-09-19):** §1.5 (camera) and §2.3 (timing model) are replaced by `01_CHAPTER1_TUTORIAL_AND_TACTICAL_COMBAT.md` §3 (BG3-style third-person default + first-person toggle) and §4 (turn-based default, real-time opt-in). §2.6 terrain/grid replaced by GDD-01 §2 (natural terrain + invisible 5-ft rules grid). All other sections remain in force.
+**SUPERSEDED (2026-09-23): Part 1 (§1.1–1.6) in full by `06_BROWSER_PIXEL_CONVERSION_PLAN.md` (GDD-06)** — see the banner at the head of Part 1. The five pillars stay.
 **Tutorial campaign:** *Phandelver and Below: The Shattered Obelisk* (Ch. 1–4 = levels 1–5, Ch. 5–8 = levels 5–12)
 **Date:** 2026-09-19
 
@@ -50,6 +51,14 @@ Required attribution block (must appear in our credits and legal page):
 ---
 
 # PART 1 — VISUALS: 3D OR 2D, AND WHAT STYLE
+
+> **SUPERSEDED BY `06_BROWSER_PIXEL_CONVERSION_PLAN.md` (GDD-06, 2026-09-23) — this entire Part 1 (§1.1–1.6).**
+> The project pivots to a **2D pixel-art browser game** (480×270 viewport, Godot 4.7.2 Web export).
+> §1.1–1.3 ("3D beats 2D", the anti-isometric argument), §1.4's 3D character/environment craft,
+> §1.5's two-camera rig and §1.6's technology table are historical. **The five pillars beneath this
+> banner remain in force** — GDD-06 §2.5 explicitly retains them and re-expresses them in 2D, and the
+> locked palette (GDD-06 §5.3) descends from this Part's warm-dawn direction. GDD-06 is the single
+> owner of pixel-tech decisions (§10.4). Part 2 is unaffected except where GDD-01/GDD-06 supersede it.
 
 ## 1.1 The short answer
 

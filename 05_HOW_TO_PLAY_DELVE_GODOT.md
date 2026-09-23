@@ -12,26 +12,21 @@ You have three ways to play, easiest first.
 
 ## Way 1 — Play it right now in your browser (zero install)
 
-A pre-exported web build is already running in this workspace:
+**The game's browser home is [`/play/`](/play/)** — a stable redirect into the versioned pixel
+build (`/play/v0.4.x/`, per GDD-06 §9.3). From milestone **M7** (the web release candidate) that
+path serves the 480×270 pixel build: open it, click the canvas once (focus + audio unlock), press
+any key at the attribution screen — legal → sting → menu → contract → yard.
 
-1. Open the **live preview** panel next to this chat — it is the DELVE web export
-   served on port **3100** with the required COOP/COEP headers.
-2. Click once on the canvas (gives it focus + unlocks audio), then press any key on
-   the attribution screen.
-3. Watch the boot sting (emblem → chimes → wordmark wipe → letterbox), then the menu.
-4. `PLAY` → First Run sheet → **SIGN & DESCEND** → the loading road draws itself in ink
-   over the Sword Coast map → **CONTRACT SIGNED** end card → back to the menu, where
-   `CONTINUE` is now live.
+Until that deploy flips the path on, the browser-playable artifacts are:
 
-If you prefer hosting it yourself: unzip `DELVE_web_godot_v1.0.0.zip` anywhere and run
+- the **legacy HTML shell at the site root** — the original GDD-02 menu shell, kept there on
+  purpose as the fan-project front door and design reference;
+- exported Godot builds on the **[Releases](https://github.com/LucasM25-max/DELVE/releases) page**
+  (e.g. [`v0.3.0-godot-3d`](https://github.com/LucasM25-max/DELVE/releases/tag/v0.3.0-godot-3d)) —
+  unzip the export and serve the folder with any static server (`godot/tools/serve_web.py` is
+  included). The build is single-threaded, so COOP/COEP headers are recommended but not required.
 
-```bash
-python3 tools/serve_web.py ./delve-godot-web 3100     # included in the project zip
-# then open http://localhost:3100
-```
-
-Any static server works too — this export was built **without** thread support, so the
-COOP/COEP headers are recommended but not mandatory.
+There is no in-chat preview and no fixed local port anymore.
 
 ## Way 2 — Run it in the Godot editor (recommended for development)
 
@@ -98,6 +93,8 @@ Master/Music/Sfx/Voice and the menu-theme/ambience logic are already wired.
 
 ## Where the game itself is
 
-This zip is the *shell*. The Neverwinter yard, turn-based combat, OTS/first-person
-camera rig and Chapter-1 content are milestones M1–M5 of
-`04_GODOT_BLENDER_PRODUCTION_PLAN.md` — same engine, same project, next sprints.
+This doc describes the **shell** as built under the old 3D plan. The game around it — the
+Neverwinter yard, turn-based grid combat, milestones and the pixel pivot — is now planned in
+`06_BROWSER_PIXEL_CONVERSION_PLAN.md` (GDD-06): the first playable is the full shell plus one
+playable pixel yard (GDD-06 §3.1), delivered by milestones **M0–M8** (GDD-06 §12).
+`04_GODOT_BLENDER_PRODUCTION_PLAN.md` (GDD-04) is **superseded** by GDD-06.
