@@ -79,9 +79,16 @@ jobs:
         with:
           node-version: "22"
 
-      # The runner's ImageMagick assembles the frames; without it the job still
-      # writes the frames and prints the command, so a missing `convert` is not
-      # a failure — an empty artifact is.
+      # ImageMagick assembles the frames. The runner carries it already; this
+      # only tops it up if a future image drops it, because the artifact below
+      # is what the reviewers watch and an empty one is not a useful signal.
+      - name: ImageMagick (for the GIF)
+        run: |
+          if ! command -v convert >/dev/null; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick
+          fi
+          convert --version | head -1
+
       - name: Record the boot sequence
         run: node web/tests/reel.mjs
 

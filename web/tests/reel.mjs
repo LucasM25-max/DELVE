@@ -115,16 +115,58 @@ for (const path of readdirSync(FRAMES).filter((name) => name.endsWith('.png')).s
 }
 
 const gif = join(OUT, 'reel.gif')
-const args = ['-loop', '0']
-for (const { path, hold } of frames) args.push('-delay', String(Math.round(hold * 100 / FPS)), path)
-// The scale goes *after* the list: ImageMagick applies an operator to the images
-// already read, so a `-resize` before each input would re-scale the whole list
-// once per frame.
-args.push('-filter', 'point', '-resize', '200%', gif)
-try {
+const scaled = join(FRAMES, 'scaled')
+
+/**
+ * Assemble the GIF at `scale`x, memory-lean.
+ *
+ * ImageMagick's default policy allows 256 MiB of memory and 512 MiB of map, and a
+ * 2x frame is ~2 MiB once it is unpacked as RGBA — so scaling the whole list in
+ * one pass exhausts the cache (it did, on GitHub's runner). Palette-indexed
+ * frames are a quarter of that, so the frames are quantised first, in batches,
+ * and the GIF is written from those without a resize or a `-layers Optimize`
+ * (both of which coalesce back to 32-bit).
+ */
+function assemble(scale) {
+  rmSync(scaled, { recursive: true, force: true })
+  mkdirSync(scaled, { recursive: true })
+  const geometry = scale === 1 ? [] : ['-filter', 'point', '-resize', `${scale * 100}%`]
+  const BATCH = 60
+  for (let index = 0; index < frames.length; index += BATCH) {
+    const batch = frames.slice(index, index + BATCH)
+    execFileSync('convert', [
+      ...batch.map((frame) => frame.path),
+      ...geometry, '-dither', 'None', '-colors', '256',
+      '-scene', String(index), `PNG8:${join(scaled, `scaled-%03d.png`)}`,
+    ], { stdio: ['ignore', 'pipe', 'pipe'] })
+  }
+  const args = ['-loop', '0']
+  for (const [index, { hold }] of frames.entries()) {
+    args.push('-delay', String(Math.round(hold * 100 / FPS)),
+      join(scaled, `scaled-${String(index).padStart(3, '0')}.png`))
+  }
+  args.push(gif)
   execFileSync('convert', args, { stdio: ['ignore', 'pipe', 'pipe'] })
-  console.log(`wrote web/preview/reel.gif — ${frames.length} frames, 2x, ${FPS} fps`)
-} catch (error) {
-  console.log(`no usable ImageMagick \`convert\` (${error.status}) — frames only. Assemble with:`)
-  console.log(`  convert -loop 0 -delay ${Math.round(100 / FPS)} -filter point -resize 200% web/preview/reel/frame-*.png web/preview/reel.gif`)
+}
+
+// 2x reads best; 1x is the fallback for a machine whose ImageMagick cache is
+// capped below what a 2x frame costs. Either way the GIF is pixel-exact — `point`
+// resampling never interpolates — and `-delay hold * 5` gives 20 fps in a format
+// that counts hundredths of a second.
+let failure = null
+for (const scale of [2, 1]) {
+  try {
+    assemble(scale)
+    console.log(`wrote web/preview/reel.gif — ${frames.length} frames, ${scale}x, ${FPS} fps`)
+    failure = null
+    break
+  } catch (error) {
+    failure = error
+  }
+}
+
+if (failure) {
+  console.log(`no usable ImageMagick \`convert\` (${failure?.status ?? failure?.message}) — frames only`)
+  console.log('  convert -loop 0 -delay 5 -filter point -resize 200% web/preview/reel/frame-*.png web/preview/reel.gif')
+  process.exitCode = 1
 }

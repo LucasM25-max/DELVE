@@ -206,7 +206,7 @@ is two function bodies.
 | Palette deliverables | surface 32 · below 8 · LUT 32 | `web/assets/pixel/palette/` |
 | UI nine-patch styles | 9 styles, 22 PNGs | `web/assets/pixel/ui/` |
 | Modules | 23 ES modules (2 entry, 8 core, 5 UI, 8 screens) | `web/js/**` |
-| Gates | 5 commands (2 Python, 3 Node), plus the optional reel capture | `tools/`, `web/tests/` |
+| Gates | 5 commands (2 Python, 3 Node), plus the non-gating boot-reel capture | `tools/`, `web/tests/` |
 
 ---
 
@@ -693,7 +693,7 @@ no migration to run and no data to reconcile.
 | Unit suite | `node web/tests/run.mjs` | palette, data, string master, ledger, dice, streams, state machine, input map, text wrapping, every spec rect, widgets, brand geometry, boot timeline — 514 checks, no dependencies |
 | Shell smoke | `node web/tests/smoke.mjs` | boots the whole shell against a DOM stub and drives every page with keyboard and pointer input, asserting each page builds, draws and never throws |
 | Page images | `node web/tests/shoot.mjs` | rasterises the same pages through a pixel-true canvas (real `drawImage`, alpha and composite modes) and writes `web/preview/shell-*.png` — the pictures CI attaches to the run. It then measures a tinted run on each face and fails if the ink box is short, which is how a clipped-glyph bug in the tint path was caught |
-| Boot reel (optional) | `node web/tests/reel.mjs` | drives the booted shell through the boot sequence with scripted input, one PNG per frame, and assembles `web/preview/reel.gif` with ImageMagick. Not a gate: it is how a reviewer watches the timings |
+| Boot reel (not a gate) | `node web/tests/reel.mjs` | drives the booted shell through the boot sequence with scripted input, one PNG per frame, and assembles `web/preview/reel.gif` with ImageMagick (2×, falling back to 1× when the ImageMagick cache is capped). CI records it in the separate `reel` job and keeps the GIF as the `boot-reel` artifact |
 
 All five run on every push (`.github/workflows/gates.yml`), and the rasterised page images
 are kept as a build artifact so a reviewer sees what the deploy will show.
@@ -843,4 +843,5 @@ DELVE/
 | 1.0 | 2026-09-23 | first pixel conversion plan (engine project, 3D → 2D) |
 | 2.0 | 2026-09-23 | rewritten for the static web build: GitHub → Vercel, ES modules, data-driven UI, four gates, no engine in the tree |
 | 2.1 | 2026-09-23 | engine-free sweep: the 3D blockout tree and the old root-level browser shell are deleted; cue paths are page-relative; the page rasteriser (`web/tests/shoot.mjs`) becomes the fifth gate and the images are attached to every CI run; module, string and gate counts re-measured |
+| 2.3 | 2026-09-23 | the boot reel is recorded in CI as its own non-gating job (`boot-reel` artifact) and assembled memory-lean, so a runner whose ImageMagick cache is capped still produces the GIF |
 | 2.2 | 2026-09-23 | seven defects found by the rasteriser and fixed: the image cache, the options cancel path, the tinted-run ink box (glyphs drew short), the first-run ground (it re-dimmed the previous frame instead of painting its own), plus the nine-patch rewrite (nine blits, not one per pixel-run) with the offline previewer brought back into step; the optional boot reel is added |

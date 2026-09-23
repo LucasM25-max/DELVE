@@ -232,8 +232,9 @@ menu's own input handler stands down while it is up. The wax seal, the title and
 
 `node web/tests/reel.mjs` is the moving-picture sibling of the stills below: it drives the
 same booted shell through the boot sequence with scripted input, writes one PNG per frame and
-assembles `web/preview/reel.gif` with ImageMagick `convert`. It is not a gate; it is how a
-reviewer watches the timings.
+assembles `web/preview/reel.gif` with ImageMagick `convert`. It is not a gate — CI records it
+in its own `reel` job and keeps the GIF as the `boot-reel` artifact, so a capture problem can
+never read as a broken page.
 
 `python3 tools/preview_screen.py` renders the shell's screens to PNG straight from the
 shipped assets — same rects, same strings, same `.fnt` fonts, same nine-patches — into

@@ -70,7 +70,10 @@ node web/tests/shoot.mjs           # rasterises every page to web/preview/*.png
 
 They all run in CI on every push (`.github/workflows/gates.yml`), which also
 attaches the rendered pages to the run as a `shell-pages` artifact, so a commit
-always comes with a picture of what the deploy will show.
+always comes with a picture of what the deploy will show. A second job records
+the boot sequence — legal page, sting, menu, options, contract page — as
+`web/preview/reel.gif` (`node web/tests/reel.mjs`, the `boot-reel` artifact):
+the stills say the pages are right, the reel says the timings are.
 
 ## Documents
 

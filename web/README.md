@@ -101,7 +101,7 @@ node web/tests/smoke.mjs           # boots every page against a DOM stub
 node web/tests/shoot.mjs           # renders every page through the real painter
 python3 tools/build_all.py --check # asset builders are reproducible (needs fontTools)
 python3 tools/preview_screen.py    # the static layout lint, straight from the assets
-node web/tests/reel.mjs            # optional: the boot sequence as web/preview/reel.gif
+node web/tests/reel.mjs            # the boot sequence as web/preview/reel.gif (CI artifact)
 ```
 
 The first five run on every push in
