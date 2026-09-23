@@ -39,7 +39,9 @@ for future development; they do not secretly enable unimplemented systems.
 
 **Recommended, most predictable route:**
 
-1. Download `DELVE_Godot_4.7.2.zip`.
+1. Download [`DELVE_Godot_4.7.2.zip`](https://github.com/LucasM25-max/DELVE/releases/download/v0.3.0-godot-3d/DELVE_Godot_4.7.2.zip)
+   from the [`v0.3.0-godot-3d` Release](https://github.com/LucasM25-max/DELVE/releases/tag/v0.3.0-godot-3d)
+   — binary artifacts live in Releases, never in the repository tree (GDD-06 T-03).
 2. Extract it into a permanent folder, for example `Documents/Godot/DELVE`.
 3. In Godot Project Manager, click **Import**.
 4. Browse to that folder and select **`project.godot`**.

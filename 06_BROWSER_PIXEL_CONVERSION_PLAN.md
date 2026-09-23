@@ -1160,6 +1160,12 @@ npm i --no-save ffmpeg-static && node godot/tools/audio/transcode.js
 - **T-01 (2026-09-23):** `.godot/` → `godot/` rename + root `.gitignore` consolidation landed.
 - **T-02 (2026-09-23):** §4.2 applied to `godot/project.godot` (v0.4.0-pixel, 480×270 integer pipeline,
   Sky3D plugin disabled); key names verified — no renames (Appendix A).
+- **T-03 (2026-09-23):** `DELVE_Godot_4.7.2.zip` (69 MB) moved to GitHub Release
+  [`v0.3.0-godot-3d`](https://github.com/LucasM25-max/DELVE/releases/tag/v0.3.0-godot-3d) and untracked
+  from Git (`*.zip` ignore enforced; H3 resolved). Uploaded via the `upload-release-asset` workflow
+  because the agent sandbox cannot reach `uploads.github.com`. GETTING_STARTED §2 now points at the
+  Release. Tracked tree after this commit: ≈108 MB — the <40 MB gate completes at T-04 (3D asset
+  retirement).
 
 ---
 
