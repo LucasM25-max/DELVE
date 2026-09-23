@@ -1,18 +1,23 @@
-# Godot caches / exports are rebuilt locally.
-godot/.godot/
-godot/exports/
+# DELVE — static web build (GitHub + Vercel; no engine).
+#
+# The game is `web/`: HTML, ES modules, JSON, PNG and OGG. Everything committed
+# here is served straight from the repository, so this file only excludes
+# scratch, tooling caches and regenerable QA output.
 
-# Packaging / scratch artifacts (binaries belong in GitHub Releases — GDD-06 T-03).
-*.zip
-deliverables/
+# --- tooling -----------------------------------------------------------
 __pycache__/
 *.pyc
-*.tmp
+node_modules/
+.vercel/
+.venv/
+venv/
 
-# Pixel build (pixel/): engine cache, exports and audio.
-# Audio lands cue by cue via `python3 pixel/tools/fetch_audio.py` — the tracks
-# already exist elsewhere in the repo, so they are not duplicated into Git.
-pixel/.godot/
-pixel/exports/
-pixel/assets/audio/
-pixel/preview/
+# --- scratch -----------------------------------------------------------
+*.zip
+*.tmp
+deliverables/
+
+# --- generated previews ------------------------------------------------
+# `tools/preview_screen.py` renders the pages to PNG so a layout can be checked
+# without a browser; the sheets are regenerable, so they stay out of Git.
+web/preview/

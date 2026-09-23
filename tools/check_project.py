@@ -1,0 +1,602 @@
+#!/usr/bin/env python3
+"""Check the web build's internal consistency — the CI gate for this project.
+
+The game is a static site: `web/index.html` + ES modules + `web/data/*.json` +
+`web/assets/**`, served by Vercel from the repo. No engine, no build step.
+
+What this verifies:
+
+  1. every runtime path the page, stylesheet and modules reference exists
+     (`data/…`, `assets/…`, `js/…`) — audio excepted, which lands cue by cue;
+  2. `index.html` loads the module entry point, and every `import` in
+     `web/js/**` resolves to a file that exists;
+  3. every JSON under `web/data/` parses and carries the spec's counts, rects
+     and timings;
+  4. the font atlases are internally consistent (.fnt char rects inside the
+     page PNG, and every glyph the shipped strings need is present);
+  5. `web/js/core/palette.js` mirrors `tools/build_palette.py` exactly;
+  6. the nine-patch kit (`ui_kit.json`) matches the PNGs it points at;
+  7. the §5.5/§5.6 page layouts fit their panels, measured with the real fonts;
+  8. the art lint of GDD-07 §7.4: every pixel of every committed PNG sits inside
+     the locked 40-colour palette, and `assets/pixel/` stays under 1.5 MB.
+
+Run:  python3 tools/check_project.py
+Exit code 0 = clean; 1 = at least one failure (details printed).
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import sys
+from typing import Sequence
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from lib.png_read import read_png  # noqa: E402
+import build_palette  # noqa: E402
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+WEB = os.path.join(ROOT, "web")
+
+# Every `data/…`, `assets/…`, `js/…`, `css/…` string the shipped code references.
+RUNTIME_PATH = re.compile(r'["\'(]\.?\.?/?(data|assets|js|css)/([A-Za-z0-9_./\-]+)')
+IMPORT_LINE = re.compile(r'^\s*import\s[^\'"]*[\'"](\.[^\'"]+)[\'"]', re.M)
+SCAN_SUFFIXES = (".html", ".js", ".css", ".json", ".py")
+SKIP_DIRS = {"tools/sources", "web/preview", "__pycache__", "node_modules"}
+
+failures: list[str] = []
+notes: list[str] = []
+
+
+def fail(message: str) -> None:
+    failures.append(message)
+
+
+def ok(message: str) -> None:
+    notes.append(message)
+
+
+def walk_files() -> list[str]:
+    out: list[str] = []
+    for base, dirs, files in os.walk(ROOT):
+        dirs[:] = [d for d in dirs if d not in {"__pycache__", ".git"} and not d.startswith(".")]
+        for name in files:
+            out.append(os.path.join(base, name))
+    return out
+
+
+def relative(path: str) -> str:
+    return os.path.relpath(path, ROOT).replace(os.sep, "/")
+
+
+# --- 1 + 2: referenced paths -------------------------------------------
+
+def check_referenced_paths() -> None:
+    """Every runtime path the shipped code names must exist.
+
+    Audio is the one exception: `data/audio_cues.json` declares the whole cue
+    table up front so the game can ask for a cue before the sound design exists,
+    and `Sound` skips a file that is not there yet. `check_audio_cues()` reports
+    how many are in place.
+    """
+    missing: dict[str, str] = {}
+    for path in walk_files():
+        rel = relative(path)
+        if not rel.endswith(SCAN_SUFFIXES) or any(s in rel for s in SKIP_DIRS):
+            continue
+        if rel.endswith(("check_project.py", "check_strings.py", "build_all.py")):
+            continue
+        try:
+            text = open(path, encoding="utf-8").read()
+        except UnicodeDecodeError:
+            continue
+        for prefix, tail in RUNTIME_PATH.findall(text):
+            candidate = "%s/%s" % (prefix, tail)
+            if prefix == "assets" and tail.startswith("audio/"):
+                continue
+            target = os.path.join(WEB, candidate)
+            if not os.path.exists(target):
+                missing.setdefault(candidate, rel)
+    for target, source in sorted(missing.items()):
+        fail("missing %s (referenced by %s)" % (target, source))
+    if not missing:
+        ok("every data/, assets/, js/ and css/ path the code names exists")
+
+
+def check_module_graph() -> None:
+    """`index.html` must load a module entry point, and every relative import in
+    `web/js/**` must resolve — the static-site equivalent of a project manifest.
+    """
+    index = os.path.join(WEB, "index.html")
+    if not os.path.exists(index):
+        fail("web/index.html is missing — Vercel has nothing to serve")
+        return
+    html = open(index, encoding="utf-8").read()
+    entry = re.search(r'<script[^>]+type="module"[^>]+src="([^"]+)"', html)
+    if entry is None:
+        fail("index.html has no <script type=\"module\" src=…> entry point")
+        return
+    if not os.path.exists(os.path.join(WEB, entry.group(1))):
+        fail("index.html loads %s, which does not exist" % entry.group(1))
+    unresolved: list[str] = []
+    for path in walk_files():
+        rel = relative(path)
+        if not rel.startswith("web/js/") or not rel.endswith(".js"):
+            continue
+        text = open(path, encoding="utf-8").read()
+        for target in IMPORT_LINE.findall(text):
+            resolved = os.path.normpath(os.path.join(os.path.dirname(path), target))
+            if not os.path.exists(resolved):
+                unresolved.append("%s -> %s" % (rel, target))
+    for row in unresolved:
+        fail("unresolved import: %s" % row)
+    config_path = os.path.join(ROOT, "vercel.json")
+    if not os.path.exists(config_path):
+        fail("vercel.json is missing")
+    else:
+        try:
+            config = json.load(open(config_path, encoding="utf-8"))
+        except ValueError as error:
+            fail("vercel.json does not parse: %s" % error)
+            config = {}
+        if config.get("outputDirectory") != "web":
+            fail("vercel.json must set \"outputDirectory\": \"web\" so the static "
+                 "site published at / is the game")
+    if not unresolved:
+        ok("index.html loads js/%s and every module import resolves"
+           % entry.group(1).replace("js/", "", 1))
+
+
+# --- 3: data files -----------------------------------------------------
+
+def load_json(rel: str) -> dict:
+    path = os.path.join(WEB, rel)
+    if not os.path.exists(path):
+        fail("missing data file %s" % rel)
+        return {}
+    try:
+        return json.load(open(path, encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        fail("%s does not parse: %s" % (rel, error))
+        return {}
+
+
+def check_data_files() -> None:
+    strings = load_json("data/strings.json")
+    timings = load_json("data/shell_timings.json")
+    content = load_json("data/shell_content.json")
+    schema = load_json("data/options_schema.json")
+    brand = load_json("data/brand.json")
+    cues = load_json("data/audio_cues.json")
+
+    if strings and len(strings.get("spec", {})) != 34:
+        fail("strings.json spec block should hold the 34 §5.11 strings, has %d"
+             % len(strings.get("spec", {})))
+    if content and len(content.get("loading_tips", [])) != 16:
+        fail("shell_content.json should hold the 16 §5.9 tips, has %d"
+             % len(content.get("loading_tips", [])))
+    if schema:
+        rows = sum(len(tab.get("rows", [])) for tab in schema.get("tabs", []))
+        if rows != 39:
+            fail("options_schema.json should hold 39 rows (§5.6), has %d" % rows)
+    menu = timings.get("menu", {})
+    expected = {"column_x": 29, "item_pitch": 21, "underline_draw_ms": 180,
+                "emblem_flicker_ms": 200}
+    for key, value in expected.items():
+        if menu.get(key) != value:
+            fail("shell_timings.menu.%s should be %s (§5.4), is %s"
+                 % (key, value, menu.get(key)))
+    if timings.get("boot", {}).get("sting", {}).get("total_ms") != 4000:
+        fail("shell_timings.boot.sting.total_ms should be 4000 (§5.2)")
+    if menu.get("lockup_rect") != [29, 22, 96, 24]:
+        fail("menu lockup rect must be (29,22,96,24) per §5.4")
+    if menu.get("item_rect", [0, 0, 0, 0])[:3] != [29, 92, 140]:
+        fail("menu item rect must start at (29,92,140,18) per §5.4")
+    # Footer: the two strings are stacked (see menu._footer_note); both rects
+    # must still sit entirely inside the 480x270 canvas.
+    for key in ("disclaimer_rect", "version_stamp_rect"):
+        rect = menu.get(key)
+        if rect is None:
+            fail("shell_timings.menu.%s is missing" % key)
+            continue
+        x, y, w, h = rect
+        if x < 0 or y < 0 or x + w > 480 or y + h > 270:
+            fail("menu.%s %s falls outside the 480x270 canvas" % (key, rect))
+    stamp_x = menu.get("version_stamp_rect", [0, 0, 0, 0])
+    if stamp_x[0] + stamp_x[2] != 470:
+        fail("the version stamp must stay right-aligned to x = 470 (§5.4)")
+
+    # Brand geometry must describe the PNGs that actually shipped.
+    for section, filename in (("emblem", "logo_emblem.png"),
+                              ("wordmark", "logo_wordmark.png"),
+                              ("lockup", "logo_menu.png")):
+        declared = brand.get(section, {}).get("size")
+        path = os.path.join(WEB, "assets", "pixel", "ui", filename)
+        if declared is None or not os.path.exists(path):
+            fail("brand.json/%s or %s is missing" % (section, filename))
+            continue
+        image = read_png(path)
+        if [image.width, image.height] != declared:
+            fail("brand.json says %s is %s but the PNG is %dx%d"
+                 % (section, declared, image.width, image.height))
+    if brand.get("emblem", {}).get("size") != [24, 24]:
+        fail("emblem must be 24x24 per §5.1")
+    if len(brand.get("emblem", {}).get("steps", [])) != 3:
+        fail("emblem must carry three descending steps per §5.1")
+    if not cues.get("cues"):
+        fail("audio_cues.json is empty")
+    else:
+        for cue_id in ["SFX_UI_MOVE", "SFX_UI_CONFIRM", "SFX_UI_DENY", "SFX_BOOT_STONE",
+                       "SFX_BOOT_EMBERS", "SFX_BOOT_CHISEL", "MUS_BOOT_STING",
+                       "MUS_MENU_THEME", "SFX_LOAD_STAMP"]:
+            if cue_id not in cues["cues"]:
+                fail("audio cue %s is missing (§5.10)" % cue_id)
+    if not failures:
+        ok("data files parse and carry the spec's counts, rects and timings")
+
+
+def check_audio_cues() -> None:
+    """Report which cue files are present. Missing ones are not an error yet."""
+    cues = load_json("data/audio_cues.json").get("cues", {})
+    present = []
+    for cue_id, entry in cues.items():
+        # Cue paths are page-relative (`assets/audio/...`), the same spelling
+        # `Sound` fetches, so a cue that resolves here resolves in the browser.
+        tail = str(entry.get("file", ""))
+        if tail.startswith("assets/audio/"):
+            tail = tail[len("assets/audio/"):]
+        if os.path.exists(os.path.join(WEB, "assets", "audio", tail)):
+            present.append(cue_id)
+    menu_cues = [c for c in cues if c.startswith(("SFX_UI_", "SFX_BOOT", "MUS_BOOT", "MUS_MENU"))]
+    ok("audio: %d/%d cues have files (%d/%d menu + boot cues)"
+       % (len(present), len(cues),
+          len([c for c in present if c in menu_cues]), len(menu_cues)))
+
+
+def parse_fnt(path: str) -> dict:
+    lines = open(path, encoding="utf-8").read().splitlines()
+    out: dict = {"chars": []}
+    for line in lines:
+        parts = line.split(" ", 1)
+        if len(parts) != 2:
+            continue
+        tag, rest = parts
+        if tag == "char":
+            entry = {}
+            for key, value in re.findall(r'(\w+)=("[^"]*"|\S+)', rest):
+                entry[key] = value.strip('"')
+            out["chars"].append(entry)
+        else:
+            for key, value in re.findall(r'(\w+)=("[^"]*"|\S+)', rest):
+                out[key] = value.strip('"')
+    return out
+
+
+def check_fonts() -> None:
+    fonts_dir = os.path.join(WEB, "assets", "fonts")
+    expected = {
+        "pixel_ui_5": 5,
+        "pixel_body_8": 8,
+        "pixel_display_10": 10,
+    }
+    strings = load_json("data/strings.json")
+    content = load_json("data/shell_content.json")
+    needed = set()
+    for block in ("spec", "build"):
+        for value in strings.get(block, {}).values():
+            needed.update(value)
+    for tip in content.get("loading_tips", []):
+        needed.update(tip)
+    needed = {c for c in needed if ord(c) >= 32}
+
+    for name in expected:
+        fnt_path = os.path.join(fonts_dir, "%s.fnt" % name)
+        if not os.path.exists(fnt_path):
+            fail("missing font %s.fnt" % name)
+            continue
+        fnt = parse_fnt(fnt_path)
+        page = os.path.join(fonts_dir, fnt.get("file", "%s.png" % name))
+        if not os.path.exists(page):
+            fail("%s.fnt page %s is missing" % (name, fnt.get("file")))
+            continue
+        image = read_png(page)
+        if int(fnt.get("scaleW", 0)) != image.width or int(fnt.get("scaleH", 0)) != image.height:
+            fail("%s.fnt atlas size does not match %s" % (name, os.path.basename(page)))
+        covered = set()
+        for char in fnt["chars"]:
+            x, y = int(char["x"]), int(char["y"])
+            w, h = int(char["width"]), int(char["height"])
+            if w and h and (x + w > image.width or y + h > image.height):
+                fail("%s.fnt glyph %s falls outside the atlas" % (name, char["id"]))
+            covered.add(chr(int(char["id"])))
+        missing = sorted(needed - covered)
+        if missing:
+            fail("%s.fnt is missing glyphs: %s" % (name, "".join(missing)))
+    if not failures:
+        ok("fonts carry every glyph the shipped strings use, inside their atlases")
+
+
+# --- 5: palette mirror -------------------------------------------------
+
+def check_palette_mirror() -> None:
+    js = open(os.path.join(WEB, "js", "core", "palette.js"), encoding="utf-8").read()
+    script_hexes = re.findall(r'"(#[0-9A-Fa-f]{6})"', js)
+    surface_hexes = [h for _f, _n, h in build_palette.surface_entries()]
+    below_hexes = [h for h, _n in build_palette.BELOW]
+    if script_hexes[: len(surface_hexes)] != surface_hexes:
+        fail("palette.js SURFACE_HEX does not match build_palette.py")
+    if script_hexes[len(surface_hexes) : len(surface_hexes) + len(below_hexes)] != below_hexes:
+        fail("palette.js BELOW_HEX does not match build_palette.py")
+    lut = load_json("assets/pixel/palette/palette_lut.json")
+    remap = lut.get("remap", [])
+    script_remap = re.search(r"const REMAP = \[(.*?)\]", js, re.S)
+    if script_remap is None:
+        fail("palette.js has no REMAP table")
+    else:
+        values = [int(v) for v in re.findall(r"\d+", script_remap.group(1))]
+        if values != remap:
+            fail("palette.js REMAP does not match palette_lut.json")
+    if len(surface_hexes) != 32 or len(below_hexes) != 8:
+        fail("palette must be 32 surface + 8 below colours (GDD-06 §5.3)")
+    if not failures:
+        ok("palette.js mirrors the 32+8 ramp and the LUT remap exactly")
+
+
+# --- 6: nine-patch kit -------------------------------------------------
+
+def check_ui_kit() -> None:
+    kit = load_json("assets/pixel/ui/ui_kit.json")
+    styles = kit.get("styles", {})
+    if not styles:
+        fail("ui_kit.json declares no styles")
+    for name, entry in styles.items():
+        declared = entry.get("size")
+        pattern: str = entry.get("file", "")
+        files = [pattern]
+        # `states` covers both the {state} and the {part} placeholder families.
+        if "{state}" in pattern or "{part}" in pattern:
+            files = [
+                pattern.replace("{state}", state).replace("{part}", state)
+                for state in entry.get("states", [])
+            ]
+        for filename in files:
+            path = os.path.join(WEB, "assets", "pixel", "ui", filename)
+            if not os.path.exists(path):
+                fail("ui_kit.json/%s points at missing %s" % (name, filename))
+                continue
+            image = read_png(path)
+            if declared and [image.width, image.height] != declared:
+                fail("ui_kit.json/%s says %s but %s is %dx%d"
+                     % (name, declared, filename, image.width, image.height))
+    for sprite, entry in kit.get("sprites", {}).items():
+        path = os.path.join(WEB, "assets", "pixel", "ui", entry.get("file", ""))
+        if not os.path.exists(path):
+            fail("ui_kit.json sprite %s points at missing %s" % (sprite, entry.get("file")))
+    if not failures:
+        ok("ui_kit.json matches the nine-patch PNGs it points at")
+
+
+# --- 7: art lint (§7.4) ------------------------------------------------
+
+def check_art_lint() -> None:
+    locked_rgb = _locked_colours()
+    total_bytes = 0
+    offenders: list[str] = []
+    for base, _dirs, files in os.walk(os.path.join(WEB, "assets", "pixel")):
+        for name in sorted(files):
+            path = os.path.join(base, name)
+            total_bytes += os.path.getsize(path)
+            if not name.endswith(".png"):
+                continue
+            image = read_png(path)
+            outside = set()
+            for y in range(image.height):
+                for x in range(image.width):
+                    r, g, b, a = image.get(x, y)
+                    if a == 0:
+                        continue  # transparent pixels carry no colour
+                    hex_rgb = "#%02X%02X%02X" % (r, g, b)
+                    if hex_rgb not in locked_rgb:
+                        outside.add(hex_rgb)
+            if outside:
+                offenders.append("%s uses %d colour(s) outside the lock: %s"
+                                 % (relative(path), len(outside), ", ".join(sorted(outside)[:6])))
+    for message in offenders:
+        fail("art lint: " + message)
+    megabytes = total_bytes / (1024 * 1024)
+    if megabytes > 1.5:
+        fail("art lint: assets/pixel/ is %.2f MB (budget 1.5 MB, §7.4)" % megabytes)
+    if not offenders:
+        ok("art lint: every pixel of assets/pixel/ is inside the locked palette (%.0f KB)"
+           % (total_bytes / 1024))
+
+
+def _locked_colours() -> set[str]:
+    """The locked ramp as "#RRGGBB" strings (alpha is not part of the lock)."""
+    return {h[:7].upper() for _f, _n, h in build_palette.surface_entries()} | {
+        h[:7].upper() for h, _n in build_palette.BELOW
+    }
+
+
+# --- main --------------------------------------------------------------
+
+
+
+def _font_advances(name: str) -> dict[str, int]:
+    """Character -> advance map for a shipped `.fnt` face."""
+    parsed = parse_fnt(os.path.join(WEB, "assets", "fonts", "%s.fnt" % name))
+    return {entry["id"]: int(entry["xadvance"]) for entry in parsed.get("chars", [])
+            if "xadvance" in entry}
+
+
+def _text_width(advances: dict[str, int], text: str) -> int:
+    return sum(advances.get(char, 0) for char in text)
+
+
+def _wrap_lines(advances: dict[str, int], text: str, width: int) -> list[str]:
+    lines: list[str] = []
+    current = ""
+    for word in text.split(" "):
+        candidate = word if not current else current + " " + word
+        if _text_width(advances, candidate) > width and current:
+            lines.append(current)
+            current = word
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+    return lines
+
+
+def _inside(rect: Sequence, bounds: Sequence, label: str, margins: int = 0) -> None:
+    x, y, w, h = rect
+    bx, by, bw, bh = bounds
+    if x < bx - margins or y < by or x + w > bx + bw + margins or y + h > by + bh:
+        fail("%s %s falls outside %s" % (label, list(rect), list(bounds)))
+
+
+def check_screen_layouts() -> None:
+    """Every rect the Play / Continue / Options pages draw must fit its panel.
+
+    These are the numbers a screenshot alone cannot prove: the body face is 11 px
+    tall per line while §5.5's group pitch is 48 px, so the help blocks pass
+    `line_spacing: -3` and must land inside their group; the overlay card's body
+    must fit above its buttons; the ledger's eighth row must clear the hint.
+    """
+    timings = load_json("data/shell_timings.json").get("screens", {})
+    schema = load_json("data/options_schema.json")
+    rows = {row["id"]: row for tab in schema.get("tabs", []) for row in tab.get("rows", [])}
+    ui = _font_advances("pixel_ui_5")
+    body = _font_advances("pixel_body_8")
+    canvas = [0, 0, 480, 270]
+
+    first_run = timings.get("first_run", {})
+    panel = first_run.get("panel")
+    if panel != [40, 16, 400, 238]:
+        fail("first_run panel must be (40,16,400,238) per §5.5")
+    group_ys = first_run.get("group_ys", [])
+    pitch = 48
+    for index, y in enumerate(group_ys):
+        if y != 56 + pitch * index:
+            fail("first_run group %d must sit at y %d per §5.5" % (index, 56 + pitch * index))
+    pills_y = first_run.get("label_to_pills", 8)
+    help_y = first_run.get("help_offset_y", 24)
+    spacing = first_run.get("help_line_spacing", -3)
+    line_pitch = 11 + spacing
+    for index, y in enumerate(group_ys):
+        if pills_y + 16 > help_y:
+            fail("first_run pills overlap the help block at group %d" % index)
+        # A group may use the whole 48 px pitch for label + pills + help.
+        limit = y + pitch - (pitch if index == len(group_ys) - 1 else 0)
+        for row_id in ("difficulty", "combat_pacing")[index:index + 1]:
+            text = rows.get(row_id, {}).get("help", "")
+            lines = _wrap_lines(body, text, first_run.get("content_w", 384))
+            bottom = y + help_y + len(lines) * line_pitch
+            if bottom > limit:
+                fail("first_run %s help runs to y %d, past the y %d group pitch "
+                     "(§5.5 fixes the group ys)" % (row_id, bottom, limit))
+    for key in ("back_rect", "go_rect"):
+        rect = first_run.get(key)
+        if rect is None:
+            fail("first_run.%s is missing" % key)
+            continue
+        _inside(rect, canvas, "first_run.%s" % key)
+    footer_ok = (first_run.get("back_rect") == [56, 224, 148, 18]
+                 and first_run.get("go_rect") == [276, 224, 148, 18])
+    if not footer_ok:
+        fail("first_run footer buttons must be (56,224,148,18) and (276,224,148,18) per §5.5")
+    for key in ("comfort_help_rect", "comfort_right_help_rect"):
+        rect = first_run.get(key, [0, 0, 0, 0])
+        if rect[0] + rect[2] > panel[0] + panel[2] - 8 or rect[1] + 3 * line_pitch > 224:
+            fail("first_run.%s %s collides with the footer or the panel edge" % (key, rect))
+
+    card = timings.get("new_contract_card", {})
+    card_rect = card.get("rect", [0, 0, 0, 0])
+    body_rect = card.get("body_rect", [0, 0, 0, 0])
+    text = load_json("data/strings.json").get("spec", {}).get("STR_NEW_BODY", "")
+    for token, value in (("{0}", "New contract"), ("{1}", "Unassigned"),
+                         ("{2}", "1"), ("{3}", "Prologue")):
+        text = text.replace(token, value)
+    lines = _wrap_lines(body, text, body_rect[2])
+    if body_rect[1] + len(lines) * 11 > card.get("begin_rect", [0, 0, 0, 0])[1]:
+        fail("the Begin-a-new-contract body needs %d lines and would run into its buttons"
+             % len(lines))
+    for key in ("seal_rect", "title_rect", "body_rect", "begin_rect", "back_rect"):
+        _inside(card.get(key, [0, 0, 0, 0]), card_rect, "new_contract_card.%s" % key)
+
+    ledger = timings.get("ledger", {})
+    led_panel = ledger.get("panel")
+    if led_panel != [60, 24, 360, 222]:
+        fail("ledger panel must be (60,24,360,222) per §5.5")
+    row_rect = ledger.get("row_rect", [0, 0, 0, 0])
+    pitch = ledger.get("row_pitch", 24)
+    count = ledger.get("row_count", 8)
+    last_bottom = row_rect[1] + pitch * (count - 1) + row_rect[3]
+    if last_bottom > led_panel[1] + led_panel[3]:
+        fail("ledger row %d ends at y %d, past the panel bottom %d"
+             % (count, last_bottom, led_panel[1] + led_panel[3]))
+    hint = ledger.get("hint_rect", [0, 0, 0, 0])
+    if hint[1] < last_bottom:
+        fail("the ledger hint at y %d would sit on row %d (rows end at y %d)"
+             % (hint[1], count, last_bottom))
+
+    options = timings.get("options", {})
+    opt_panel = options.get("rows_panel")
+    if opt_panel != [88, 16, 384, 238]:
+        fail("options rows panel must be (88,16,384,238) per §5.6")
+    if options.get("tab_rail") != [8, 16, 72, 238]:
+        fail("options tab rail must be (8,16,72,238) per §5.6")
+    tab_rect, tab_pitch = options.get("tab_rect", [0, 0, 0, 0]), options.get("tab_pitch", 28)
+    tabs = len(schema.get("tabs", []))
+    rail_bottom = options["tab_rail"][1] + options["tab_rail"][3]
+    if tab_rect[1] + tab_pitch * (tabs - 1) + tab_rect[3] > rail_bottom:
+        fail("the %d options tabs do not fit the rail: widen tab_rect or tab_pitch" % tabs)
+    row_rect, row_pitch = options.get("row_rect", [0, 0, 0, 0]), options.get("row_pitch", 20)
+    visible = options.get("visible_rows", 10)
+    if row_rect[0] + row_rect[2] > opt_panel[0] + opt_panel[2]:
+        fail("options rows %s run past the rows panel" % row_rect)
+    if row_rect[1] + row_pitch * visible > options.get("help_rect", [0, 0, 0, 0])[1]:
+        fail("options rows reach y %d and would sit under the help line at y %d"
+             % (row_rect[1] + row_pitch * visible, options["help_rect"][1]))
+    help_rect = options.get("help_rect", [0, 0, 0, 0])
+    help_line = options.get("help_line_height", 8)
+    longest = max((_wrap_lines(ui, row.get("help", ""), help_rect[2]) for row in rows.values()),
+                  key=len, default=[""])
+    if help_rect[1] + len(longest) * help_line > 270:
+        fail("the longest options help (%d lines) runs off the 270 px canvas" % len(longest))
+    back_rect = options.get("back_rect", [0, 0, 0, 0])
+    if help_rect[0] < back_rect[0] + back_rect[2]:
+        fail("the options help line at x %d overlaps BACK (%s)" % (help_rect[0], list(back_rect)))
+    _inside(options.get("scrollbar_rect", [0, 0, 0, 0]), canvas, "options.scrollbar_rect")
+
+    if not failures:
+        ok("screen layouts: First Run, contract card, ledger and Options all fit their panels")
+
+
+
+def main() -> int:
+    check_referenced_paths()
+    check_module_graph()
+    check_data_files()
+    check_audio_cues()
+    check_fonts()
+    check_palette_mirror()
+    check_ui_kit()
+    check_screen_layouts()
+    check_art_lint()
+
+    for message in notes:
+        print("  ok   %s" % message)
+    for message in failures:
+        print("  FAIL %s" % message)
+    if failures:
+        print("\n%d problem(s) found" % len(failures))
+        return 1
+    print("\nproject check clean")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

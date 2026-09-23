@@ -1,0 +1,62 @@
+# Gates — everything that must pass before a deploy is trustworthy.
+#
+# This repository *is* the deployment: Vercel publishes `web/` straight from the
+# repository, so there is no build step to fail loudly. These jobs are that
+# failure surface:
+#
+#   check_project.py  paths, module graph, data counts, fonts, palette mirror,
+#                     nine-patch kit, the §5.5/§5.6 layouts and the art lint;
+#   check_strings.py  the shipped copy against GDD-07, byte for byte;
+#   run.mjs           the ported unit suite (Node, no dependencies);
+#   smoke.mjs         the whole shell booted against a DOM stub — every page;
+#   shoot.mjs         the same pages rasterised through a pixel-true canvas, so
+#                     the run also leaves pictures of what the deploy will show.
+#
+# A red run here means a red deploy later; Vercel only ever serves what is green.
+
+name: Gates
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Project gates (paths, data, fonts, palette, layouts, art lint)
+        run: python3 tools/check_project.py
+
+      - name: String parity with GDD-07
+        run: python3 tools/check_strings.py
+
+      - name: Unit suite
+        run: node web/tests/run.mjs
+
+      - name: Shell smoke test
+        run: node web/tests/smoke.mjs
+
+      - name: Rasterise every page (headless screenshots)
+        run: node web/tests/shoot.mjs
+
+      - name: Keep the screenshots for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: shell-pages
+          path: web/preview/*.png
+          if-no-files-found: error
