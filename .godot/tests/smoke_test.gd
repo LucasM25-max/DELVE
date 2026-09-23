@@ -152,7 +152,7 @@ func run_tests() -> void:
 	check(yard.get_node("Player") is CharacterBody3D, "Editable player scene instanced")
 	check(yard.get_node("Art") is Node3D, "Future model integration slot exists")
 	check(yard.get_node_or_null("Blockout") == null, "Scenery blockout fully stripped")
-	check(yard.get_child_count() <= 7, "Yard node budget kept tiny")
+	check(yard.get_child_count() <= 10, "Yard node budget stays small")
 	get_tree().paused = false
 	yard.pause_overlay.hide()
 	yard.set_process(false) # Headless has no pointer capture; exercise physics independently.
@@ -214,9 +214,9 @@ func run_tests() -> void:
 		if (node as Label).text.contains("GODOT EDITION 0.3"):
 			version_seen = true
 	check(version_seen, "Menu shows the Godot edition string")
-	check(yard.get_node_or_null("Ground") != null and yard.get_child_count() <= 6, "Yard keeps its five-node budget")
-	var gmat: BaseMaterial3D = yard.get_node("Ground/Mesh").mesh.surface_get_material(0)
-	check(gmat != null and gmat.albedo_color.r > 0.9, "Yard ground is flat white (no ground texture)")
+	check(yard.get_node_or_null("Terrain3D/DirtGround") != null and yard.get_child_count() <= 8, "Yard keeps a tight node budget (7 scene roots + HUD layer)")
+	var gmat: BaseMaterial3D = yard.get_node("Terrain3D/DirtGround/Mesh").mesh.surface_get_material(0)
+	check(gmat != null and gmat.albedo_texture != null, "Yard ground uses the authored packed-dirt maps")
 	check(yard.get_node("Art").get_child_count() == 0, "Art slot stays clear (spec props are placed under Level)")
 	var walls: Node3D = yard.get_node_or_null("Level/Walls")
 	check(walls != null, "Perimeter wall modules live under Level/Walls")

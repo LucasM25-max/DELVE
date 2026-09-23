@@ -22,7 +22,13 @@ Layout (Godot frame: +X east, +Y up, +Z north; spec Y = Godot Z):
                 stand-off from the pier faces; iron bands toward the
                 passage centre.
   * Props A1-A4 (GDD-03 §4.A): guard box, notice board, barrels x2,
-                lantern posts x2 (each with a 2400 K practical light).
+    lantern posts x2 (each with a 2400 K practical light).
+  * Corwin guard NPC (GDD-03 §4.A A1, docs/11): NPCs/Corwin in the guard
+    box at (2.5, 0.16, 1.5) ROT180 — feet on the interior floor slab top,
+    facing the gate and the lane (scans the lane, leans, blocks nothing).
+  * TR_A_LANE Area3D (GDD-03 §4.A S5): sphere r3 at spec (0,-4) ground
+    centre, lifted to y=1 to meet the player capsule (docs/11 D9). First
+    Player entry -> Corwin.say("VO_GRD_001") once (S10).
 
 Wall modules (GDD-03 §5 M_YRD_WALL_STONE family):
   * FULL  4 m span, merlon at each end        M_YRD_WALL_STONE
@@ -109,8 +115,8 @@ def build() -> str:
     assert len(modules) == 47, f"expected 47 wall modules, got {len(modules)}"
 
     d = Doc()
-    # 40 ext resources + 28 sub resources + 1
-    d.w('[gd_scene load_steps="69" format=3 uid="uid://delve-testyard-02"]')
+    # 41 ext resources + 28 sub resources + 1
+    d.w('[gd_scene load_steps="70" format=3 uid="uid://delve-testyard-02"]')
     d.w()
     d.w('[ext_resource type="Script" path="res://scripts/world/test_yard.gd" id="1_yard"]')
     d.w('[ext_resource type="PackedScene" path="res://scenes/actors/player.tscn" id="2_player"]')
@@ -153,6 +159,7 @@ def build() -> str:
     d.w(f'[ext_resource type="PackedScene" path="{MODELS}/M_YRD_NOTICE_BOARD.glb" id="32_notice_board"]')
     d.w(f'[ext_resource type="PackedScene" path="{MODELS}/M_YRD_BARREL.glb" id="33_barrel"]')
     d.w(f'[ext_resource type="PackedScene" path="{MODELS}/M_YRD_LANTERN_POST.glb" id="34_lantern_post"]')
+    d.w('[ext_resource type="PackedScene" path="res://scenes/actors/npc_corwin.tscn" id="41_corwin"]')
     d.w()
 
     # Terrain3D-ready ground: authored maps are used by the fallback meshes so
@@ -275,6 +282,9 @@ def build() -> str:
     d.w()
     d.w('[sub_resource type="BoxShape3D" id="LanternShape"]')
     d.w("size = Vector3(0.26, 0.58, 0.26)")
+    d.w()
+    d.w('[sub_resource type="SphereShape3D" id="LaneShape"]')
+    d.w("radius = 3.0")
     d.w()
 
     d.w('[node name="TestYard" type="Node3D"]')
@@ -487,9 +497,25 @@ def build() -> str:
         d.w("light_distance = 7.0")
         d.w()
 
+    # Corwin (GDD-03 §4.A A1): home post inside the guard box — feet on the
+    # interior floor slab top (y 0.16), ROT180 like the Player (facing the
+    # gate/lane), verified visually (docs/11 Steps 4 + 7).
+    d.w('[node name="NPCs" type="Node3D" parent="."]')
+    d.w()
+    d.w('[node name="Corwin" parent="NPCs" instance=ExtResource("41_corwin")]')
+    d.w(f"transform = {tf(ROT180, 2.5, 0.16, 1.5)}")
+    d.w()
+    # TR_A_LANE (GDD-03 §4.A S5): sphere r3 at spec (0,-4), lifted to y=1.
+    d.w('[node name="TR_A_LANE" type="Area3D" parent="."]')
+    d.w('transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -4)')
+    d.w()
+    d.w('[node name="Shape" type="CollisionShape3D" parent="TR_A_LANE"]')
+    d.w('shape = SubResource("LaneShape")')
+    d.w()
     d.w('[node name="Player" parent="." instance=ExtResource("2_player")]')
     d.w('transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0.5, 5)')
     d.w()
+    d.w('[connection signal="body_entered" from="TR_A_LANE" to="NPCs/Corwin" method="_on_lane_body_entered"]')
 
     return "\n".join(d.lines) + "\n"
 

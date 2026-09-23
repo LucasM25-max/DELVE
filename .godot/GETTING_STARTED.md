@@ -311,7 +311,7 @@ and reopening the project always reproduces it.
 # inside godot/
 godot --headless --path . --editor --quit          # import pass, catches parse errors
 godot --headless --path . res://tests/smoke_test.tscn -- --test-mode
-# expected tail: "DELVE SMOKE TEST: 70 checks, 0 failures" + "SMOKE_ALL_GREEN"
+# expected tail: "DELVE SMOKE TEST: 80 checks, 0 failures" + "SMOKE_ALL_GREEN"
 ```
 
 Visual evidence (needs any X11/display; 1600×900):

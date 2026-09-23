@@ -1,4 +1,4 @@
-[gd_scene load_steps="69" format=3 uid="uid://delve-testyard-02"]
+[gd_scene load_steps="70" format=3 uid="uid://delve-testyard-02"]
 
 [ext_resource type="Script" path="res://scripts/world/test_yard.gd" id="1_yard"]
 [ext_resource type="PackedScene" path="res://scenes/actors/player.tscn" id="2_player"]
@@ -40,6 +40,7 @@
 [ext_resource type="PackedScene" path="res://assets/models/M_YRD_NOTICE_BOARD.glb" id="32_notice_board"]
 [ext_resource type="PackedScene" path="res://assets/models/M_YRD_BARREL.glb" id="33_barrel"]
 [ext_resource type="PackedScene" path="res://assets/models/M_YRD_LANTERN_POST.glb" id="34_lantern_post"]
+[ext_resource type="PackedScene" path="res://scenes/actors/npc_corwin.tscn" id="41_corwin"]
 
 [sub_resource type="StandardMaterial3D" id="DirtMat"]
 albedo_texture = ExtResource("37_dirt_albedo")
@@ -155,6 +156,9 @@ radius = 0.08
 
 [sub_resource type="BoxShape3D" id="LanternShape"]
 size = Vector3(0.26, 0.58, 0.26)
+
+[sub_resource type="SphereShape3D" id="LaneShape"]
+radius = 3.0
 
 [node name="TestYard" type="Node3D"]
 script = ExtResource("1_yard")
@@ -848,6 +852,18 @@ light_color = Color(1, 0.588, 0.314, 1)
 light_energy = 3.0
 light_distance = 7.0
 
+[node name="NPCs" type="Node3D" parent="."]
+
+[node name="Corwin" parent="NPCs" instance=ExtResource("41_corwin")]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, 2.5, 0.16, 1.5)
+
+[node name="TR_A_LANE" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -4)
+
+[node name="Shape" type="CollisionShape3D" parent="TR_A_LANE"]
+shape = SubResource("LaneShape")
+
 [node name="Player" parent="." instance=ExtResource("2_player")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0.5, 5)
 
+[connection signal="body_entered" from="TR_A_LANE" to="NPCs/Corwin" method="_on_lane_body_entered"]

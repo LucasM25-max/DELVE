@@ -1,5 +1,8 @@
 #!/bin/bash
 # Headless-only Godot 4.7.2 build for sandbox QA/smoke runs.
+# x11=no: sandbox images carry no X/Mesa packages, so windowed capture is
+# out; visual evidence comes from tests/yard_shot.tscn on a display machine
+# and from the headless behaviour/QA probes (see tests/TEST_REPORT.md).
 #
 # The binary is ~1 GB, so it is deliberately built into /home/user/.cache
 # (an unsnapshotted path) — keeping it under the repo would blow the
