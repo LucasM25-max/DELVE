@@ -293,7 +293,8 @@ theme/default_font_subpixel_positioning=0
 theme/default_font_hinting=0
 
 [input]
-; see §4.9 — game_view/game_jump removed; grid_* and interact added
+; see §4.9 — game_view/game_jump removed; grid_* and interact added (T-11;
+; until then actions are registered at runtime by game_state.gd)
 
 [rendering]
 renderer/rendering_method="gl_compatibility"
@@ -301,18 +302,24 @@ renderer/rendering_method.mobile="gl_compatibility"
 textures/canvas_textures/default_texture_filter=0
 2d/snap/snap_2d_transforms_to_pixel=true
 2d/snap/snap_2d_vertices_to_pixel=true
-environment/defaults/default_clear_color=Color(0.039, 0.051, 0.063, 1)   ; ink-1
+; ink-1 clear colour
+environment/defaults/default_clear_color=Color(0.039, 0.051, 0.063, 1)
 
 [editor_plugins]
-enabled=PackedStringArray()      ; Sky3D removed
+; Sky3D removed
+enabled=PackedStringArray()
 ```
 
 Rationale, point by point: `viewport` stretch renders the *whole frame* (including text) at 480×270 and
 integer-upscales it — the honest pixel look; `scale_mode=integer` prevents fractional pixel sizes; nearest
 filtering globally; the two `snap_2d` flags kill sub-pixel shimmer (camera smoothing must also stay off, or
 use pixel-snapped smoothing); the `[gui]` block makes bitmap fonts rasterise without antialiasing/hinting
-mush. **[VERIFY]** at T-02 that every key exists under that exact name in 4.7.2's Project Settings search and
-record any renamed key in the appendix.
+mush. **[VERIFIED — T-02, 2026-09-23]** every key above exists under that exact name in Godot 4.7.2
+(checked against the 4.7 `ProjectSettings` class reference and `TextServer` enums): **no renames were
+needed**, and each `=0` value maps onto the intended enum member — `FONT_ANTIALIASING_NONE`, `HINTING_NONE`,
+`SUBPIXEL_POSITIONING_DISABLED`, texture filter Nearest. Annotations are carried as full-line `;` comments
+in the shipped file (ConfigFile documents full-line comment lines); the executable import pass is the CI
+gate per §11.1. Full record in Appendix A.
 
 ### 4.3 Directory layout (new tree under `godot/`)
 
@@ -1094,6 +1101,28 @@ See §4.2 (complete block). Removed keys: `window/size/viewport_*` 1600/900 pair
 `stretch/aspect=expand`, Sky3D from `editor_plugins`. Added: `[gui]` pixel-font block, nearest filter, 2D
 snapping, 480×270 viewport + overrides.
 
+**T-02 verification record (2026-09-23)** — every §4.2 key name confirmed **exact** against the Godot 4.7
+class/enum references; **zero renames**:
+
+- `display/window/size/*` and `window/stretch/{mode,aspect}` — pre-existing keys, values swapped in place;
+  `window/stretch/scale_mode="integer"` confirmed present (enum `fractional`/`integer`).
+- `gui/theme/default_font_{antialiasing,subpixel_positioning,hinting}` — confirmed; `0` = `NONE`,
+  `DISABLED`, `NONE` respectively (engine default is `1` in all three).
+- `rendering/textures/canvas_textures/default_texture_filter` — confirmed (`0` = Nearest); written as
+  `textures/canvas_textures/…` under `[rendering]`.
+- `rendering/2d/snap/snap_2d_{transforms,vertices}_to_pixel` — confirmed.
+- `rendering/environment/defaults/default_clear_color`, `renderer/rendering_method{,.mobile}`,
+  `editor_plugins/enabled`, `application/config/version` — confirmed (already in use or standard).
+- Applied-form notes: the block's two inline `;` annotations are written as full-line comments in the
+  shipped file (ConfigFile documents full-line `;` comment lines — a trailing comment can be absorbed into
+  the value text); the pre-existing `textures/vram_compression/import_etc2_astc=true` key was kept
+  ("replace/add"); the `[input]` comment defers the actual action edits to T-11, because actions today are
+  registered at runtime by `game_state.gd`, not by `project.godot`.
+- Import gate: the sandbox has no Godot binary (§11.1) and the release CDN is unreachable, so the
+  executable `--headless --import` pass is the CI gate (`import` job, §10.3 / T-13). The local gate was a
+  ConfigFile-grammar validation of the shipped file (sections, keys, value syntax, no inline comments,
+  full §4.2 block parity) — PASS.
+
 ### B. Palette tables
 Surface 32 + Below 8 — exact hex in §5.3. Machine-readable copies land at
 `assets/pixel/palette/palette_{surface,below}.png` + `palette_lut.json` (M2, T-20).
@@ -1128,6 +1157,9 @@ npm i --no-save ffmpeg-static && node godot/tools/audio/transcode.js
 
 ### G. Plan changelog
 - **v1.0 (2026-09-23):** initial plan from clarification round (D1–D6) + full repo audit at `17c5fbc`.
+- **T-01 (2026-09-23):** `.godot/` → `godot/` rename + root `.gitignore` consolidation landed.
+- **T-02 (2026-09-23):** §4.2 applied to `godot/project.godot` (v0.4.0-pixel, 480×270 integer pipeline,
+  Sky3D plugin disabled); key names verified — no renames (Appendix A).
 
 ---
 
