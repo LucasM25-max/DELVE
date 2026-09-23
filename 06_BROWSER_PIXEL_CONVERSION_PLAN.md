@@ -1178,7 +1178,31 @@ npm i --no-save ffmpeg-static && node godot/tools/audio/transcode.js
   GDD-04; GDD-05 Way 1 rewritten to the `/play/` topology (§9.3) with the stale port-3100 preview
   steps dropped, and its "where the game is" pointer re-aimed at GDD-06 §3.1/§12. Editor route
   (Ways 2–3) left unchanged per §10.4.
+- **GDD-07 (2026-09-23):** companion content spec issued —
+  `07_PIXEL_PROLOGUE_YARD_AND_MENU_BUILD_SPEC.md`: complete pixel **menu** (exact 480×270 rects,
+  string master, 16 loading tips) + **entire training yard A–M** at GDD-03 detail (tile coordinates,
+  rules primer R1–R15, props/triggers/VO/audio/VFX, data schemas, QA suite), reconciled with this
+  document's §3.1 slice via ship rings P0/P1/P2 (§18).
 
 ---
 
-*End of GDD-06. Approval of §16 defaults (or overrides) starts M0.*
+## 18. COMPANION CONTENT SPEC — GDD-07 (ISSUED 2026-09-23)
+
+Everything needed to **build the game menu and the entire prologue training area** in the pixel
+direction now lives in a single standalone document:
+
+→ **`07_PIXEL_PROLOGUE_YARD_AND_MENU_BUILD_SPEC.md` (GDD-07)**
+
+| This document (GDD-06) still owns | GDD-07 owns |
+|---|---|
+| Technology, art pipeline, milestones/backlog (§12–§13), web export/deploy, CI, risks, budgets | Menu screen-by-screen build rects + every shipped string; yard areas A–M in tile coordinates; rules primer R1–R15 inline at teaching stations; props/chars/audio/VO manifests; encounter + tutorial + map data schemas; menu+yard QA suite |
+| §3.1 first-playable **slice** definition (what lands at M4–M6) | Ship rings **P0/P1/P2** — P1 = this slice, P2 = complete prologue (T0–T11, C1–C6, all 13 areas interactive). P1 ⊂ P2; nothing is dropped, only sequenced |
+
+Where GDD-07 and the 3D-era specs (GDD-02, GDD-03) differ, **GDD-07 wins for the pixel build**
+(deltas catalogued in its §2). One deliberate refinement: ranged height house rule **R11 = 10 ft
+(elev Δ ≥ 2)** in GDD-07 §4, tightening this document's §6.5 `Δ≥1` sketch to the GDD-01/GDD-03
+threshold the loft is built around.
+
+---
+
+*End of GDD-06. M0 complete (T-01…T-05); M1+ follows §12/§13. Prologue content build spec: GDD-07 (§18).*
