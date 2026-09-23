@@ -3,7 +3,8 @@
 Companion to `web/README.md`. This file is for whoever picks the build up next: what was
 built, every place the output deviates from GDD-07 and why, and the exact seams to extend.
 
-Build date: 2026-09-23 · branch `arena/01a0cedd-delve` · spec: GDD-06 v2.0, GDD-07 v1.1.
+Build date: 2026-09-23 · branches `arena/01a0cedd-delve` and `arena/01a0cf8b-delve` ·
+spec: GDD-06 v2.0, GDD-07 v1.1.
 Gates: `tools/check_project.py`, `tools/check_strings.py`, `web/tests/run.mjs`,
 `web/tests/smoke.mjs`, `web/tests/shoot.mjs` — all five run in CI on every push.
 
@@ -11,13 +12,15 @@ Gates: `tools/check_project.py`, `tools/check_strings.py`, `web/tests/run.mjs`,
 
 ## 1. Scope of this build
 
-Two passes, both on this branch:
+Passes, in order:
 
 1. *"build the game menu, including boot up sequence, but do not make the buttons do
    anything for now. Keep the background of the menu plain white."*
 2. *"build the Play, Continue and Options menus completely per §5.5/§5.6 — but buttons in
    Play and Continue that are meant to move out of the game menu must just return to the
    menu, while keeping the proper spec text."*
+3. *"the pixel font looks horrific please fix it so it uses normal non pixel fonts. Also it
+   isn't full screen so fix that as well."* — §2.2 (rewritten) and §2.13.
 
 Shipped:
 
@@ -47,28 +50,53 @@ keeps the spec's layer-speed numbers as a reminder. The two footer texts use ink
 spec's parchment because the spec assumes a painted (dark) backdrop — swap the colour at
 the same time as the backdrop.
 
-### 2.2 Fonts are not the spec's exact typefaces
+### 2.2 The type is Inter, not a pixel face (requested, third pass)
 
-§4.8/§5.1 name *Pixel Operator* (8 px body) and *m5x7* (5 px chrome). Neither is vendored
-in this repository, and this sandbox cannot reach the font sites that host them.
+The first build followed §4.8/§5.1 and drew every string as a bitmap face (a 5×7 system
+table for chrome, Silkscreen for prose, the 5×7 table at 2× for headings). At 480×270 that
+is legible; scaled to a real window it is not, and the request was explicit: **normal
+typefaces, not a pixel font**.
 
-| Spec | Shipped | Licence |
+| Spec | Shipped now | Licence |
 |---|---|---|
-| `pixel_ui_5` — "m5x7-class 5×7" | 5×7 system font (the glcdfont-class table, packed as JSON) | MIT, notice committed |
-| `pixel_body_8` — "Pixel Operator-class 8 px" | **Silkscreen** at 8 px | OFL-1.1, notice committed |
-| §5.4 "menu items 34 px → **10 px display** (5×7 ×2)" | `pixel_display_10`, the same 5×7 table at 2× | same as chrome |
+| `pixel_ui_5` — "m5x7-class 5×7" | **Inter SemiBold** at 9 px | OFL-1.1, notice committed |
+| `pixel_body_8` — "Pixel Operator-class 8 px" | **Inter Regular** at 9 px | OFL-1.1, notice committed |
+| §5.4 "menu items 34 px → 10 px display" | **Inter SemiBold** at 15 px (`display`) | same |
 
-Both faces are converted to AngelCode BMFont (`.fnt` + atlas PNG) by
-`tools/build_fonts.py`; no TTF is rasterised at runtime. The body face is rasterised once
-from the OFL source with fontTools (grid-fitted to whole pixels, no antialiasing).
+What changed underneath, and why each piece exists:
 
-The legal screen therefore names the real fonts (`UI type: 5x7 system font (MIT) &
-Silkscreen (OFL)`) — a required-honest change: the spec's `Pixel Operator & m5x7 (CC0)`
-line would be false as shipped.
+* **The faces ship as subset webfonts** — `web/assets/fonts/delve_sans_400.woff2` and
+  `…_600.woff2`, ~6 KB each. `tools/build_text_faces.py` cuts them from the OFL Inter
+  sources in `tools/sources/` to `tools/lib/strings.charset()` (printable ASCII, the
+  typographic marks the copy uses, plus whatever else the strings reach for). The
+  stylesheet declares them; the page draws text with `ctx.fillText` in `js/ui/render.js`.
+* **Widths still come from a baked table.** `web/assets/fonts/font_metrics.json` carries
+  every character's advance in font units, and `TextFace` (`js/ui/font.js`) rounds each one
+  to whole design pixels. `tools/check_project.py` measures the page layouts from the same
+  table, so a width the gate computes and a width the page draws are the same integer — the
+  property the bitmap build kept with `.fnt` xadvance, kept without `.fnt`. Notably there is
+  no `measureText` anywhere in the shipped code: it returns fractions, and fractions drift.
+* **The offline renderers kept working.** They have no font rasteriser (a Node process, and
+  a Python previewer), so `tools/build_text_faces.py` also bakes a 1:1 coverage atlas of
+  every face into `tools/atlas/` — that is what `web/tests/shoot.mjs` and
+  `tools/preview_screen.py` blit. The page never loads the atlas; it draws the real font.
+* **The coverage gate got sharper.** `check_project.py` fails if the shipped faces, their
+  metrics or the atlases miss any character in the charset — which is how the one visible
+  bug of the conversion was caught: `1920×1080` in the options schema needed a `9` that no
+  other shipped string carried, and the subset (driven by the strings) had quietly left it
+  out. The charset now includes printable ASCII wholesale; the atlas-builder also refuses
+  to drop a glyph that does not fit its line box (that is how `body.ascent` went 9 and
+  `display.ascent` 15 — `|` and `$` are taller than cap height).
 
-To restore the spec's exact typefaces: drop the two fonts into `tools/sources/`, point
-`build_fonts.py` at them, re-run `tools/build_all.py --check`, and update
-`STR_FONT_LINE`.
+The legal screen therefore names the real type (`Type: Inter (OFL-1.1), subset for this
+build`); `STR_FONT_LINE` is a build string, not a §5.11 spec string, so the spec-parity
+gate is unaffected. To go back to the spec's pixel faces: put them in `tools/sources/`,
+point the builder at them, re-run `tools/build_all.py --check`, and restore the line.
+
+Sizes are the spec's roles, not a literal re-use of its pixel counts (a 5 px chrome face is
+unreadable in a real typeface): chrome/body 9 px on a 12 px line, display 15 px on an 18 px
+line. Every rect in `data/` is unchanged; the labels sit inside them, verified by the
+Python layout gate and by `shoot.mjs`.
 
 ### 2.3 Wordmark: 6×9 grid at 2×, not "5×7 at 18 px"
 
@@ -92,21 +120,18 @@ ziggurat inside it and a 2 px mint pip below the steps. The steps' rects are pub
 `data/brand.json`, so the boot sting and (later) the loading seal light them from one
 source of truth.
 
-### 2.5 Footer: the two bottom lines are stacked, not on one row
+### 2.5 Footer: back on one row, two pixels higher
 
-§5.4 places the abridged disclaimer at **(10, 259, 300, 8)** and the version stamp
-right-aligned to **(470, 259)** — one row, 480 px wide. At the shipped 5 px face the
-disclaimer measures **360 px** (text plus the default 4 px inner margin) and the stamp
-**252 px**: 612 px of 480, so one row overprints by ~132 px. The spec also sizes the row
-for the *full* disclaimer (which is 626 px at 5 px and cannot fit at all).
+The first build stacked the two footer lines because the 5 px bitmap face measured the
+abridged disclaimer at 360 px and the version stamp at 252 px — 612 px of a 480 px row —
+where §5.4 puts them on one line. The shipped 9 px Inter face is narrower: the disclaimer is
+**249 px** and the stamp **195 px**, 444 px of the same row, so the spec's single row is
+restored — disclaimer at x 10, stamp right-aligned to x 470, both at y 258.
 
-Resolution: the two strings are **stacked** — disclaimer at (10, 254, 348, 8), version
-stamp right-aligned to 470 at y 262 — both verbatim, both anchored to their spec edges and
-both inside the canvas. The spec's original numbers and the reasoning are recorded in
-`data/shell_timings.json` (`menu._footer_note`, `menu.spec_rects`), and
-`tools/check_project.py` and `web/tests/run.mjs` assert the shipped rects stay in bounds,
-stay right-aligned to 470 and never overlap. Both labels also set `clip_text`, so no
-future font change can spill them.
+The one pixel of deviation left is y: the row's line box is 12 px (ascent 9 + descent 3), so
+at the spec's y 259 the bottom row of any descender would fall off the canvas. Both rects are
+asserted in bounds, non-overlapping and right-aligned to 470 by `check_project.py` and
+`web/tests/run.mjs`; the spec's original numbers stay in `menu.spec_rects`.
 
 ### 2.6 Placeholder cards for the last two pages
 
@@ -167,7 +192,7 @@ because the shipped body face has an 11 px line height, so help blocks pass
 The first pass drew the groups at the anchors unconditionally, and the screenshots
 (`shoot.mjs`) showed the result: the combat-pacing help ran straight through the
 `Subtitles` / `Camera comfort preset` row. The layout now measures each help block with the
-real font (`PixelFont.measureBlock`) and places the next group at
+real face (`TextFace.measureBlock`) and places the next group at
 `max(anchor, help bottom + 8)`, so the anchors hold whenever the prose fits and a group
 drops only as far as it must. The comfort row keeps its two columns — subtitles 48…232,
 camera comfort 240…432 — so neither help can run under the other's pills.
@@ -175,24 +200,24 @@ camera comfort 240…432 — so neither help can run under the other's pills.
 Content runs 48…432 — the panel's *inner* width rather than an arbitrary 360 px inset —
 which keeps the difficulty help to two lines and the longer combat-pacing help to three.
 `tools/check_project.py::check_screen_layouts()` re-measures both strings with the shipped
-`.fnt` metrics and fails the build if a help block would overrun its group.
+faces' metrics and fails the build if a help block would overrun its group.
 
 ### 2.10 Options: the help line, the scrolling Controls tab, one overhanging label
 
 §5.6 fixes the rail, the rows panel, the row height and the control types, but says nothing
 about a help line or about tabs with more rows than fit. Three decisions:
 
-1. **Help line.** The schema's `help` text is drawn at (176, 244, 288, 8) — to the right of
-   `BACK`, on the white field below the panel — wrapped to that width in the 5 px chrome face.
+1. **Help line.** The schema's `help` text is drawn at (176, 244, 288, 12) — to the right of
+   `BACK`, on the white field below the panel — wrapped to that width in the chrome face
+   (9 px on a 12 px line). Two lines is the most any row needs there.
    `check_screen_layouts()` fails if a help block would run off the 270 px canvas or run into
    its widgets.
 2. **Scrolling.** Ten rows fit between the panel's top edge and the help line. Accessibility
    has 10 and Controls has 12, so the page scrolls (wheel, ↑/↓ at the ends) and shows the
    4 px scrollbar the kit already builds. The spec's row height and panel rect are unchanged.
-3. **One label overhangs.** `Accessibility` is 78 px at the shipped 5 px face — 3 px wider
-   each side than the spec's 64 px tab. The label is centred and `clip_text` is off, so the
-   overhang falls inside the rail's unused 8 px gutter and clears the rows panel at x 88.
-   Nothing else in the rail moves.
+3. **The widest tab label.** `Accessibility` is 54 px at the shipped 9 px face, inside the
+   spec's 64 px tab, so the first build's 3 px overhang is no longer needed — the label is
+   centred in its tab like the other four.
 
 Rebinds behave as §5.6 describes: the control becomes `Press a key…`, ESC cancels with
 `Rebind cancelled.`, and the choice is stored as a display string plus a
@@ -228,6 +253,33 @@ menu's own input handler stands down while it is up. The wax seal, the title and
 
 ---
 
+### 2.13 Full screen: the design space fills the window (requested)
+
+§1.3 of GDD-06 (and the note in `index.html`) fixed the frame at 480×270 scaled by **whole
+numbers only**, which on a 1920×1080 window gives a 1440×810 picture in a black field — 25 %
+of the screen wasted on every side, and no way to use a phone at all. The request was
+"it isn't full screen".
+
+Now the canvas *is* the viewport: `Shell.resize()` sizes the backing store to the window in
+device pixels (capped at 2.6 Mpx, DPR-aware) and `fitViewport()` maps the 480×270 design
+space onto it with **one uniform scale** — the largest that fits, so the design keeps its
+proportions and reaches two of the four edges. What the scale leaves over is split between
+the other two sides and painted by the screen's own ground (`Painter.fillViewport`), so
+there is never a black bar: white pages bleed white, the boot pages bleed ink. Input is
+mapped back through the same transform (`Shell.toCanvas`).
+
+What that costs, stated honestly: pixel art is still blitted nearest-neighbour, so art
+pixels are no longer always exact squares of screen pixels (at 3.55× a 1 px rule can land
+on 3 or 4 device pixels). The alternative — a fractional scale with smoothing on, or
+letterboxing — is worse: one blurs the art that is the game's identity, the other is the
+thing this change was asked to fix. Text is drawn by the browser at the final resolution,
+so it is unaffected and stays crisp. Everything else about the frame is unchanged: all
+rects, timings and layouts are still written in the 480×270 space, and the preview PNGs are
+still 1:1 renders of it — `fitViewport()` is a pure function with its own unit tests in
+`run.mjs` and a smoke-test assertion against the booted shell.
+
+---
+
 ## 3. Seeing a screen without a browser
 
 `node web/tests/reel.mjs` is the moving-picture sibling of the stills below: it drives the
@@ -237,7 +289,8 @@ in its own `reel` job and keeps the GIF as the `boot-reel` artifact, so a captur
 never read as a broken page.
 
 `python3 tools/preview_screen.py` renders the shell's screens to PNG straight from the
-shipped assets — same rects, same strings, same `.fnt` fonts, same nine-patches — into
+shipped assets — same rects, same strings, the same text faces (through the baked
+coverage atlas, since Python has no font rasteriser either), same nine-patches — into
 `web/preview/` (git-ignored):
 
 ```bash

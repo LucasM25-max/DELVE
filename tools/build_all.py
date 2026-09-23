@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rebuild every generated asset in one go.
 
-    python3 tools/build_all.py            # palette, fonts, brand, UI kit
+    python3 tools/build_all.py            # palette, text faces, brand, UI kit
     python3 tools/build_all.py --check    # rebuild, then run the two checkers
 
 Each builder is deterministic: same inputs in, byte-identical PNGs/JSON out, so
@@ -22,7 +22,7 @@ TOOLS = os.path.join(ROOT, "tools")
 
 BUILDERS = [
     ("palette", "build_palette.py"),
-    ("fonts", "build_fonts.py"),
+    ("fonts", "build_text_faces.py"),
     ("brand", "build_brand.py"),
     ("ui kit", "build_ui_kit.py"),
 ]

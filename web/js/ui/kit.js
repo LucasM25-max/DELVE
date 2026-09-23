@@ -1,7 +1,7 @@
 // UiPixel — the pixel UI kit (GDD-07 §7.3).
 //
 // Everything the shell draws is built from these primitives: a ground, a
-// nine-patch panel, a bitmap label, a 5 px pill. The kit is the only place that
+// nine-patch panel, a text label, a 5 px pill. The kit is the only place that
 // knows an asset path, and it reads the nine-patch margins from
 // `assets/pixel/ui/ui_kit.json` — the same file `tools/preview_screen.py`
 // renders from, so the offline previews and the live page agree.
@@ -9,8 +9,8 @@
 // Rules the kit keeps:
 //   * art is locked to the 32 + 8 palette (tools/check_project.py lints the PNGs);
 //   * rects snap to whole pixels, so nothing is ever drawn half-on a pixel;
-//   * chrome (buttons, frames, rails) is the 5 px face, body copy is 8 px,
-//     headings are 10 px (§7.3).
+//   * chrome (buttons, frames, rails) is the `ui` face, body copy is `body`,
+//     headings are `display` (the §7.3 roles, at the sizes in data/fonts.json).
 
 import { Palette } from '../core/palette.js'
 import { loadJSON } from '../core/data.js'
@@ -84,15 +84,16 @@ export const Ui = {
    * The shipped menu ground: plain white. The project's background rule predates
    * this port and the spec's ink ground is kept for the boot pages, so this is a
    * documented, deliberate deviation (see web/docs/PIXEL_MENU_BUILD_NOTES.md).
+   * Grounds fill the whole window, not just the 480×270 design space.
    */
   white(alpha = 1) {
-    this.painter.withAlpha(alpha, () => this.painter.rect(0, 0, 480, 270, '#FFFFFF'))
+    this.painter.fillViewport('#FFFFFF', alpha)
   },
 
-  /** A translucent scrim behind a modal card. */
+  /** A translucent scrim behind a modal card; covers the whole window. */
   dim(alpha = 0.5, colour = Palette.ink) {
     if (alpha <= 0) return
-    this.painter.withAlpha(alpha, () => this.painter.rect(0, 0, 480, 270, colour))
+    this.painter.fillViewport(colour, alpha)
   },
 
   rect(rect, colour, alpha = 1) {

@@ -92,7 +92,7 @@ export class Button extends Widget {
     Ui.patch(patchId, this.rect, { state })
     const font = Ui.font(this.face)
     const label = this.label
-    const y = Math.round(this.rect.y + (this.rect.h - font.px) / 2)
+    const y = Math.round(this.rect.y + (this.rect.h - font.lineHeight) / 2)
     const colour = this.enabled ? (this.selected ? Palette.ink : this.colour) : this.disabledColour
     if (this.align === 'center') {
       const x = Math.round(this.rect.x + (this.rect.w - font.measure(label)) / 2)
@@ -230,7 +230,7 @@ export class PillGroup extends Widget {
       const font = Ui.font(this.face)
       const colour = selected ? Palette.ink : usable ? Palette.bronze_3 : Palette.stone_1
       Ui.label(pill.value, Math.round(pill.rect.x + (pill.rect.w - font.measure(pill.value)) / 2),
-        Math.round(pill.rect.y + (pill.rect.h - font.px) / 2), { face: this.face, colour, alpha: usable ? 1 : 0.6 })
+        Math.round(pill.rect.y + (pill.rect.h - font.lineHeight) / 2), { face: this.face, colour, alpha: usable ? 1 : 0.6 })
     }
   }
 }
@@ -309,7 +309,7 @@ export class Slider extends Widget {
     }
     const font = Ui.font(Face.UI)
     const text = String(this.value)
-    Ui.label(text, Math.round(this.pipRect(0).x - 8 - font.measure(text)), this.rect.y + Math.round((this.rect.h - font.px) / 2),
+    Ui.label(text, Math.round(this.pipRect(0).x - 8 - font.measure(text)), this.rect.y + Math.round((this.rect.h - font.lineHeight) / 2),
       { face: Face.UI, colour: Palette.ink })
     if (this.focused) Ui.frame(this.rect, Palette.bronze_2, 0.6)
   }
@@ -357,9 +357,9 @@ export class Rebind extends Widget {
     const text = listening ? (this.listenText ?? 'Press a key…') : this.label
     const colour = listening ? Palette.bronze_1 : Palette.ink
     if (listening) {
-      Ui.label(text, rect.x + 6, rect.y + Math.round((rect.h - font.px) / 2), { face: Face.UI, colour })
+      Ui.label(text, rect.x + 6, rect.y + Math.round((rect.h - font.lineHeight) / 2), { face: Face.UI, colour })
     } else {
-      Ui.label(text, Math.round(rect.right - 6 - font.measure(text)), rect.y + Math.round((rect.h - font.px) / 2), { face: Face.UI, colour })
+      Ui.label(text, Math.round(rect.right - 6 - font.measure(text)), rect.y + Math.round((rect.h - font.lineHeight) / 2), { face: Face.UI, colour })
     }
   }
 }
@@ -375,7 +375,7 @@ export class LockedLabel extends Widget {
 
   draw() {
     if (!this.visible) return
-    Ui.labelRight(this.text, this.rect.right - 6, this.rect.y + Math.round((this.rect.h - Ui.font(this.face).px) / 2),
+    Ui.labelRight(this.text, this.rect.right - 6, this.rect.y + Math.round((this.rect.h - Ui.font(this.face).lineHeight) / 2),
       { face: this.face, colour: this.colour, alpha: 0.8 })
   }
 }
@@ -397,7 +397,7 @@ export class Tooltip extends Widget {
     if (!this.visible || !this.text) return
     const font = Ui.font(this.face)
     const width = font.measure(this.text) + 8
-    const rect = Rect.of(this.rect.x, this.rect.y, width, font.px + 6)
+    const rect = Rect.of(this.rect.x, this.rect.y, width, font.lineHeight + 6)
     Ui.patch('tooltip', rect, { state: null })
     Ui.label(this.text, rect.x + 4, rect.y + 3, { face: this.face, colour: Palette.ink })
   }

@@ -44,7 +44,7 @@
     "STR_DISCLAIMER_FULL": "An unofficial, non-commercial fan project. Dungeons & Dragons, Phandelver and Below: The Shattered Obelisk and all Wizards of the Coast characters and locations are trademarks of Wizards of the Coast LLC. Used here without permission; no challenge to any trademark or copyright. This game will never be sold.",
     "STR_DISCLAIMER_ABRIDGED": "An unofficial, non-commercial fan project. · Never for sale.",
     "STR_ENGINE_LINE": "Made with HTML, CSS & JavaScript",
-    "STR_FONT_LINE": "UI type: 5x7 system font (MIT) & Silkscreen (OFL)",
+    "STR_FONT_LINE": "Type: Inter (OFL-1.1), subset for this build",
     "STR_VERSION_STAMP": "DELVE v{0} · fan work · {1}",
     "STR_SRD_ATTRIBUTION": "This work includes material from the System Reference Document 5.2.1 (\"SRD 5.2.1\") by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode",
     "STR_STUB_CARD_HINT": "This page is not built yet — the menu buttons are inert in this build.",

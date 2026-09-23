@@ -10,7 +10,8 @@
 //
 // Coverage (GDD-07 §13 QA list, the parts that exist in this build):
 //   palette mirror · string master · save ledger · dice & RNG streams ·
-//   shell state machine · bitmap text wrapping · menu layout rects ·
+//   shell state machine · text metrics and wrapping · the viewport fit ·
+//   menu layout rects ·
 //   the §5.5 Play/Continue pages · the §5.6 options rows and help line ·
 //   brand geometry · boot timeline.
 
@@ -26,9 +27,9 @@ import { Dice, RngStreams, Mode } from '../js/core/dice.js'
 import { GameState, State, VERSION } from '../js/core/state.js'
 import { InputActions } from '../js/core/input.js'
 import { Brand } from '../js/core/brand.js'
-import { parseBMFont, textWidth } from '../js/ui/bmfont.js'
-import { PixelFont } from '../js/ui/font.js'
+import { TextFace, loadFonts } from '../js/ui/font.js'
 import { Face, Rect, Ui } from '../js/ui/kit.js'
+import { fitViewport, WIDTH, HEIGHT } from '../js/ui/render.js'
 import { PillGroup, Slider, pillGroupWidth } from '../js/ui/widgets.js'
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -63,11 +64,11 @@ const readJSON = (path) => JSON.parse(text(path))
 
 await ShellData.load()
 
-const fonts = {}
-for (const [role, name] of Object.entries(readJSON('data/fonts.json').faces)) {
-  fonts[role] = new PixelFont(name, parseBMFont(text(`assets/fonts/${name}.fnt`)))
-}
-Ui.fonts = fonts // the kit measures with the real faces, as the page does
+// The real faces: `loadFonts` reads `data/fonts.json` and the baked metrics and
+// skips the `document.fonts` step (there is no document here), so the widths the
+// suite measures are the widths the page draws.
+const fonts = await loadFonts(async (path) => text(path))
+Ui.fonts = fonts
 
 const timings = ShellData.timings
 const screens = timings.screens
@@ -220,17 +221,55 @@ run('input actions', () => {
   check(!InputActions.consume('game_interact'), 'and not twice')
 })
 
-run('bitmap text', () => {
+run('text faces', () => {
   const ui = fonts.ui
   const body = fonts.body
-  eq(ui.name, 'pixel_ui_5', 'the chrome face is the 5 px face')
-  eq(body.lineHeight, 11, 'the 8 px body face sits on an 11 px line (§5.5 note)')
-  check(textWidth(ui, 'PLAY') > 0, 'a run has a width')
-  eq(textWidth(ui, 'PLAY'), ui.measure('PLAY'), 'the font and the parser agree on width')
-  const wrapped = body.wrap(ShellData.schema.tabs.find((tab) => tab.id === 'gameplay').rows.at(-1).help, 384)
-  check(wrapped.length >= 2, 'a long help string wraps onto several lines')
-  check(wrapped.every((line) => body.measure(line) <= 384), 'no wrapped line exceeds its width')
+  eq(Object.keys(fonts.byRole).sort().join(','), 'body,display,ui', 'the manifest names three roles')
+  eq(ui.px, 9, 'the chrome face is drawn at 9 px')
+  eq(body.px, 9, 'the prose face is drawn at 9 px')
+  eq(ui.lineHeight, 12, 'the chrome face sits on a 12 px line')
+  check(Number.isInteger(ui.measure('PLAYA Sg1 jam')) && Number.isInteger(body.measure('The quick brown fox')),
+    'a measured run is an integer, whatever the face')
+  check(body.measure('PLAY') < ui.measure('PLAY'), 'the chrome face is the wider, heavier one at the same size')
+  eq(ui.measure('PLAY'), ['P', 'L', 'A', 'Y'].reduce((sum, c) => sum + ui.advance(c), 0),
+    'a run is the sum of its advances')
+  eq(ui.file, 'assets/fonts/delve_sans_600.woff2', 'the chrome face is the SemiBold subset')
+  eq(body.file, 'assets/fonts/delve_sans_400.woff2', 'the prose face is the Regular subset')
+  eq(ui.font, '600 9px "Delve Sans", system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+    'the canvas font string names the stylesheet family')
+  const help = ShellData.optionRows().combat_pacing.help
+  const wrapped = body.wrap(help, 200)
+  check(wrapped.length >= 3, 'a long help string wraps onto several lines')
+  check(wrapped.every((line) => body.measure(line) <= 200), 'no wrapped line exceeds its width')
+  check(body.wrap(help, 384).length < wrapped.length, 'a wider column wraps to fewer lines')
+  const firstRun = screens.first_run
+  check(body.wrap(help, firstRun.content_w).length <= 2,
+    'the same help fits the First Run group in two lines (the 48 px pitch)')
   eq(ui.wrap('', 100).length, 1, 'an empty string is one empty line')
+  // A face is measured from the shipped metrics, not from a text rasteriser.
+  const metrics = readJSON('assets/fonts/font_metrics.json')
+  const units = metrics.sources[readJSON('data/fonts.json').faces.ui.source].advances[65] // 'A'
+  eq(ui.advance('A'), Math.max(1, Math.round((units * ui.px) / metrics.sources[readJSON('data/fonts.json').faces.ui.source].unitsPerEm)),
+    'an advance is the font unit scaled to the face size')
+  check(new TextFace('probe', 'Delve Sans', { size: 9, ascent: 9, descent: 3, lineHeight: 12 },
+    { file: 'x.woff2', weight: 400, unitsPerEm: 2048, advances: {} }).measure('??') === 10,
+    'a character with no advance falls back to half an em')
+})
+
+run('viewport fit', () => {
+  const wide = fitViewport(1920, 1080)
+  eq(wide.scale, 4, 'a 1920x1080 window scales the design 4x')
+  check(wide.x === 0 && wide.y === 0, 'an exact 16:9 window has no remainder')
+  const tall = fitViewport(1000, 1000)
+  eq(tall.scale, 1000 / WIDTH, 'the scale is the tighter of the two axes')
+  eq(tall.y, Math.round((1000 - HEIGHT * tall.scale) / 2), 'the remainder is split above and below')
+  check(WIDTH * tall.scale <= 1000.001 && HEIGHT * tall.scale <= 1000.001, 'the design always fits the viewport')
+  const small = fitViewport(320, 180)
+  check(small.scale > 0, 'a window smaller than the design still maps it')
+  const phone = fitViewport(390, 844)
+  check(WIDTH * phone.scale <= 390.001 && HEIGHT * phone.scale <= 844.001, 'a portrait phone fits the design')
+  check(phone.x <= 0.51 && phone.x >= -0.51, 'a portrait phone centres the design horizontally')
+  eq(fitViewport(0, 0).scale, Math.min(1 / WIDTH, 1 / HEIGHT), 'a degenerate viewport does not divide by zero')
 })
 
 run('menu layout', () => {
@@ -270,7 +309,7 @@ run('first run page', () => {
     const lines = fonts.body.wrap(rows[rowId].help, contentW)
     const helpTop = groups[rowId === 'difficulty' ? 0 : 1] + helpOffset
     check(helpTop + lines.length * bodyLine <= 224, `${rowId} help clears the footer buttons`)
-    check(lines.length <= 3, `${rowId} help stays inside the 48 px group pitch`)
+    check(lines.length <= 2, `${rowId} help stays inside the 48 px group pitch`)
   }
   const subs = fonts.body.wrap(rows.subtitles.help, Rect.from(page.comfort_help_rect).w)
   const comfort = fonts.body.wrap(rows.reduced_motion.help, Rect.from(page.comfort_right_help_rect).w)
@@ -326,7 +365,7 @@ run('options screen', () => {
     const lines = fonts.ui.wrap(definition.help ?? '', help.w)
     if (lines.length > longest.length) longest = lines
   }
-  eq(longest.length, 3, 'the longest options help takes three chrome lines (§5.6 note)')
+  eq(longest.length, 2, 'the longest options help takes two chrome lines (§5.6 note)')
   check(help.y + longest.length * options.help_line_height <= 270, 'the help line stays inside the canvas')
   const scroller = Rect.from(options.scrollbar_rect)
   check(scroller.right <= 480 && scroller.bottom <= 270, 'the scrollbar is inside the canvas')

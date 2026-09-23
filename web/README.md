@@ -50,24 +50,24 @@ good enough to serve.
 
 ```
 web/
-├ index.html            the page: one 480×270 canvas, one module entry point
-├ css/shell.css         centres the canvas, stops the browser resampling pixels
+├ index.html            the page: one full-window canvas, one module entry point
+├ css/shell.css         the full-window canvas and the webfont faces
 ├ data/                 every string, rect, timing and schema the game draws
 │  ├ strings.json       §5.11 master (spec block) + this build's strings
 │  ├ shell_timings.json §5.2/§5.4/§5.5/§5.6 timings and rects, verbatim
 │  ├ shell_content.json loading tips, credits blocks, legal block keys, beat list
 │  ├ options_schema.json §5.6 rows (5 tabs, 39 rows)
 │  ├ brand.json         lockup geometry (emblem steps, wordmark cells)
-│  ├ fonts.json         which bitmap face plays which role
+│  ├ fonts.json         the three text faces: source, size, ascent, line height
 │  └ audio_cues.json    121 cues, played by id
 ├ js/
 │  ├ main.js            entry point: boot the shell, start the frame loop
 │  ├ shell.js           canvas, screen swap, frame clock, input routing
 │  ├ core/              data · palette · brand · state · save · dice · input · sound
-│  ├ ui/                render · bmfont · font · kit · widgets
+│  ├ ui/                render · font · kit · widgets
 │  └ screens/           screen · legal · sting · menu · stub · first_run · ledger · options
 ├ assets/
-│  ├ fonts/             pixel_ui_5 · pixel_body_8 · pixel_display_10 (+ LICENCES)
+│  ├ fonts/             delve_sans_400/600.woff2 · font_metrics.json (+ LICENCES)
 │  ├ pixel/palette/     the locked 32 + 8 ramp and the below-LUT
 │  ├ pixel/ui/          emblem, wordmark, lockups, nine-patches, buttons, seal
 │  └ audio/             the four cues that already exist (menu theme + 3 VO lines)
@@ -88,8 +88,11 @@ web/
 - **Screens are pages, not widgets.** A screen builds its widget list, draws it
   and handles input; it never reaches into another screen. Navigation goes through
   `ShellScreen.go_to()` and the shell swaps the page.
-- **Whole pixels everywhere.** Rects are integers, the canvas is 480×270, the CSS
-  scale is a whole number and bitmap faces are drawn 1:1 — nothing resamples.
+- **Whole pixels everywhere.** Rects are integers and text is measured in whole
+  pixels from the faces' baked advances (never `measureText`, which returns
+  fractions). The canvas is the window: the 480×270 design space is mapped onto
+  it by one uniform scale, pixel art is blitted nearest-neighbour, and the type
+  is rasterised by the browser at that scale — so it is sharp on every screen.
 
 ## Gates
 
@@ -100,6 +103,7 @@ node web/tests/run.mjs             # 514 unit checks
 node web/tests/smoke.mjs           # boots every page against a DOM stub
 node web/tests/shoot.mjs           # renders every page through the real painter
 python3 tools/build_all.py --check # asset builders are reproducible (needs fontTools)
+python3 tools/build_text_faces.py  # re-cut the text faces after a copy change
 python3 tools/preview_screen.py    # the static layout lint, straight from the assets
 node web/tests/reel.mjs            # the boot sequence as web/preview/reel.gif (CI artifact)
 ```

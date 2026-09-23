@@ -19,5 +19,8 @@ deliverables/
 
 # --- generated previews ------------------------------------------------
 # `tools/preview_screen.py` renders the pages to PNG so a layout can be checked
-# without a browser; the sheets are regenerable, so they stay out of Git.
+# without a browser; the sheets are regenerable, so they stay out of Git. The
+# text atlas in `tools/atlas/` is not preview output: the offline renderers draw
+# their text from it, so it ships and is checked by `check_project.py`.
 web/preview/
+tools/__pycache__/

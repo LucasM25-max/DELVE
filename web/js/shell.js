@@ -6,8 +6,8 @@
 // sits in `localStorage`.
 //
 // Responsibilities, in order of the boot sequence:
-//   1. size the 480×270 canvas to the largest whole-number scale that fits;
-//   2. load `data/*.json`, the three bitmap faces and the art the kit needs;
+//   1. size the canvas to the window and fit the 480×270 design space to it;
+//   2. load `data/*.json`, the three text faces and the art the kit needs;
 //   3. fold the save's settings over the schema defaults, apply the key rebinds;
 //   4. show the legal screen, and from there the boot sequence runs itself.
 
@@ -17,7 +17,7 @@ import { InputActions, SHELL_ACTIONS } from './core/input.js'
 import { SaveStore } from './core/save.js'
 import { Sound } from './core/sound.js'
 import { Palette } from './core/palette.js'
-import { Painter, WIDTH, HEIGHT, preloadImages } from './ui/render.js'
+import { Painter, WIDTH, HEIGHT, fitViewport, preloadImages } from './ui/render.js'
 import { loadFonts } from './ui/font.js'
 import { Face, Rect, Ui, UI_DIR } from './ui/kit.js'
 import { LegalScreen } from './screens/legal.js'
@@ -189,28 +189,43 @@ export class Shell {
   // --- sizing -----------------------------------------------------------
 
   /**
-   * Whole-number scaling only: the canvas is 480×270 and CSS stretches it by an
-   * integer factor, so a game pixel is always a square of screen pixels.
+   * Fill the window.
+   *
+   * The canvas *is* the viewport: its backing store is the window in device
+   * pixels (bounded — the shell repaints every frame), and `fitViewport` maps
+   * the 480×270 design space onto it with one uniform scale, so the game reaches
+   * two edges whichever way the window is shaped and keeps its proportions. What
+   * the scale leaves over is split between the other two sides and painted by
+   * the screen's own ground (`Painter.fillViewport`), so there is never a bar.
    */
   resize() {
-    const available = { w: window.innerWidth, h: window.innerHeight }
-    const scale = Math.max(1, Math.floor(Math.min(available.w / WIDTH, available.h / HEIGHT)))
-    this.scale = scale
-    this.canvas.width = WIDTH
-    this.canvas.height = HEIGHT
-    this.canvas.style.width = `${WIDTH * scale}px`
-    this.canvas.style.height = `${HEIGHT * scale}px`
-    const rect = this.canvas.getBoundingClientRect()
-    this.bounds = rect
-    return scale
+    const cssW = Math.max(1, window.innerWidth)
+    const cssH = Math.max(1, window.innerHeight)
+    // Retina gets its extra pixels, up to a budget: 2.6 Mpx is more than the art
+    // and the type need and it keeps a full repaint every frame cheap. Never
+    // below 1 — a big window renders 1:1 rather than blurring the type.
+    const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2,
+      Math.sqrt(2_600_000 / (cssW * cssH))))
+    const width = Math.max(WIDTH, Math.round(cssW * dpr))
+    const height = Math.max(HEIGHT, Math.round(cssH * dpr))
+    this.canvas.width = width
+    this.canvas.height = height
+    const viewport = fitViewport(width, height)
+    this.scale = viewport.scale
+    this.painter.setViewport(viewport)
+    this.bounds = this.canvas.getBoundingClientRect()
+    return viewport.scale
   }
 
-  /** Window coordinates -> canvas pixels, integer-snapped. */
+  /** Window coordinates -> design pixels, integer-snapped. */
   toCanvas(event) {
     const rect = this.bounds ?? this.canvas.getBoundingClientRect()
-    const x = Math.floor(((event.clientX - rect.left) / rect.width) * WIDTH)
-    const y = Math.floor(((event.clientY - rect.top) / rect.height) * HEIGHT)
-    return { x, y }
+    const toDevice = this.canvas.width / (rect.width || 1)
+    const { scale, x, y } = this.painter.viewport
+    return {
+      x: Math.floor(((event.clientX - rect.left) * toDevice - x) / scale),
+      y: Math.floor(((event.clientY - rect.top) * toDevice - y) / scale),
+    }
   }
 
   // --- input ------------------------------------------------------------

@@ -56,17 +56,17 @@
     "disclaimer_alpha": 0.6,
     "disclaimer_rect": [
       10,
-      254,
-      348,
+      258,
+      300,
       8
     ],
     "version_stamp_rect": [
       140,
-      262,
+      258,
       330,
-      8
+      10
     ],
-    "_footer_note": "GDD-07 §5.4 puts both footer lines on one row at y 259. At the shipped 5 px face the abridged disclaimer measures 360 px and the version stamp 252 px (612 px of 480), so one row would overprint. The two strings are stacked instead - disclaimer top-left, stamp bottom-right - both verbatim and both inside the canvas. The spec's original numbers are kept in spec_rects for reference.",
+    "_footer_note": "GDD-07 §5.4 puts both footer lines on one row at y 259. The shipped 9 px face measures the abridged disclaimer at 249 px and the version stamp at 195 px — 444 px of the 480 px row — so the spec's single row is back: disclaimer at x 10, stamp right-aligned to x 470. The line box is 12 px (ascent 9 + descent 3), so the row sits at y 258: the spec's 259 would push the last row of any descender off the canvas. The spec's original numbers are kept in spec_rects for reference.",
     "spec_rects": {
       "disclaimer": [
         10,
@@ -139,8 +139,8 @@
         104,
         152
       ],
-      "label_to_pills": 8,
-      "help_line_spacing": -3,
+      "label_to_pills": 12,
+      "help_line_spacing": -2,
       "right_column_x": 240,
       "back_rect": [
         56,
@@ -154,8 +154,8 @@
         148,
         18
       ],
-      "help_offset_y": 24,
-      "help_height": 24,
+      "help_offset_y": 28,
+      "help_height": 20,
       "comfort_help_rect": [
         48,
         178,
@@ -168,7 +168,7 @@
         184,
         24
       ],
-      "_note": "Group pitch is 48 px: label 8 + pills 16 + up to three 8 px help lines = 48 (§5.5 fixes y 56/104/152, so the groups must stack exactly on that pitch). The 8 px body face has an 11 px line height, so help blocks pass line_spacing -3 to land on the 8 px stack. Content runs 48..432 — the panel's inner width — which keeps the Difficulty help to two lines and the longer Combat pacing help to three."
+      "_note": "Group pitch is 48 px: label 12 + pills 16 + two 10 px help lines = 48 (§5.5 fixes y 56/104/152, so the groups stack on that pitch). The body face has a 12 px line height, so the help blocks pass line_spacing -2 and wrap to two lines. Content runs 48..432 — the panel's inner width. Groups are floors, not fixed anchors: a longer help drops the groups below it rather than printing over them."
     },
     "ledger": {
       "panel": [
@@ -268,7 +268,7 @@
         176,
         244,
         288,
-        8
+        12
       ],
       "back_rect": [
         88,
@@ -289,8 +289,8 @@
         20
       ],
       "row_pitch": 20,
-      "help_line_height": 8,
-      "_note_help": "The spec fixes no help line for this page. The schema's help text is drawn in the 5 px chrome face (the same face as the menu footer and the ledger hint) beside BACK at y 244, wrapped to 288 px: the longest strings (§5.6 difficulty and combat pacing) take three 8 px chrome lines, ending at y 268 inside the canvas. First Run, which the spec does size at 8 px, uses the body face."
+      "help_line_height": 12,
+      "_note_help": "The spec fixes no help line for this page. The schema's help text is drawn in the 10 px chrome face (the same face as the menu footer and the ledger hint) beside BACK at y 244, wrapped to 288 px. The face's line height is 12 px, so the help wraps to at most two lines (ending by y 268 inside the canvas); first Run, which the spec does size at 8 px, uses the body face."
     }
   },
   "loading": {

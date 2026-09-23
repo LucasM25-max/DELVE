@@ -2,8 +2,9 @@
 """Render the shell's screens to PNG without a browser, from the shipped assets.
 
 This is the layout lint: it draws the same rects, the same strings, the same
-fonts and the same nine-patches the pages do, so a preview that looks right is
-strong evidence the live page looks right too — and it catches text that would
+fonts (the same coverage atlas `web/tests/shoot.mjs` draws through) and the same
+nine-patches the pages do, so a preview that looks right is strong evidence the
+live page looks right too — and it catches text that would
 overflow its panel before anyone opens the site. `web/tests/shoot.mjs` is the
 counterpart that renders the *JavaScript* screens through a real painter.
 
@@ -12,7 +13,8 @@ counterpart that renders the *JavaScript* screens through a real painter.
     python3 tools/preview_screen.py --scale 2       # 2x for legibility
 
 Output lands in `web/preview/<screen>.png` (git-ignored). The previewer reads
-`web/data/`, `web/assets/fonts/*.fnt`, `web/assets/pixel/ui/` and the same layout
+`web/data/`, the text faces' metrics and atlas (`web/assets/fonts/`, `tools/atlas/`),
+`web/assets/pixel/ui/` and the same layout
 constants the screens use.
 """
 
@@ -32,6 +34,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WEB = os.path.join(ROOT, "web")
 UI_DIR = os.path.join(WEB, "assets", "pixel", "ui")
 FONT_DIR = os.path.join(WEB, "assets", "fonts")
+ATLAS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "atlas")
 OUT_DIR = os.path.join(WEB, "preview")
 
 WIDTH, HEIGHT = 480, 270
@@ -40,49 +43,61 @@ WIDTH, HEIGHT = 480, 270
 # --------------------------------------------------------------------------
 # fonts
 # --------------------------------------------------------------------------
-class BitmapFont:
-    def __init__(self, name: str) -> None:
-        self.name = name
-        path = os.path.join(FONT_DIR, "%s.fnt" % name)
-        self.chars: dict[str, dict] = {}
-        self.line_height = 8
-        self.ascent = 7
-        page = None
-        for line in open(path, encoding="utf-8").read().splitlines():
-            tag, _, rest = line.partition(" ")
-            if tag == "common":
-                values = dict(item.split("=") for item in rest.split(" ") if "=" in item)
-                self.line_height = int(values.get("lineHeight", 8))
-                self.ascent = int(values.get("base", 7))
-            elif tag == "page":
-                page = rest.split('file="')[1].split('"')[0]
-            elif tag == "char":
-                values = dict(item.split("=") for item in rest.split(" ") if "=" in item)
-                self.chars[chr(int(values["id"]))] = {
-                    key: int(values[key]) for key in ("x", "y", "width", "height",
-                                                      "xoffset", "yoffset", "xadvance")
-                }
-        self.atlas = read_png(os.path.join(FONT_DIR, page))
+class TextFace:
+    """One role's type, as the offline renderer draws it.
+
+    Metrics come from `web/data/fonts.json` and `web/assets/fonts/font_metrics.json`
+    (the same two files the page reads), and the ink comes from the 1:1 coverage
+    atlas `tools/build_text_faces.py` bakes into `tools/atlas/` — a browser has a
+    font rasteriser, this previewer does not. `draw()` takes the top-left of the
+    line box, exactly as `TextFace.draw` does in the page.
+    """
+
+    def __init__(self, role: str) -> None:
+        manifest = json.load(open(os.path.join(WEB, "data", "fonts.json"), encoding="utf-8"))
+        metrics = json.load(open(os.path.join(FONT_DIR, "font_metrics.json"), encoding="utf-8"))
+        atlas = json.load(open(os.path.join(ATLAS_DIR, "glyph_atlas.json"), encoding="utf-8"))
+        self.role = role
+        definition = manifest["faces"][role]
+        entry = atlas["faces"][role]
+        source = metrics["sources"][definition["source"]]
+        self.size = int(definition["size"])
+        self.ascent = int(definition["ascent"])
+        self.descent = int(definition["descent"])
+        self.line_height = int(definition["lineHeight"])
+        self.units_per_em = int(source["unitsPerEm"])
+        self.advances = {int(code): units for code, units in source["advances"].items()}
+        self.glyphs = {int(code): rect for code, rect in entry["glyphs"].items()}
+        self.atlas = read_png(os.path.join(ATLAS_DIR, entry["file"]))
+        # A character with no advance (a browser fallback glyph) still needs a
+        # width; half an em is what `js/ui/font.js` assumes too.
+        self.fallback = max(1, round(self.size * 0.5))
 
     def advance(self, char: str) -> int:
-        glyph = self.chars.get(char)
-        return glyph["xadvance"] if glyph else 0
+        units = self.advances.get(ord(char))
+        if units is None:
+            return self.fallback
+        return max(1, int(units * self.size / self.units_per_em + 0.5))
 
     def text_width(self, text: str) -> int:
         return sum(self.advance(char) for char in text)
 
     def draw(self, canvas: Canvas, text: str, x: int, y: int, colour) -> None:
-        pen = x
+        """Composite one run at (x, y): the top-left of its line box."""
+        pen = int(x)
+        top = int(y)
         for char in text:
-            glyph = self.chars.get(char)
-            if glyph is None:
-                continue
-            for gy in range(glyph["height"]):
-                for gx in range(glyph["width"]):
-                    if self.atlas.get(glyph["x"] + gx, glyph["y"] + gy)[3] > 0:
-                        canvas.set(pen + glyph["xoffset"] + gx,
-                                   y + glyph["yoffset"] + gy, colour)
-            pen += glyph["xadvance"]
+            glyph = self.glyphs.get(ord(char))
+            if glyph is not None:
+                gx, gy, width, height, offset_x, offset_y = glyph
+                for row in range(height):
+                    for column in range(width):
+                        coverage = self.atlas.get(gx + column, gy + row)[3]
+                        if coverage <= 0:
+                            continue
+                        blend(canvas, pen + offset_x + column, top + offset_y + row,
+                              colour, coverage / 255.0)
+            pen += self.advance(char)
 
     def draw_centred(self, canvas: Canvas, text: str, centre_x: int, y: int, colour) -> None:
         self.draw(canvas, text, centre_x - self.text_width(text) // 2, y, colour)
@@ -107,7 +122,25 @@ class BitmapFont:
     def measure(self, text: str, width: float, line_spacing: int = 0) -> tuple[int, int]:
         wrapped = self.wrap(text, width)
         lines = wrapped.split("\n")
-        return max(self.text_width(line) for line in lines), len(lines) * (self.line_height + line_spacing)
+        return (max(self.text_width(line) for line in lines),
+                len(lines) * (self.line_height + line_spacing))
+
+
+def blend(canvas: Canvas, x: int, y: int, colour, coverage: float) -> None:
+    """Alpha-composite one coverage-weighted pixel onto the canvas."""
+    if coverage <= 0 or not canvas.in_bounds(x, y):
+        return
+    if coverage >= 1:
+        canvas.set(x, y, colour)
+        return
+    r, g, b, a = canvas.get(x, y)
+    alpha = min(1.0, coverage) * (colour[3] / 255.0)
+    canvas.set(x, y, (
+        int(round(colour[0] * alpha + r * (1 - alpha))),
+        int(round(colour[1] * alpha + g * (1 - alpha))),
+        int(round(colour[2] * alpha + b * (1 - alpha))),
+        int(round(255 * (alpha + (a / 255.0) * (1 - alpha)))),
+    ))
 
 
 # --------------------------------------------------------------------------
@@ -118,11 +151,7 @@ class Shell:
         self.strings = json.load(open(os.path.join(WEB, "data", "strings.json"), encoding="utf-8"))
         self.timings = json.load(open(os.path.join(WEB, "data", "shell_timings.json"), encoding="utf-8"))
         self.kit = json.load(open(os.path.join(UI_DIR, "ui_kit.json"), encoding="utf-8"))
-        self.fonts = {
-            "ui": BitmapFont("pixel_ui_5"),
-            "body": BitmapFont("pixel_body_8"),
-            "display": BitmapFont("pixel_display_10"),
-        }
+        self.fonts = {role: TextFace(role) for role in ("ui", "body", "display")}
         self._images: dict[str, Canvas] = {}
 
     def t(self, key: str) -> str:
