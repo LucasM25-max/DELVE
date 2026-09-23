@@ -10,7 +10,12 @@
 #   run.mjs           the ported unit suite (Node, no dependencies);
 #   smoke.mjs         the whole shell booted against a DOM stub — every page;
 #   shoot.mjs         the same pages rasterised through a pixel-true canvas, so
-#                     the run also leaves pictures of what the deploy will show.
+#                     the run also leaves pictures of what the deploy will show,
+#                     and the tinted text measured against each face's ink box.
+#
+# A second job records the boot sequence as a GIF (`web/tests/reel.mjs`) and keeps
+# it with the screenshots — the stills say the pages are right, the reel says the
+# timings are. It is separate so a capture problem never reads as a gate failure.
 #
 # A red run here means a red deploy later; Vercel only ever serves what is green.
 
@@ -59,4 +64,30 @@ jobs:
         with:
           name: shell-pages
           path: web/preview/*.png
+          if-no-files-found: error
+
+  reel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # The runner's ImageMagick assembles the frames; without it the job still
+      # writes the frames and prints the command, so a missing `convert` is not
+      # a failure — an empty artifact is.
+      - name: Record the boot sequence
+        run: node web/tests/reel.mjs
+
+      - name: Keep the reel for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: boot-reel
+          path: web/preview/reel.gif
           if-no-files-found: error
