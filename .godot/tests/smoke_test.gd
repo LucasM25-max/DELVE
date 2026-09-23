@@ -214,9 +214,13 @@ func run_tests() -> void:
 		if (node as Label).text.contains("GODOT EDITION 0.3"):
 			version_seen = true
 	check(version_seen, "Menu shows the Godot edition string")
-	check(yard.get_node_or_null("Terrain3D/DirtGround") != null and yard.get_child_count() <= 8, "Yard keeps a tight node budget (7 scene roots + HUD layer)")
-	var gmat: BaseMaterial3D = yard.get_node("Terrain3D/DirtGround/Mesh").mesh.surface_get_material(0)
-	check(gmat != null and gmat.albedo_texture != null, "Yard ground uses the authored packed-dirt maps")
+	check(yard.get_node_or_null("Terrain3D/DirtGround") != null
+		and yard.get_node_or_null("Terrain3D/ForecourtCobble") != null
+		and yard.get_child_count() <= 8, "Yard keeps a tight node budget (7 scene roots + HUD layer)")
+	var gmat: BaseMaterial3D = yard.get_node(
+		"Terrain3D/DirtGround/Ground/M_YRD_GROUND_YARD").get_active_material(0)
+	check(gmat != null and gmat.albedo_texture != null and gmat.vertex_color_use_as_albedo,
+		"Yard floor carries the packed-dirt texture set on displaced 3D ground")
 	check(yard.get_node("Art").get_child_count() == 0, "Art slot stays clear (spec props are placed under Level)")
 	var walls: Node3D = yard.get_node_or_null("Level/Walls")
 	check(walls != null, "Perimeter wall modules live under Level/Walls")

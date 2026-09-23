@@ -115,8 +115,10 @@ def build() -> str:
     assert len(modules) == 47, f"expected 47 wall modules, got {len(modules)}"
 
     d = Doc()
-    # 41 ext resources + 28 sub resources + 1
-    d.w('[gd_scene load_steps="70" format=3 uid="uid://delve-testyard-02"]')
+    # 43 ext resources (40 base + 2 ground GLBs + Corwin) + 24 sub
+    # resources (27 base - Plane/Box ground mesh+shape pairs + LaneShape)
+    # + 1 — self-checked against the emitted lines at the end of build().
+    d.w('[gd_scene load_steps="68" format=3 uid="uid://delve-testyard-02"]')
     d.w()
     d.w('[ext_resource type="Script" path="res://scripts/world/test_yard.gd" id="1_yard"]')
     d.w('[ext_resource type="PackedScene" path="res://scenes/actors/player.tscn" id="2_player"]')
@@ -159,36 +161,36 @@ def build() -> str:
     d.w(f'[ext_resource type="PackedScene" path="{MODELS}/M_YRD_NOTICE_BOARD.glb" id="32_notice_board"]')
     d.w(f'[ext_resource type="PackedScene" path="{MODELS}/M_YRD_BARREL.glb" id="33_barrel"]')
     d.w(f'[ext_resource type="PackedScene" path="{MODELS}/M_YRD_LANTERN_POST.glb" id="34_lantern_post"]')
-    d.w('[ext_resource type="PackedScene" path="res://scenes/actors/npc_corwin.tscn" id="41_corwin"]')
+    d.w(f'[ext_resource type="PackedScene" path="{MODELS}/M_YRD_GROUND_YARD.glb" id="41_ground_yard"]')
+    d.w(f'[ext_resource type="PackedScene" path="{MODELS}/M_YRD_GROUND_FORECOURT.glb" id="42_ground_forecourt"]')
+    d.w('[ext_resource type="PackedScene" path="res://scenes/actors/npc_corwin.tscn" id="43_corwin"]')
     d.w()
 
-    # Terrain3D-ready ground: authored maps are used by the fallback meshes so
-    # the yard also renders when the desktop Terrain3D GDExtension is absent.
+    # Terrain3D-ready ground: two displaced heightfield GLBs (0.5 m dirt /
+    # 0.25 m cobble grids, world-scale UVs already baked at the GDD-03 §6
+    # tile sizes — dirt 4 m, cobble 3 m). Vertex colours carry the macro
+    # albedo variation that breaks up the tile repeat; the materials below
+    # light-map them with mipmapped anisotropic filtering so the floor
+    # stays crisp at grazing dawn angles instead of shimmering or smearing.
+    # Collision is baked from these same meshes at runtime (trimesh) in
+    # scripts/world/test_yard.gd — see _setup_ground_collision().
     d.w('[sub_resource type="StandardMaterial3D" id="DirtMat"]')
+    d.w('vertex_color_use_as_albedo = true')
     d.w('albedo_texture = ExtResource("37_dirt_albedo")')
     d.w('normal_enabled = true')
     d.w('normal_texture = ExtResource("38_dirt_normal")')
+    d.w('normal_scale = 1.2')
     d.w('roughness_texture = ExtResource("40_dirt_roughness")')
+    d.w('texture_filter = 5')
     d.w()
     d.w('[sub_resource type="StandardMaterial3D" id="CobbleMat"]')
+    d.w('vertex_color_use_as_albedo = true')
     d.w('albedo_texture = ExtResource("35_cobble_albedo")')
     d.w('normal_enabled = true')
     d.w('normal_texture = ExtResource("36_cobble_normal")')
+    d.w('normal_scale = 1.3')
     d.w('roughness_texture = ExtResource("39_cobble_roughness")')
-    d.w()
-    d.w('[sub_resource type="PlaneMesh" id="DirtMesh"]')
-    d.w('material = SubResource("DirtMat")')
-    d.w('size = Vector2(44, 38)')
-    d.w()
-    d.w('[sub_resource type="PlaneMesh" id="CobbleMesh"]')
-    d.w('material = SubResource("CobbleMat")')
-    d.w('size = Vector2(14, 6)')
-    d.w()
-    d.w('[sub_resource type="BoxShape3D" id="DirtShape"]')
-    d.w('size = Vector3(44, 0.2, 38)')
-    d.w()
-    d.w('[sub_resource type="BoxShape3D" id="CobbleShape"]')
-    d.w('size = Vector3(14, 0.2, 6)')
+    d.w('texture_filter = 5')
     d.w()
     # PBR materials — GLBs are material-less (GDD-04); textures 4x2 m stone
     # tile, 1 m wood/iron/prop tiles (UVs are already in tile units)
@@ -304,29 +306,31 @@ def build() -> str:
     d.w()
     # Terrain3D by Tokisan Games is the intended desktop terrain authoring
     # layer. This named adapter keeps the scene portable without the binary
-    # addon: Terrain3D can consume these same maps and replace the two meshes.
+    # addon: Terrain3D can consume these same maps and replace the two
+    # heightfield meshes. Both GLBs are authored in world space (identity
+    # instance transform) so their rims land exactly on the wall inner
+    # faces and the forecourt kerb; CollisionShape3D nodes are filled from
+    # the meshes as a trimesh at runtime (_setup_ground_collision).
     d.w('[node name="Terrain3D" type="Node3D" parent="."]')
     d.w('metadata/_terrain3d_provider = "Tokisan Games Terrain3D"')
     d.w('metadata/_terrain3d_albedo_maps = "res://assets/textures/T_YRD_DIRT_albedo.png,res://assets/textures/T_YRD_COBBLE_albedo.png"')
     d.w('metadata/_terrain3d_usage = "natural ground; clipmap source maps"')
     d.w()
     d.w('[node name="DirtGround" type="StaticBody3D" parent="Terrain3D"]')
-    d.w('transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 25)')
     d.w()
-    d.w('[node name="Mesh" type="MeshInstance3D" parent="Terrain3D/DirtGround"]')
-    d.w('mesh = SubResource("DirtMesh")')
+    d.w('[node name="Ground" parent="Terrain3D/DirtGround" instance=ExtResource("41_ground_yard")]')
+    d.w('[node name="M_YRD_GROUND_YARD" parent="Terrain3D/DirtGround/Ground"]')
+    d.w('surface_material_override/0 = SubResource("DirtMat")')
     d.w()
     d.w('[node name="Collision" type="CollisionShape3D" parent="Terrain3D/DirtGround"]')
-    d.w('shape = SubResource("DirtShape")')
     d.w()
     d.w('[node name="ForecourtCobble" type="StaticBody3D" parent="Terrain3D"]')
-    d.w('transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 3)')
     d.w()
-    d.w('[node name="Mesh" type="MeshInstance3D" parent="Terrain3D/ForecourtCobble"]')
-    d.w('mesh = SubResource("CobbleMesh")')
+    d.w('[node name="Ground" parent="Terrain3D/ForecourtCobble" instance=ExtResource("42_ground_forecourt")]')
+    d.w('[node name="M_YRD_GROUND_FORECOURT" parent="Terrain3D/ForecourtCobble/Ground"]')
+    d.w('surface_material_override/0 = SubResource("CobbleMat")')
     d.w()
     d.w('[node name="Collision" type="CollisionShape3D" parent="Terrain3D/ForecourtCobble"]')
-    d.w('shape = SubResource("CobbleShape")')
     d.w()
     d.w('[node name="Art" type="Node3D" parent="."]')
     d.w()
@@ -502,7 +506,7 @@ def build() -> str:
     # gate/lane), verified visually (docs/11 Steps 4 + 7).
     d.w('[node name="NPCs" type="Node3D" parent="."]')
     d.w()
-    d.w('[node name="Corwin" parent="NPCs" instance=ExtResource("41_corwin")]')
+    d.w('[node name="Corwin" parent="NPCs" instance=ExtResource("43_corwin")]')
     d.w(f"transform = {tf(ROT180, 2.5, 0.16, 1.5)}")
     d.w()
     # TR_A_LANE (GDD-03 §4.A S5): sphere r3 at spec (0,-4), lifted to y=1.
@@ -517,7 +521,12 @@ def build() -> str:
     d.w()
     d.w('[connection signal="body_entered" from="TR_A_LANE" to="NPCs/Corwin" method="_on_lane_body_entered"]')
 
-    return "\n".join(d.lines) + "\n"
+    text = "\n".join(d.lines) + "\n"
+    steps = text.count("[ext_resource ") + text.count("[sub_resource ") + 1
+    assert f'load_steps="{steps}"' in text, (
+        f"gd_scene header load_steps must equal ext+sub+1 = {steps}"
+    )
+    return text
 
 
 if __name__ == "__main__":

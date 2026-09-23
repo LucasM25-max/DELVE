@@ -1,13 +1,13 @@
 # 10 — YARD BUILD REPORT (GDD-03, Area A + perimeter)
 
-**Status: COMPLETE & QA-verified** (headless `QA_YARD_PASS`, 16 checks;
-smoke test 11/11) — extended 2026-09-22 with the Corwin guard NPC and a
-minimal `TR_A_LANE` per `docs/11_CORWIN_GUARD_NPC_IMPLEMENTATION_PLAN.md`
-(headless `QA_YARD_PASS`, 41 checks; smoke 80/80 all-green). Scope: yard walls,
-gatehouse, portcullis, gate doors, props A1–A4, and Corwin at A1 of
-`03_NEVERWINTER_YARD_LEVEL_SPEC.md` §4.A. Explicitly out of scope per
-user direction: the dock lane (R1: A5–A10, city gate, lane props) and
-anything outside the walls.
+**Status: COMPLETE & QA-verified** (headless `QA_YARD_PASS`, 50 checks;
+smoke 80/80 all-green) — extended 2026-09-22 with the displaced 3D ground
+and with the Corwin guard NPC and a minimal `TR_A_LANE` per
+`docs/11_CORWIN_GUARD_NPC_IMPLEMENTATION_PLAN.md`. Scope: yard walls,
+gatehouse, portcullis, gate doors, props A1–A4, the displaced 3D ground,
+and Corwin at A1 of `03_NEVERWINTER_YARD_LEVEL_SPEC.md` §4.A. Explicitly
+out of scope per user direction: the dock lane (R1: A5–A10, city gate,
+lane props) and anything outside the walls.
 
 ## What was built
 
@@ -21,32 +21,42 @@ anything outside the walls.
 | A2 notice board | 1.4 × 0.1 × 1.8, readable | 58 tris; parchment face with legible-look muster writing + wax seal; faces gate (D3) |
 | A3 barrels ×2 | 0.6⌀ × 0.9 @ (3.4,2.2)/(3.6,2.9) r15/40 | 240 tris each; bulged 16-stave body, 3 iron hoops (D5) |
 | A4 lanterns ×2 | 0.2⌀ × 2.6 @ (±3.2,0.8), 2400 K practicals | 120 tris each; iron post, bronze fittings, emissive glass insert + `OmniLight3D` (1, 0.588, 0.314) E3 D7 |
-| Textures | 1 K sets per GDD-03 §6 | 10 authored raster PBR PNGs (barrel oak, crate pine, bronze sets + parchment albedo); 4 authored ground PNGs (cobble and packed dirt); 9 wall-era PNGs unchanged |
+| Textures | 1 K sets per GDD-03 §6 | 10 authored raster PBR PNGs (barrel oak, crate pine, bronze sets + parchment albedo); 6 authored ground PNGs (cobble and packed dirt, seam-welded to wrap pixel-perfectly for the 4 m / 3 m tiling); 9 wall-era PNGs unchanged |
+| Floor | packed dirt + 14 × 6 m forecourt cobble, flat is unacceptable | two displaced heightfield GLBs: `M_YRD_GROUND_YARD` (44 × 44 m, 0.5 m grid, ±10 cm undulation, wall lips, worn muster lane via vertex tints) and `M_YRD_GROUND_FORECOURT` (camber + flush gate sill + kerb skirts); runtime trimesh collision |
 | Player | spawn at forecourt after T0 fade | (0, 0.5, 5) facing the gate |
 | A1 Corwin NPC | guard: home A1; idle: leans, scans lane; blocks nothing | CC0 Quaternius body + UAL Idle (R13 pipeline), 1.82 m, guard-blue tint (D7), at (2.5, 0.16, 1.5) ROT180; procedural lean (D8) + lane scan; spatialised Voice with VO_GRD_001..003 (001 wired, see D9) |
 | TR_A_LANE | sphere r3 @(0,−4): first entry → VO_GRD_001 + `STR_J_LANE` | Area3D at Godot (0, 1, −4), one-shot `Corwin.say("VO_GRD_001")`; journal note deferred (D9) |
 
-All 12 GLBs: `assets/models/` (manifest.json authoritative).
+All 14 GLBs: `assets/models/` (manifest.json authoritative).
 All 25 textures: `assets/textures/` (T_YRD_*).
 
 ## Pipeline
 
 * **Meshes** — `tools/meshes/gltf_lib.py` (builders + minimal GLB
-  writer, stdlib only) → `tools/meshes/build_all.py` → 12 deterministic
-  GLBs + manifest; signed-volume winding assertion per model.
+  writer, stdlib only) → `tools/meshes/build_all.py` → 14 deterministic
+  GLBs + manifest; signed-volume winding assertion per closed model
+  (the two open ground heightfields skip it).
 * **Textures** — all materials use committed raster image maps. Prop sets: barrel oak
   (4 staves/tile), crate pine (weathered planks, plain per spec), bronze
   (patina + wear), parchment (aged paper, faint writing, seal). Ground maps
-  include authored cobble and packed dirt albedo, normal, and roughness images.
+  include authored cobble and packed dirt albedo, normal, and roughness
+  images, mirror-welded at the rims so the tile wrap is pixel-identical
+  and imported with mipmaps + anisotropic filtering. `COLOR_0` vertex
+  tints on the ground GLBs add macro variation (lane, damp margins)
+  that breaks the tile repeat without any runtime shader.
   No runtime or build-time procedural texture generator remains in the project.
 * **Scene** — `tools/scene/build_test_yard.py` regenerates
-  `scenes/world/test_yard.tscn` byte-for-byte (load_steps 70: 41 ext +
-  28 sub resources; 214 node blocks; 61 prop/wall collision shapes;
-  2 lights).
-* **QA** — `tools/qa_yard.gd` (headless, 16 checks): import structure,
+* **Scene** — `tools/scene/build_test_yard.py` regenerates
+  `scenes/world/test_yard.tscn` byte-for-byte (load_steps 68: 43 ext +
+  24 sub resources, self-checked; 216 node blocks; 64 collision shapes:
+  61 Level + lane sphere + 2 ground trimesh slots). Ground
+  `CollisionShape3D`s are baked from the heightfield meshes as trimeshes
+  by `scripts/world/test_yard.gd::_setup_ground_collision()`.
+* **QA** — `tools/qa_yard.gd` (headless, 51 checks): import structure,
   47 walls, gate AABBs (gatehouse/portcullis/doors), all prop AABBs,
-  7 material overrides, collision count, lantern lights, spawn.
-  `tests/smoke_test.gd` — shell/boot flow 11 checks.
+  7 material overrides, collision count, lantern lights, spawn, ground
+  extents/displacement/materials/trimesh collision.
+  `tests/smoke_test.gd` — shell/boot flow + floor settle/walk checks.
 
 ## Empirical Godot behaviours relied on
 
@@ -120,6 +130,7 @@ All 25 textures: `assets/textures/` (T_YRD_*).
   milestone — see D9.*
 * Remaining area-specific texture variants from GDD-03 §6 (worn dock cobble,
   sand-circle and decal families) are still deferred; the training-yard floor
-  itself is now split into a 14 × 6 m forecourt cobble and a 44 × 38 m packed-
-  dirt interior. The scene includes a Terrain3D-by-Tokisan source-map adapter
+  itself is a full 44 × 44 m packed-dirt heightfield under a 14 × 6 m
+  cambered forecourt cobble (both displaced 3D meshes, not planes). The
+  scene includes a Terrain3D-by-Tokisan source-map adapter
   and portable raster-mesh fallback when the desktop GDExtension is unavailable.

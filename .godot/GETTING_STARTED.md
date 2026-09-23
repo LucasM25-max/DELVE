@@ -343,9 +343,10 @@ Rules that keep the port stable:
   names shadow built-ins (use `getv`/`setv`), `:=` cannot infer from Variant-returning
   calls (`find_children`, `surface_get_material`), focused Buttons swallow `ui_cancel`,
   and `TextureRect` needs `EXPAND_IGNORE_SIZE` to honour `custom_minimum_size`.
-- The test yard is intentionally **bean player + flat white ground + empty `Art/` Node3D
-  slot** only. Future Blender models attach under `Art/` (yard) and replace
-  `Player/Visuals` (bean capsule) without touching shell code.
+- The test yard ships a **bean player, displaced 3D ground (tiled packed-dirt
+  and forecourt-cobble heightfields with trimesh collision) and an empty
+  `Art/` Node3D slot**. Future Blender models attach under `Art/` (yard) and
+  replace `Player/Visuals` (bean capsule) without touching shell code.
 
 ## 8. Plugins and content packs (round 13 and later)
 

@@ -1,6 +1,7 @@
 extends Node
-## Captures the test yard: paused overlay, then running walk; plus the r3
-## Corwin captures (guard-box approach + head-scan extremes, docs/11 Step 7).
+## Captures the test yard: paused overlay, then running bean on textured
+## 3D ground; plus the r3 Corwin captures (guard-box approach + head-scan
+## extremes, docs/11 Step 7).
 var out_dir := "/tmp/shots"
 
 func _ready() -> void:
