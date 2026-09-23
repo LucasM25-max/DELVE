@@ -7,8 +7,10 @@
 #
 # How to use: edit the ENV block below (tag/title/asset/notes), commit, push —
 # the push to this file triggers the run (the `paths` filter keeps every other
-# push from re-triggering it). For a new task, remember the asset file must be
-# present in the tree at that commit.
+# push from re-triggering it). Two modes:
+#   - ASSET already in-tree at that commit  → uploaded as-is (T-03).
+#   - PACK_PATHS set                        → runner zips those paths into
+#     ASSET first, then uploads (T-04: the retired 3D asset trees).
 name: Upload release asset
 
 on:
@@ -26,37 +28,43 @@ jobs:
   upload:
     runs-on: ubuntu-latest
     steps:
-      # Default ref = the pushed commit; the asset must exist in-tree there.
+      # Default ref = the pushed commit; pack/upload operates on this tree.
       - uses: actions/checkout@v4
 
-      - name: Create release (idempotent) and upload asset
+      - name: Pack (optional), create release (idempotent), upload asset
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: v0.3.0-godot-3d
-          TITLE: v0.3.0-godot-3d — DELVE Godot 4.7.2 project (3D era)
-          ASSET: DELVE_Godot_4.7.2.zip
+          TAG: archive/3d-v0.3.0
+          TITLE: archive/3d-v0.3.0 — DELVE retired 3D assets (characters, textures, models, Sky3D)
+          ASSET: DELVE_3D_ASSETS_v0.3.0.zip
+          PACK_PATHS: godot/assets/characters godot/assets/textures godot/assets/models godot/addons/sky_3d
           NOTES: |
-            **DELVE — Godot 4.7.2 project snapshot, 3D era (v0.3.0-godot).**
+            **Archived 3D-era assets for DELVE (GDD-06 T-04 / §10.2).**
 
-            Importable Godot 4.7.2 **Standard** project ZIP: menu shell + 3D test-yard blockout,
-            Compatibility renderer, Sky3D addon — exactly as shipped at project version `0.3.0-godot`.
+            Contents (≈86 MB packed), exactly as tracked at tag `archive/3d-v0.3.0`:
 
-            - **Why a Release:** GDD-06 hygiene finding H3 / task T-03 — binary artifacts belong in
-              GitHub Releases, never in the repository tree. The 69 MB ZIP was untracked in Git and
-              the root `.gitignore` carries `*.zip`.
-            - **Use it:** extract, then Godot Project Manager → **Import** → `project.godot`
-              (step-by-step in `godot/GETTING_STARTED.md` §2). Editor and export templates must both
-              be **4.7.2 Standard**.
-            - **Rebuild from source:** `python3 godot/tools/package_project.py`
-              (writes `deliverables/DELVE_Godot_4.7.2.zip`).
-            - **Tag:** points at `cb9b07c`, the mainline commit that carried this ZIP at version
-              `0.3.0-godot`, before the GDD-06 pixel-pivot hygiene work (T-01/T-02).
+            - `godot/assets/characters/**` — Quaternius Universal Base Characters + Universal
+              Animation Library glTF (CC0 1.0; licence texts inside)
+            - `godot/assets/textures/**` — 3D PBR ground materials (cobble/dirt/stone/wood/…)
+            - `godot/assets/models/**` — the 15-name `M_YRD_*` yard kit glTF + its QA manifest
+            - `godot/addons/sky_3d/**` — Sky3D addon (MIT)
 
-            Unofficial, non-commercial fan project — see the legal/attribution screen in-game and the
-            rights notes in GDD-06 §15. Never sold; no warranty.
+            **Why:** GDD-06 hygiene finding H4/H5 + task T-04 — these 73+ MB are 3D-only and must
+            not ship inside the browser build's PCK. They are retired from the working tree after
+            this tag; provenance is preserved here. The full playable 3D-era project is Release
+            [`v0.3.0-godot-3d`](https://github.com/LucasM25-max/DELVE/releases/tag/v0.3.0-godot-3d);
+            credits stay in `THIRD_PARTY.md`.
+
+            Unofficial, non-commercial fan project — GDD-06 §15. Never sold; no warranty.
         run: |
           set -euo pipefail
-          test -f "$ASSET" || { echo "::error::asset '$ASSET' not in tree at this commit"; exit 1; }
+          if [ -n "${PACK_PATHS:-}" ]; then
+            echo "packing: $PACK_PATHS -> $ASSET"
+            rm -f "$ASSET"
+            zip -r -q "$ASSET" $PACK_PATHS
+          fi
+          test -f "$ASSET" || { echo "::error::asset '$ASSET' missing after pack step"; exit 1; }
+          ls -la "$ASSET"
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
               --title "$TITLE" --notes "$NOTES"
