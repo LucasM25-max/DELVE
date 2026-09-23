@@ -18,11 +18,6 @@ export const Brand = {
     return { width: size[0], height: size[1] }
   },
 
-  lockupSize() {
-    const size = ShellData.brand.lockup?.size ?? [96, 24]
-    return { width: size[0], height: size[1] }
-  },
-
   wordmarkCellWidth() {
     return ShellData.brand.wordmark?.cell_width ?? 14
   },

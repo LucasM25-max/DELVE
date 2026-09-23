@@ -1,8 +1,30 @@
-/* shell.css — the page around the canvas.
+/* shell.css — the page around the canvas, and the text faces.
  *
- * The game is a single 480×270 canvas: this stylesheet only centres it, sets the
- * page ground and stops the browser from resampling pixels. Nothing about the
- * game's look lives here — that is all `js/ui/` and the locked palette. */
+ * The game is one canvas that fills the window: `js/shell.js` sizes its backing
+ * store to the viewport and paints the 480×270 design space onto it through a
+ * single uniform scale. Nothing about the game's look lives here except the
+ * `@font-face` rules, which are the browser's half of
+ * `assets/fonts/font_metrics.json` (the widths `js/ui/font.js` measures with).
+ * Both files are written by `tools/build_text_faces.py`. */
+
+/* Inter (OFL-1.1) subset to the characters the shipped copy uses — see
+ * assets/fonts/LICENSES/OFL-Inter.txt. `font-display: block` keeps the first
+ * frames from painting a fallback face and reflowing. */
+@font-face {
+  font-family: 'Delve Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('../assets/fonts/delve_sans_400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Delve Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: block;
+  src: url('../assets/fonts/delve_sans_600.woff2') format('woff2');
+}
 
 :root {
   --ink: #0A0C10;
@@ -16,24 +38,29 @@ html,
 body {
   margin: 0;
   height: 100%;
+  overflow: hidden;
   background: var(--ink);
   color: #F6EFDD;
-  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-family: 'Delve Sans', ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   overscroll-behavior: none;
 }
 
+/* The canvas is the whole page, so nothing scrolls, zooms or rubber-bands. */
 #stage {
-  height: 100%;
-  display: grid;
-  place-items: center;
-  /* Touch players get taps, not page scroll or pinch-zoom (§5.6). */
+  position: fixed;
+  inset: 0;
+  display: block;
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* The canvas is the game: no smoothing, no fractional scaling, ever. */
+/* The canvas is the game: it fills the viewport, and the pixel art underneath
+ * the text is never smoothed (text is drawn by the browser at full resolution,
+ * so it stays crisp whatever the scale). */
 #screen {
   display: block;
+  width: 100%;
+  height: 100%;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   background: #FFFFFF;

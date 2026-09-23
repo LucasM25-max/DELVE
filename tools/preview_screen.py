@@ -2,8 +2,9 @@
 """Render the shell's screens to PNG without a browser, from the shipped assets.
 
 This is the layout lint: it draws the same rects, the same strings, the same
-fonts and the same nine-patches the pages do, so a preview that looks right is
-strong evidence the live page looks right too — and it catches text that would
+fonts (the same coverage atlas `web/tests/shoot.mjs` draws through) and the same
+nine-patches the pages do, so a preview that looks right is strong evidence the
+live page looks right too — and it catches text that would
 overflow its panel before anyone opens the site. `web/tests/shoot.mjs` is the
 counterpart that renders the *JavaScript* screens through a real painter.
 
@@ -12,7 +13,8 @@ counterpart that renders the *JavaScript* screens through a real painter.
     python3 tools/preview_screen.py --scale 2       # 2x for legibility
 
 Output lands in `web/preview/<screen>.png` (git-ignored). The previewer reads
-`web/data/`, `web/assets/fonts/*.fnt`, `web/assets/pixel/ui/` and the same layout
+`web/data/`, the text faces' metrics and atlas (`web/assets/fonts/`, `tools/atlas/`),
+`web/assets/pixel/ui/` and the same layout
 constants the screens use.
 """
 
@@ -21,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -32,6 +35,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WEB = os.path.join(ROOT, "web")
 UI_DIR = os.path.join(WEB, "assets", "pixel", "ui")
 FONT_DIR = os.path.join(WEB, "assets", "fonts")
+ATLAS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "atlas")
 OUT_DIR = os.path.join(WEB, "preview")
 
 WIDTH, HEIGHT = 480, 270
@@ -40,55 +44,78 @@ WIDTH, HEIGHT = 480, 270
 # --------------------------------------------------------------------------
 # fonts
 # --------------------------------------------------------------------------
-class BitmapFont:
-    def __init__(self, name: str) -> None:
-        self.name = name
-        path = os.path.join(FONT_DIR, "%s.fnt" % name)
-        self.chars: dict[str, dict] = {}
-        self.line_height = 8
-        self.ascent = 7
-        page = None
-        for line in open(path, encoding="utf-8").read().splitlines():
-            tag, _, rest = line.partition(" ")
-            if tag == "common":
-                values = dict(item.split("=") for item in rest.split(" ") if "=" in item)
-                self.line_height = int(values.get("lineHeight", 8))
-                self.ascent = int(values.get("base", 7))
-            elif tag == "page":
-                page = rest.split('file="')[1].split('"')[0]
-            elif tag == "char":
-                values = dict(item.split("=") for item in rest.split(" ") if "=" in item)
-                self.chars[chr(int(values["id"]))] = {
-                    key: int(values[key]) for key in ("x", "y", "width", "height",
-                                                      "xoffset", "yoffset", "xadvance")
-                }
-        self.atlas = read_png(os.path.join(FONT_DIR, page))
+class TextFace:
+    """One role's type, as the offline renderer draws it.
+
+    Metrics come from `web/data/fonts.json` and `web/assets/fonts/font_metrics.json`
+    (the same two files the page reads), and the ink comes from the 1:1 coverage
+    atlas `tools/build_text_faces.py` bakes into `tools/atlas/` — a browser has a
+    font rasteriser, this previewer does not. `draw()` takes the top-left of the
+    line box, exactly as `TextFace.draw` does in the page.
+    """
+
+    def __init__(self, role: str) -> None:
+        manifest = json.load(open(os.path.join(WEB, "data", "fonts.json"), encoding="utf-8"))
+        metrics = json.load(open(os.path.join(FONT_DIR, "font_metrics.json"), encoding="utf-8"))
+        atlas = json.load(open(os.path.join(ATLAS_DIR, "glyph_atlas.json"), encoding="utf-8"))
+        self.role = role
+        definition = manifest["faces"][role]
+        entry = atlas["faces"][role]
+        source = metrics["sources"][definition["source"]]
+        self.size = int(definition["size"])
+        self.ascent = int(definition["ascent"])
+        self.descent = int(definition["descent"])
+        self.line_height = int(definition["lineHeight"])
+        self.units_per_em = int(source["unitsPerEm"])
+        # The face's own letter-spacing, exactly as `TextFace` reads it: the
+        # wordmark's air is part of the face, not of any one call site.
+        self.tracking = int(definition.get("tracking", 0))
+        self.advances = {int(code): units for code, units in source["advances"].items()}
+        self.glyphs = {int(code): rect for code, rect in entry["glyphs"].items()}
+        self.atlas = read_png(os.path.join(ATLAS_DIR, entry["file"]))
+        # A character with no advance (a browser fallback glyph) still needs a
+        # width; half an em is what `js/ui/font.js` assumes too.
+        self.fallback = max(1, round(self.size * 0.5))
 
     def advance(self, char: str) -> int:
-        glyph = self.chars.get(char)
-        return glyph["xadvance"] if glyph else 0
+        units = self.advances.get(ord(char))
+        if units is None:
+            return self.fallback
+        return max(1, int(units * self.size / self.units_per_em + 0.5))
 
-    def text_width(self, text: str) -> int:
-        return sum(self.advance(char) for char in text)
+    def text_width(self, text: str, tracking: int | None = None) -> int:
+        """Ink width: every advance plus the tracking between glyphs."""
+        if not text:
+            return 0
+        space = self.tracking if tracking is None else tracking
+        return sum(self.advance(char) for char in text) + space * (len(text) - 1)
 
-    def draw(self, canvas: Canvas, text: str, x: int, y: int, colour) -> None:
-        pen = x
+    def draw(self, canvas: Canvas, text: str, x: int, y: int, colour,
+             tracking: int | None = None) -> None:
+        """Composite one run at (x, y): the top-left of its line box."""
+        space = self.tracking if tracking is None else tracking
+        pen = int(x)
+        top = int(y)
         for char in text:
-            glyph = self.chars.get(char)
-            if glyph is None:
-                continue
-            for gy in range(glyph["height"]):
-                for gx in range(glyph["width"]):
-                    if self.atlas.get(glyph["x"] + gx, glyph["y"] + gy)[3] > 0:
-                        canvas.set(pen + glyph["xoffset"] + gx,
-                                   y + glyph["yoffset"] + gy, colour)
-            pen += glyph["xadvance"]
+            glyph = self.glyphs.get(ord(char))
+            if glyph is not None:
+                gx, gy, width, height, offset_x, offset_y = glyph
+                for row in range(height):
+                    for column in range(width):
+                        coverage = self.atlas.get(gx + column, gy + row)[3]
+                        if coverage <= 0:
+                            continue
+                        blend(canvas, pen + offset_x + column, top + offset_y + row,
+                              colour, coverage / 255.0)
+            pen += self.advance(char) + space
 
-    def draw_centred(self, canvas: Canvas, text: str, centre_x: int, y: int, colour) -> None:
-        self.draw(canvas, text, centre_x - self.text_width(text) // 2, y, colour)
+    def draw_centred(self, canvas: Canvas, text: str, centre_x: int, y: int, colour,
+                     tracking: int | None = None) -> None:
+        self.draw(canvas, text, centre_x - self.text_width(text, tracking) // 2, y, colour, tracking)
 
-    def draw_right(self, canvas: Canvas, text: str, right_x: int, y: int, colour) -> None:
-        self.draw(canvas, text, right_x - self.text_width(text), y, colour)
+    def draw_right(self, canvas: Canvas, text: str, right_x: int, y: int, colour,
+                   tracking: int | None = None) -> None:
+        self.draw(canvas, text, right_x - self.text_width(text, tracking), y, colour, tracking)
 
     def wrap(self, text: str, width: float) -> str:
         lines: list[str] = []
@@ -107,7 +134,25 @@ class BitmapFont:
     def measure(self, text: str, width: float, line_spacing: int = 0) -> tuple[int, int]:
         wrapped = self.wrap(text, width)
         lines = wrapped.split("\n")
-        return max(self.text_width(line) for line in lines), len(lines) * (self.line_height + line_spacing)
+        return (max(self.text_width(line) for line in lines),
+                len(lines) * (self.line_height + line_spacing))
+
+
+def blend(canvas: Canvas, x: int, y: int, colour, coverage: float) -> None:
+    """Alpha-composite one coverage-weighted pixel onto the canvas."""
+    if coverage <= 0 or not canvas.in_bounds(x, y):
+        return
+    if coverage >= 1:
+        canvas.set(x, y, colour)
+        return
+    r, g, b, a = canvas.get(x, y)
+    alpha = min(1.0, coverage) * (colour[3] / 255.0)
+    canvas.set(x, y, (
+        int(round(colour[0] * alpha + r * (1 - alpha))),
+        int(round(colour[1] * alpha + g * (1 - alpha))),
+        int(round(colour[2] * alpha + b * (1 - alpha))),
+        int(round(255 * (alpha + (a / 255.0) * (1 - alpha)))),
+    ))
 
 
 # --------------------------------------------------------------------------
@@ -118,12 +163,15 @@ class Shell:
         self.strings = json.load(open(os.path.join(WEB, "data", "strings.json"), encoding="utf-8"))
         self.timings = json.load(open(os.path.join(WEB, "data", "shell_timings.json"), encoding="utf-8"))
         self.kit = json.load(open(os.path.join(UI_DIR, "ui_kit.json"), encoding="utf-8"))
-        self.fonts = {
-            "ui": BitmapFont("pixel_ui_5"),
-            "body": BitmapFont("pixel_body_8"),
-            "display": BitmapFont("pixel_display_10"),
-        }
+        self.fonts = {role: TextFace(role) for role in ("ui", "body", "display", "wordmark")}
         self._images: dict[str, Canvas] = {}
+
+    @property
+    def version(self) -> str:
+        """`VERSION` from `js/core/state.js` — the stamp the live page prints."""
+        source = open(os.path.join(WEB, "js", "core", "state.js"), encoding="utf-8").read()
+        match = re.search(r"export const VERSION = '([^']+)'", source)
+        return match.group(1) if match else "0.0.0"
 
     def t(self, key: str) -> str:
         return self.strings["spec"].get(key) or self.strings["build"].get(key, "<%s>" % key)
@@ -243,56 +291,124 @@ def screen_legal(shell: Shell) -> Canvas:
     return canvas
 
 
-def screen_menu(shell: Shell, hover: int = 0) -> Canvas:
+def _font(shell: Shell, role: str):
+    """The old name for a face, kept so the rest of this file reads as it did."""
+    return shell.fonts[role]
+
+
+def screen_menu(shell: Shell, hover: int = 0, with_contract: bool = False) -> Canvas:
+    """The main menu, composed as `js/screens/menu.js` composes it.
+
+    Same order, same rects, same faces: header (emblem at 2x + typed wordmark +
+    the two brand lines + rule), the five items on their 21 px pitch, the key
+    hint, the contract card, and the footer under its own rule. Static, so it
+    renders the *empty* ledger unless `with_contract` is set — the live page reads
+    the save on every frame.
+    """
     layout = shell.timings["menu"]
     canvas = Canvas(WIDTH, HEIGHT, WHITE)
-    display = shell.fonts["display"]
-    ui = shell.fonts["ui"]
+    display, ui, body, wordmark = (shell.fonts[role] for role in ("display", "ui", "body", "wordmark"))
+    brand = json.load(open(os.path.join(WEB, "data", "brand.json"), encoding="utf-8"))
 
-    lock_x, lock_y = layout["lockup_rect"][0], layout["lockup_rect"][1]
-    shell.blit(canvas, shell.image("logo_menu.png"), lock_x, lock_y)
+    # --- header -----------------------------------------------------------
+    header = layout["header"]
+    mark = header["mark_rect"]
+    shell.blit(canvas, shell.image(brand["emblem"]["variants"]["mark_2x"]), mark[0], mark[1])
+    word = header["wordmark_rect"]
+    wordmark.draw(canvas, brand["wordmark"].get("text", "DELVE"), word[0], word[1], INK)
+    sub = header["sublock_rect"]
+    ui.draw(canvas, shell.t("STR_SUBLOCK_1"), sub[0], sub[1], BRONZE, 2)
+    sub2 = header["sublock2_rect"]
+    ui.draw(canvas, shell.t("STR_SUBLOCK_2"), sub2[0], sub2[1], _blend(BRONZE, WHITE, 0.75), 2)
+    rule = header["rule_rect"]
+    canvas.rect(rule[0], rule[1], rule[2], rule[3], _blend(BRONZE, WHITE, 0.6))
 
+    # --- items ------------------------------------------------------------
     item_x, item_y, item_w, item_h = layout["item_rect"]
     pitch = layout["item_pitch"]
+    tracking = int(layout.get("item_tracking", 4))
+    idle = float(layout.get("item_idle_dim", 0.78))
     labels = ["STR_MENU_PLAY", "STR_MENU_CONTINUE", "STR_MENU_OPTIONS",
               "STR_MENU_CODEX", "STR_MENU_CREDITS"]
     for index, key in enumerate(labels):
         text = shell.t(key)
         y = item_y + pitch * index
         text_y = y + (item_h - display.line_height) // 2 + 1
-        display.draw(canvas, text, item_x, text_y, INK)
+        enabled = index != 1  # CONTINUE is dimmed with an empty ledger
+        alpha = 1 if (index == hover and enabled) else idle
+        colour = INK if enabled else _blend(hex_to_rgba("#6C757B"), WHITE, float(layout["disabled_dim"]))
+        if enabled:
+            display.draw(canvas, text, item_x, text_y, _blend(INK, WHITE, alpha), tracking)
+        else:
+            display.draw(canvas, text, item_x, text_y, colour, tracking)
         if index == hover:
-            canvas.rect(item_x, y + layout["underline_offset_y"],
-                        display.text_width(text), layout["underline_height"], BRONZE)
-        elif index == hover:
-            pass
+            width = 0 if not enabled else display.text_width(text, tracking)
+            canvas.rect(item_x, y + layout["underline_offset_y"], width, layout["underline_height"], BRONZE)
+            shell.blit(canvas, shell.image("item_cursor.png"), item_x - 14, y + 5)
 
+    keys = layout["keys_rect"]
+    ui.draw(canvas, shell.t("STR_MENU_KEYS"), keys[0], keys[1],
+            _blend(hex_to_rgba("#6C757B"), WHITE, 1.0))
+
+    # --- contract card ----------------------------------------------------
+    panel_layout = layout["contract_panel"]
+    panel = tuple(panel_layout["rect"])
+    shell.panel(canvas, "panel_parchment", panel)
+    stamp = panel_layout["stamp_rect"]
+    beats_total = len(json.load(open(os.path.join(WEB, "data", "shell_content.json"),
+                                      encoding="utf-8"))["tutorial_beats"]["p1"])
+    shell.blit(canvas, shell.image("logo_emblem.png"), stamp[0], stamp[1])
+    title = panel_layout["title_rect"]
+    name = panel_layout["name_rect"]
+    detail = panel_layout["detail_rect"]
+    rule2 = panel_layout["rule_rect"]
+    hint = panel_layout["hint_rect"]
+    if with_contract:
+        ui.draw(canvas, shell.t("STR_MENU_PANEL_TITLE"), title[0], title[1], BRONZE, 2)
+        display.draw(canvas, "Testwrit", name[0], name[1], INK)
+        ui.draw(canvas, shell.t("STR_MENU_PANEL_DETAIL").format("Fighter", 3, "Prologue"),
+                detail[0], detail[1], _blend(INK, PARCHMENT, 0.7))
+        shell.blit(canvas, shell.image("logo_emblem_step2.png"), stamp[0], stamp[1])
+        status = shell.t("STR_MENU_PANEL_STATUS").format(2, beats_total)
+        ui.draw(canvas, status, hint[0], hint[1], _blend(INK, PARCHMENT, 0.62))
+    else:
+        ui.draw(canvas, shell.t("STR_MENU_PANEL_EMPTY_TITLE"), title[0], title[1], BRONZE, 2)
+        wrapped = body.wrap(shell.t("STR_MENU_PANEL_EMPTY_BODY"), name[2])
+        for index, line in enumerate(wrapped.split("\n")):
+            body.draw(canvas, line, name[0], name[1] + 8 + index * body.line_height,
+                      _blend(INK, PARCHMENT, 0.85))
+        ui.draw(canvas, shell.t("STR_MENU_PANEL_EMPTY_HINT"), hint[0], hint[1],
+                _blend(INK, PARCHMENT, 0.62))
+    canvas.rect(rule2[0], rule2[1], rule2[2], rule2[3], _blend(BRONZE, PARCHMENT, 0.45))
+
+    # --- footer -----------------------------------------------------------
+    footer_rule = layout["footer_rule_rect"]
+    canvas.rect(footer_rule[0], footer_rule[1], footer_rule[2], footer_rule[3], _blend(BRONZE, WHITE, 0.5))
     footer = _blend(INK, WHITE, layout["disclaimer_alpha"])
     disclaimer = shell.t("STR_DISCLAIMER_ABRIDGED")
     ui.draw(canvas, disclaimer, layout["disclaimer_rect"][0], layout["disclaimer_rect"][1], footer)
-    stamp = shell.t("STR_VERSION_STAMP").format("0.4.0-pixel", "2026-09-23")
+    stamp_text = shell.t("STR_VERSION_STAMP").format(shell.version, "2026-09-23")
     stamp_rect = layout["version_stamp_rect"]
-    ui.draw_right(canvas, stamp, stamp_rect[0] + stamp_rect[2], stamp_rect[1], footer)
+    ui.draw_right(canvas, stamp_text, stamp_rect[0] + stamp_rect[2], stamp_rect[1], footer)
+
+    if hover == 1 and not with_contract:
+        # §5.4: CONTINUE *with no saves* shows `No contracts signed yet.` on hover.
+        # The box takes the key-hint line (see MenuScreen.drawKeysHint).
+        box = (keys[0], keys[1], 164, 14)
+        canvas.rect(keys[0], keys[1], keys[2], keys[3], WHITE)  # the hint steps aside
+        shell.panel(canvas, "tooltip", box, "normal")
+        ui.draw(canvas, shell.t("STR_MENU_NOSAVE"), box[0] + 4, box[1] + 1, INK)
     return canvas
 
 
 def screen_menu_tooltip(shell: Shell) -> Canvas:
     """The menu with CONTINUE dimmed and its tooltip showing (§5.4)."""
-    canvas = screen_menu(shell, hover=1)
-    display = shell.fonts["display"]
-    ui = shell.fonts["ui"]
-    layout = shell.timings["menu"]
-    item_x, item_y, item_w, item_h = layout["item_rect"]
-    y = item_y + layout["item_pitch"]
-    # dim CONTINUE to 40 % by redrawing it lightened
-    canvas.rect(item_x, y - 2, display.text_width(shell.t("STR_MENU_CONTINUE")),
-                item_h, WHITE)
-    display.draw(canvas, shell.t("STR_MENU_CONTINUE"), item_x,
-                 y + (item_h - display.line_height) // 2 + 1,
-                 _blend(INK, WHITE, layout["disabled_dim"]))
-    shell.panel(canvas, "panel_parchment", (177, y - 1, 164, 12))
-    ui.draw(canvas, shell.t("STR_MENU_NOSAVE"), 181, y + 1, INK)
-    return canvas
+    return screen_menu(shell, hover=1)
+
+
+def screen_menu_contract(shell: Shell) -> Canvas:
+    """The menu with a signed contract: the card carries it, CONTINUE lights up."""
+    return screen_menu(shell, hover=1, with_contract=True)
 
 
 def screen_sting_end(shell: Shell) -> Canvas:
@@ -611,6 +727,7 @@ SCREENS = {
     "legal": screen_legal,
     "menu": screen_menu,
     "menu-tooltip": screen_menu_tooltip,
+    "menu-contract": screen_menu_contract,
     "menu-new-contract": screen_new_contract,
     "sting-end": screen_sting_end,
     "stub": screen_stub,

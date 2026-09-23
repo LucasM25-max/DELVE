@@ -329,7 +329,7 @@ export class OptionsScreen extends ShellScreen {
     const selected = index === this.tabIndex
     const state = selected ? 'selected' : tab.hovered || tab.focused ? 'hover' : 'normal'
     Ui.patch('tab', tab.rect, { state })
-    Ui.label(tab.label, 0, tab.rect.y + Math.round((tab.rect.h - Ui.font(Face.UI).px) / 2), {
+    Ui.label(tab.label, 0, tab.rect.y + Math.round((tab.rect.h - Ui.font(Face.UI).lineHeight) / 2), {
       face: Face.UI,
       colour: selected ? Palette.ink : Palette.parchment_1,
       width: tab.rect.w + 24,

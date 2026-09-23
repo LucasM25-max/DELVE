@@ -1,7 +1,7 @@
 // UiPixel — the pixel UI kit (GDD-07 §7.3).
 //
 // Everything the shell draws is built from these primitives: a ground, a
-// nine-patch panel, a bitmap label, a 5 px pill. The kit is the only place that
+// nine-patch panel, a text label, a 5 px pill. The kit is the only place that
 // knows an asset path, and it reads the nine-patch margins from
 // `assets/pixel/ui/ui_kit.json` — the same file `tools/preview_screen.py`
 // renders from, so the offline previews and the live page agree.
@@ -9,8 +9,8 @@
 // Rules the kit keeps:
 //   * art is locked to the 32 + 8 palette (tools/check_project.py lints the PNGs);
 //   * rects snap to whole pixels, so nothing is ever drawn half-on a pixel;
-//   * chrome (buttons, frames, rails) is the 5 px face, body copy is 8 px,
-//     headings are 10 px (§7.3).
+//   * chrome (buttons, frames, rails) is the `ui` face, body copy is `body`,
+//     headings are `display` (the §7.3 roles, at the sizes in data/fonts.json).
 
 import { Palette } from '../core/palette.js'
 import { loadJSON } from '../core/data.js'
@@ -18,8 +18,8 @@ import { loadJSON } from '../core/data.js'
 export const UI_DIR = 'assets/pixel/ui/'
 export const BMP_DIR = 'assets/pixel/' // palette ramps, standalone sprites
 
-/** Face names, resolved from the loaded font manifests. */
-export const Face = { DISPLAY: 'display', BODY: 'body', UI: 'ui' }
+/** Face names, resolved from the loaded font manifests (`data/fonts.json`). */
+export const Face = { DISPLAY: 'display', BODY: 'body', UI: 'ui', WORDMARK: 'wordmark' }
 
 /** A plain integer rect. Screens keep their geometry in these and nothing else. */
 export class Rect {
@@ -84,15 +84,16 @@ export const Ui = {
    * The shipped menu ground: plain white. The project's background rule predates
    * this port and the spec's ink ground is kept for the boot pages, so this is a
    * documented, deliberate deviation (see web/docs/PIXEL_MENU_BUILD_NOTES.md).
+   * Grounds fill the whole window, not just the 480×270 design space.
    */
   white(alpha = 1) {
-    this.painter.withAlpha(alpha, () => this.painter.rect(0, 0, 480, 270, '#FFFFFF'))
+    this.painter.fillViewport('#FFFFFF', alpha)
   },
 
-  /** A translucent scrim behind a modal card. */
+  /** A translucent scrim behind a modal card; covers the whole window. */
   dim(alpha = 0.5, colour = Palette.ink) {
     if (alpha <= 0) return
-    this.painter.withAlpha(alpha, () => this.painter.rect(0, 0, 480, 270, colour))
+    this.painter.fillViewport(colour, alpha)
   },
 
   rect(rect, colour, alpha = 1) {
@@ -149,28 +150,37 @@ export const Ui = {
 
   // --- text -------------------------------------------------------------
 
-  label(text, x, y, { face = Face.UI, colour = Palette.ink, width = null, align = 'left', lineSpacing = 0, alpha = 1 } = {}) {
+  /**
+   * One run of text. `tracking` overrides the face's own letter-spacing (the
+   * wordmark's 6 px, the brand lines' 2 px); `null` means "whatever the face
+   * declares", which is what most call sites want.
+   */
+  label(text, x, y, { face = Face.UI, colour = Palette.ink, width = null, align = 'left', lineSpacing = 0, alpha = 1, tracking = null } = {}) {
     const font = this.font(face)
     if (alpha <= 0 || text === '') return 0
+    const space = tracking ?? font.tracking
     this.painter.withAlpha(alpha, () => {
-      if (width === null) font.draw(this.painter, text, x, y, colour)
-      else font.drawBlock(this.painter, text, x, y, width, colour, lineSpacing, align)
+      if (width === null) font.draw(this.painter, text, x, y, colour, space)
+      else font.drawBlock(this.painter, text, x, y, width, colour, lineSpacing, align, space)
     })
-    return width === null ? font.measure(text) : font.measureBlock(text, width, lineSpacing)
+    return width === null ? font.measure(text, space) : font.measureBlock(text, width, lineSpacing, space)
   },
 
   /** Right-align a run against `rightX` (the option rows' control gutter). */
   labelRight(text, rightX, y, options = {}) {
     const font = this.font(options.face ?? Face.UI)
-    return this.label(text, rightX - font.measure(text), y, options)
+    const space = options.tracking ?? font.tracking
+    return this.label(text, rightX - font.measure(text, space), y, options)
   },
 
-  measure(text, width = null, face = Face.UI, lineSpacing = 0) {
+  measure(text, width = null, face = Face.UI, lineSpacing = 0, tracking = null) {
     const font = this.font(face)
-    return width === null ? font.measure(text) : font.measureBlock(text, width, lineSpacing)
+    const space = tracking ?? font.tracking
+    return width === null ? font.measure(text, space) : font.measureBlock(text, width, lineSpacing, space)
   },
 
-  wrap(text, width, face = Face.UI) {
-    return this.font(face).wrap(text, width)
+  wrap(text, width, face = Face.UI, tracking = null) {
+    const font = this.font(face)
+    return font.wrap(text, width, tracking ?? font.tracking)
   },
 }

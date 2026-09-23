@@ -6,14 +6,15 @@
 //   y 56   fan-work disclaimer (384 px wide, centred, 8 px)
 //   y 116  SRD 5.2.1 CC-BY-4.0 attribution block
 //   y 168  shipping line
-//   y 180  font credits
+//   y 180  type credits (the face this build ships, and its licence)
 //   y 250  "Press any button to continue." pulsing every 0.8 s
 //
 // The disclaimer and the SRD block are prose: how many lines they take depends
-// on the face and the wrapping, so each block sits at its spec anchor when it
-// fits there and flows down only when the block above it would collide. The
+// on the face size and the wrapping, so each block sits at its spec anchor when
+// it fits there and flows down only when the block above it would collide. The
 // spec's layout is what ships, and a longer string can never overprint the line
-// below it.
+// below it. The type credit names the face this build actually draws with
+// (`STR_FONT_LINE` is a build string, not a §5.11 spec string).
 //
 // Any input continues to the logo sting *and* is the audio gesture gate: the
 // browser only starts audio from a user gesture, so `Sound.unlock()` is called
@@ -28,7 +29,7 @@ import { ShellScreen } from './screen.js'
 const CONTENT_WIDTH = 384
 const CONTENT_X = (480 - CONTENT_WIDTH) / 2 // 48: the spec's centred block
 const BLOCK_GAP = 8
-const BODY_SPACING = -2 // tightens the 8 px face so 3-4 line blocks fit
+const BODY_SPACING = 0 // the body face's own 12 px line height is the prose rhythm
 
 // Spec anchors (GDD-07 §5.2 step 1).
 const ANCHOR = { disclaimer: 56, srd: 116, engine: 168, font: 180, pulse: 250 }

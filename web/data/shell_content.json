@@ -61,7 +61,7 @@
     {
       "title": "Fonts",
       "lines": [
-        "5x7 system font (MIT) · Silkscreen (OFL-1.1)"
+        "Inter (OFL-1.1), subset to this build by tools/build_text_faces.py"
       ]
     },
     {

@@ -12,8 +12,8 @@ What this verifies:
      `web/js/**` resolves to a file that exists;
   3. every JSON under `web/data/` parses and carries the spec's counts, rects
      and timings;
-  4. the font atlases are internally consistent (.fnt char rects inside the
-     page PNG, and every glyph the shipped strings need is present);
+  4. the text faces carry every glyph the shipped strings use — in the shipped
+     webfonts, in their metrics table and in the offline atlases;
   5. `web/js/core/palette.js` mirrors `tools/build_palette.py` exactly;
   6. the nine-patch kit (`ui_kit.json`) matches the PNGs it points at;
   7. the §5.5/§5.6 page layouts fit their panels, measured with the real fonts;
@@ -35,6 +35,7 @@ from typing import Sequence
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from lib.png_read import read_png  # noqa: E402
+from lib.strings import charset  # noqa: E402
 import build_palette  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -190,10 +191,48 @@ def check_data_files() -> None:
                  % (key, value, menu.get(key)))
     if timings.get("boot", {}).get("sting", {}).get("total_ms") != 4000:
         fail("shell_timings.boot.sting.total_ms should be 4000 (§5.2)")
-    if menu.get("lockup_rect") != [29, 22, 96, 24]:
-        fail("menu lockup rect must be (29,22,96,24) per §5.4")
     if menu.get("item_rect", [0, 0, 0, 0])[:3] != [29, 92, 140]:
         fail("menu item rect must start at (29,92,140,18) per §5.4")
+    # The menu's composition (third pass): a header block, the item column, the
+    # contract card and the footer. Each piece must sit inside the canvas and the
+    # pieces must not collide — the card is what keeps the right half from being
+    # empty, and the item column's foot is where the §5.4 tooltip goes.
+    header = menu.get("header", {})
+    card = menu.get("contract_panel", {})
+    item = menu.get("item_rect", [0, 0, 0, 0])
+    item_bottom = item[1] + menu.get("item_pitch", 21) * (menu.get("item_count", 5) - 1) + item[3]
+    mark = header.get("mark_rect", [0, 0, 0, 0])
+    if mark[0] != item[0]:
+        fail("the menu header must share the item column's x (%s)" % item[0])
+    if mark[3] != 48 or mark[2] != 48:
+        fail("the menu header mark must be the emblem at 2x (48x48), is %s" % mark[2:4])
+    if mark[1] + mark[3] > item[1]:
+        fail("the menu header runs into the first item row")
+    wordmark = header.get("wordmark_rect", [0, 0, 0, 0])
+    face = font_manifest().get("faces", {}).get("wordmark", {})
+    if face.get("size") != 22:
+        fail("the wordmark face must be 22 px (the §5.1 cap height at 2x)")
+    text_width = FaceWidths("wordmark").width("DELVE")
+    if text_width > wordmark[2]:
+        fail("the typed wordmark needs %d px, its field is %d" % (text_width, wordmark[2]))
+    panel = card.get("rect", [0, 0, 0, 0])
+    _inside(panel, [0, 0, 480, 270], "menu.contract_panel.rect")
+    if panel[0] <= item[0] + item[2]:
+        fail("the contract card would sit under the item column (%s vs item right edge %d)"
+             % (panel, item[0] + item[2]))
+    if panel[1] < mark[1] + mark[3]:
+        fail("the contract card starts above the header block's bottom")
+    for key in ("stamp_rect", "title_rect", "name_rect", "detail_rect", "rule_rect", "hint_rect"):
+        _inside(card.get(key, [0, 0, 0, 0]), panel, "menu.contract_panel.%s" % key)
+    keys = menu.get("keys_rect", [0, 0, 0, 0])
+    if keys[1] < item_bottom:
+        fail("the menu key hint at y %d sits on the last item row (ends at %d)" % (keys[1], item_bottom))
+    if keys[0] + keys[2] > panel[0]:
+        fail("the menu key hint (and the §5.4 tooltip that takes its line) runs under the card")
+    rule = menu.get("footer_rule_rect", [0, 0, 0, 0])
+    if not (panel[1] + panel[3] <= rule[1] <= menu.get("disclaimer_rect", [0, 0, 0, 8])[1]):
+        fail("the footer rule must sit between the contract card and the disclaimer")
+
     # Footer: the two strings are stacked (see menu._footer_note); both rects
     # must still sit entirely inside the 480x270 canvas.
     for key in ("disclaimer_rect", "version_stamp_rect"):
@@ -209,9 +248,9 @@ def check_data_files() -> None:
         fail("the version stamp must stay right-aligned to x = 470 (§5.4)")
 
     # Brand geometry must describe the PNGs that actually shipped.
+    # The retired lockup is gone: the header block below asserts what replaced it.
     for section, filename in (("emblem", "logo_emblem.png"),
-                              ("wordmark", "logo_wordmark.png"),
-                              ("lockup", "logo_menu.png")):
+                              ("wordmark", "logo_wordmark.png")):
         declared = brand.get(section, {}).get("size")
         path = os.path.join(WEB, "assets", "pixel", "ui", filename)
         if declared is None or not os.path.exists(path):
@@ -221,6 +260,28 @@ def check_data_files() -> None:
         if [image.width, image.height] != declared:
             fail("brand.json says %s is %s but the PNG is %dx%d"
                  % (section, declared, image.width, image.height))
+    variants = brand.get("emblem", {}).get("variants", {})
+    if variants.get("mark_2x") != "logo_emblem_2x.png":
+        fail("brand.json must name the 2x menu mark (logo_emblem_2x.png)")
+    if variants.get("mark_2x_steps") != "logo_emblem_steps_2x.png":
+        fail("brand.json must name the 2x lit mark (logo_emblem_steps_2x.png)")
+    # Both 2x marks must be whole-number doubles of the 24 px originals, or the
+    # header would draw its flicker a pixel off the mark underneath it.
+    for small_name, big_name in (("logo_emblem.png", "logo_emblem_2x.png"),
+                                 ("logo_emblem_steps.png", "logo_emblem_steps_2x.png")):
+        small = read_png(os.path.join(WEB, "assets", "pixel", "ui", small_name))
+        big = read_png(os.path.join(WEB, "assets", "pixel", "ui", big_name))
+        if (big.width, big.height) != (small.width * 2, small.height * 2):
+            fail("%s is not a 2x %s (%dx%d vs %dx%d)"
+                 % (big_name, small_name, big.width, big.height, small.width, small.height))
+            continue
+        for y in range(big.height):
+            for x in range(big.width):
+                if big.get(x, y) != small.get(x // 2, y // 2):
+                    fail("%s differs from %s at (%d,%d)" % (big_name, small_name, x, y))
+                    break
+    if brand.get("wordmark", {}).get("text") != "DELVE":
+        fail("brand.json must carry the typed wordmark's text")
     if brand.get("emblem", {}).get("size") != [24, 24]:
         fail("emblem must be 24x24 per §5.1")
     if len(brand.get("emblem", {}).get("steps", [])) != 3:
@@ -255,67 +316,164 @@ def check_audio_cues() -> None:
           len([c for c in present if c in menu_cues]), len(menu_cues)))
 
 
-def parse_fnt(path: str) -> dict:
-    lines = open(path, encoding="utf-8").read().splitlines()
-    out: dict = {"chars": []}
-    for line in lines:
-        parts = line.split(" ", 1)
-        if len(parts) != 2:
-            continue
-        tag, rest = parts
-        if tag == "char":
-            entry = {}
-            for key, value in re.findall(r'(\w+)=("[^"]*"|\S+)', rest):
-                entry[key] = value.strip('"')
-            out["chars"].append(entry)
-        else:
-            for key, value in re.findall(r'(\w+)=("[^"]*"|\S+)', rest):
-                out[key] = value.strip('"')
-    return out
+# --- 4: text faces -----------------------------------------------------
+
+def font_manifest() -> dict:
+    return load_json("data/fonts.json")
+
+
+def font_metrics() -> dict:
+    return load_json("assets/fonts/font_metrics.json")
+
+
+def round_half_up(value: float) -> int:
+    """`Math.round` in the page rounds halves up; Python's `round` does not."""
+    return int(value + 0.5) if value >= 0 else -int(-value + 0.5)
+
+
+class FaceWidths:
+    """One role's text metrics: advances in whole pixels, plus its line box.
+
+    This is the Python half of `web/js/ui/font.js`: both read
+    `data/fonts.json` and `assets/fonts/font_metrics.json`, so a width measured
+    here and a width the page draws are the same integer, and a layout the gate
+    accepts is a layout the page fits.
+    """
+
+    def __init__(self, role: str) -> None:
+        self.role = role
+        self.size = 0.0
+        self.ascent = 0
+        self.descent = 0
+        self.line_height = 0
+        self.advances: dict[str, int] = {}
+        face = font_manifest().get("faces", {}).get(role)
+        if face is None:
+            fail("data/fonts.json has no '%s' face" % role)
+            return
+        source = font_metrics().get("sources", {}).get(face.get("source"), {})
+        upem = source.get("unitsPerEm") or 1
+        self.size = float(face.get("size", 0))
+        self.ascent = int(face.get("ascent", 0))
+        self.descent = int(face.get("descent", 0))
+        self.line_height = int(face.get("lineHeight", 0))
+        # A character with no advance of its own (a glyph the browser substitutes)
+        # still needs a width; the page guesses half an em, and so does this.
+        self.fallback = max(1, round_half_up(self.size * 0.5))
+        for code, units in source.get("advances", {}).items():
+            self.advances[code] = max(1, round_half_up(units * self.size / upem))
+
+    def advance(self, character: str) -> int:
+        return self.advances.get(str(ord(character)), self.fallback)
+
+    def width(self, text: str) -> int:
+        return sum(self.advance(character) for character in str(text))
+
+    def wrap(self, text: str, width: int) -> list[str]:
+        """The page's `TextFace.wrap`, word for word."""
+        limit = max(1, int(width))
+        lines: list[str] = []
+        for paragraph in str(text).split("\n"):
+            line = ""
+            for word in [word for word in paragraph.split() if word]:
+                candidate = "%s %s" % (line, word) if line else word
+                if self.width(candidate) <= limit:
+                    line = candidate
+                    continue
+                if line:
+                    lines.append(line)
+                    line = ""
+                if self.width(word) <= limit:
+                    line = word
+                    continue
+                rest = word
+                while rest and self.width(rest) > limit:
+                    cut = len(rest) - 1
+                    while cut > 1 and self.width(rest[:cut]) > limit:
+                        cut -= 1
+                    lines.append(rest[:cut])
+                    rest = rest[cut:]
+                line = rest
+            lines.append(line)
+        return lines
+
+    def block_height(self, text: str, width: int, line_spacing: int = 0) -> int:
+        lines = self.wrap(text, width)
+        return len(lines) * self.line_height + max(0, len(lines) - 1) * line_spacing
 
 
 def check_fonts() -> None:
-    fonts_dir = os.path.join(WEB, "assets", "fonts")
-    expected = {
-        "pixel_ui_5": 5,
-        "pixel_body_8": 8,
-        "pixel_display_10": 10,
-    }
-    strings = load_json("data/strings.json")
-    content = load_json("data/shell_content.json")
-    needed = set()
-    for block in ("spec", "build"):
-        for value in strings.get(block, {}).values():
-            needed.update(value)
-    for tip in content.get("loading_tips", []):
-        needed.update(tip)
-    needed = {c for c in needed if ord(c) >= 32}
+    """The shipped type: the files, the glyph coverage, and the offline atlases.
 
-    for name in expected:
-        fnt_path = os.path.join(fonts_dir, "%s.fnt" % name)
-        if not os.path.exists(fnt_path):
-            fail("missing font %s.fnt" % name)
+    Three things have to line up:
+
+      * every face in `data/fonts.json` names a source `assets/fonts/font_metrics.json`
+        carries, and that source's woff2 is on disk (the stylesheet's `@font-face`);
+      * the metrics cover every character in `lib/strings.charset()` — the set the
+        faces are cut to. A string that reaches for a character outside it fails
+        here, and `tools/build_text_faces.py` is what fixes it;
+      * the offline atlases (`tools/atlas/`) match the manifest and cover the same
+        characters, because `tools/preview_screen.py` and `web/tests/shoot.mjs`
+        draw their text through them.
+    """
+    manifest = font_manifest()
+    metrics = font_metrics()
+    if manifest.get("schema") != 2:
+        fail("data/fonts.json should carry schema 2 (webfont faces)")
+    faces = manifest.get("faces", {})
+    for role in ("ui", "body", "display", "wordmark"):
+        if role not in faces:
+            fail("data/fonts.json has no '%s' face" % role)
+    needed = set(charset(WEB))
+    for role, face in sorted(faces.items()):
+        source_id = face.get("source")
+        source = metrics.get("sources", {}).get(source_id)
+        if source is None:
+            fail("fonts.json face '%s' names source '%s', which font_metrics.json "
+                 "does not carry" % (role, source_id))
             continue
-        fnt = parse_fnt(fnt_path)
-        page = os.path.join(fonts_dir, fnt.get("file", "%s.png" % name))
-        if not os.path.exists(page):
-            fail("%s.fnt page %s is missing" % (name, fnt.get("file")))
-            continue
-        image = read_png(page)
-        if int(fnt.get("scaleW", 0)) != image.width or int(fnt.get("scaleH", 0)) != image.height:
-            fail("%s.fnt atlas size does not match %s" % (name, os.path.basename(page)))
-        covered = set()
-        for char in fnt["chars"]:
-            x, y = int(char["x"]), int(char["y"])
-            w, h = int(char["width"]), int(char["height"])
-            if w and h and (x + w > image.width or y + h > image.height):
-                fail("%s.fnt glyph %s falls outside the atlas" % (name, char["id"]))
-            covered.add(chr(int(char["id"])))
-        missing = sorted(needed - covered)
+        font_path = os.path.join(WEB, "assets", "fonts", str(source.get("file", "")))
+        if not os.path.exists(font_path):
+            fail("missing shipped font %s (face '%s')" % (source.get("file"), role))
+        advances = source.get("advances", {})
+        missing = sorted(chr(code) for code in needed if str(code) not in advances)
         if missing:
-            fail("%s.fnt is missing glyphs: %s" % (name, "".join(missing)))
+            fail("the '%s' face (%s) carries no advance for: %s — rerun "
+                 "tools/build_text_faces.py" % (role, source.get("file"), "".join(missing)))
+
+    atlas_path = os.path.join(ROOT, "tools", "atlas", "glyph_atlas.json")
+    if not os.path.exists(atlas_path):
+        fail("tools/atlas/glyph_atlas.json is missing — the offline renderers draw "
+             "their text from it; run tools/build_text_faces.py")
+    else:
+        atlas = json.load(open(atlas_path, encoding="utf-8"))
+        for role, face in sorted(faces.items()):
+            entry = atlas.get("faces", {}).get(role)
+            if entry is None:
+                fail("the offline atlas has no '%s' face" % role)
+                continue
+            for key in ("size", "ascent", "descent", "lineHeight"):
+                if float(entry.get(key, -1)) != float(face.get(key, -2)):
+                    fail("atlas face '%s' disagrees with data/fonts.json on %s: %s vs %s"
+                         % (role, key, entry.get(key), face.get(key)))
+            image_path = os.path.join(ROOT, "tools", "atlas", str(entry.get("file", "")))
+            if not os.path.exists(image_path):
+                fail("missing offline atlas %s" % entry.get("file"))
+                continue
+            image = read_png(image_path)
+            covered = set()
+            for code, rect in entry.get("glyphs", {}).items():
+                x, y, w, h = (int(value) for value in rect[:4])
+                if w and h and (x + w > image.width or y + h > image.height):
+                    fail("atlas face '%s' glyph %s falls outside %s"
+                         % (role, code, entry.get("file")))
+                covered.add(int(code))
+            missing = sorted(chr(code) for code in needed - covered)
+            if missing:
+                fail("the '%s' offline atlas is missing glyphs: %s" % (role, "".join(missing)))
     if not failures:
-        ok("fonts carry every glyph the shipped strings use, inside their atlases")
+        ok("the %d text faces carry every glyph the shipped strings use, on disk "
+           "and in the offline atlases" % len(faces))
 
 
 # --- 5: palette mirror -------------------------------------------------
@@ -424,32 +582,6 @@ def _locked_colours() -> set[str]:
 
 
 
-def _font_advances(name: str) -> dict[str, int]:
-    """Character -> advance map for a shipped `.fnt` face."""
-    parsed = parse_fnt(os.path.join(WEB, "assets", "fonts", "%s.fnt" % name))
-    return {entry["id"]: int(entry["xadvance"]) for entry in parsed.get("chars", [])
-            if "xadvance" in entry}
-
-
-def _text_width(advances: dict[str, int], text: str) -> int:
-    return sum(advances.get(char, 0) for char in text)
-
-
-def _wrap_lines(advances: dict[str, int], text: str, width: int) -> list[str]:
-    lines: list[str] = []
-    current = ""
-    for word in text.split(" "):
-        candidate = word if not current else current + " " + word
-        if _text_width(advances, candidate) > width and current:
-            lines.append(current)
-            current = word
-        else:
-            current = candidate
-    if current:
-        lines.append(current)
-    return lines
-
-
 def _inside(rect: Sequence, bounds: Sequence, label: str, margins: int = 0) -> None:
     x, y, w, h = rect
     bx, by, bw, bh = bounds
@@ -468,8 +600,8 @@ def check_screen_layouts() -> None:
     timings = load_json("data/shell_timings.json").get("screens", {})
     schema = load_json("data/options_schema.json")
     rows = {row["id"]: row for tab in schema.get("tabs", []) for row in tab.get("rows", [])}
-    ui = _font_advances("pixel_ui_5")
-    body = _font_advances("pixel_body_8")
+    ui = FaceWidths("ui")
+    body = FaceWidths("body")
     canvas = [0, 0, 480, 270]
 
     first_run = timings.get("first_run", {})
@@ -484,7 +616,7 @@ def check_screen_layouts() -> None:
     pills_y = first_run.get("label_to_pills", 8)
     help_y = first_run.get("help_offset_y", 24)
     spacing = first_run.get("help_line_spacing", -3)
-    line_pitch = 11 + spacing
+    line_pitch = body.line_height + spacing
     for index, y in enumerate(group_ys):
         if pills_y + 16 > help_y:
             fail("first_run pills overlap the help block at group %d" % index)
@@ -492,7 +624,7 @@ def check_screen_layouts() -> None:
         limit = y + pitch - (pitch if index == len(group_ys) - 1 else 0)
         for row_id in ("difficulty", "combat_pacing")[index:index + 1]:
             text = rows.get(row_id, {}).get("help", "")
-            lines = _wrap_lines(body, text, first_run.get("content_w", 384))
+            lines = body.wrap(text, first_run.get("content_w", 384))
             bottom = y + help_y + len(lines) * line_pitch
             if bottom > limit:
                 fail("first_run %s help runs to y %d, past the y %d group pitch "
@@ -519,8 +651,8 @@ def check_screen_layouts() -> None:
     for token, value in (("{0}", "New contract"), ("{1}", "Unassigned"),
                          ("{2}", "1"), ("{3}", "Prologue")):
         text = text.replace(token, value)
-    lines = _wrap_lines(body, text, body_rect[2])
-    if body_rect[1] + len(lines) * 11 > card.get("begin_rect", [0, 0, 0, 0])[1]:
+    lines = body.wrap(text, body_rect[2])
+    if body_rect[1] + len(lines) * body.line_height > card.get("begin_rect", [0, 0, 0, 0])[1]:
         fail("the Begin-a-new-contract body needs %d lines and would run into its buttons"
              % len(lines))
     for key in ("seal_rect", "title_rect", "body_rect", "begin_rect", "back_rect"):
@@ -561,8 +693,11 @@ def check_screen_layouts() -> None:
         fail("options rows reach y %d and would sit under the help line at y %d"
              % (row_rect[1] + row_pitch * visible, options["help_rect"][1]))
     help_rect = options.get("help_rect", [0, 0, 0, 0])
-    help_line = options.get("help_line_height", 8)
-    longest = max((_wrap_lines(ui, row.get("help", ""), help_rect[2]) for row in rows.values()),
+    help_line = options.get("help_line_height", ui.line_height)
+    if help_line != ui.line_height:
+        fail("options.help_line_height should be the ui face's line height (%d), is %s"
+             % (ui.line_height, help_line))
+    longest = max((ui.wrap(row.get("help", ""), help_rect[2]) for row in rows.values()),
                   key=len, default=[""])
     if help_rect[1] + len(longest) * help_line > 270:
         fail("the longest options help (%d lines) runs off the 270 px canvas" % len(longest))

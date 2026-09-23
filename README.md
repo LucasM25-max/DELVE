@@ -8,7 +8,7 @@ PNG, served by Vercel from the `web/` directory. There is no engine, no build
 step, no Blender and no Godot: clone it, serve `web/`, and it runs.
 
 ```
-web/          the game  — 480×270 pixel canvas, ES modules, no dependencies
+web/          the game  — 480×270 design space in a full-window canvas, ES modules
 tools/        the asset builders and the gates (Python 3, stdlib only)
 docs          00…07 — the design and build specifications
 .github       CI: the gates run on every push
@@ -45,6 +45,11 @@ The **prologue shell** (GDD-07 §5):
 - **Options** — five schema-driven tabs (Graphics, Gameplay, Accessibility, Audio,
   Controls) with segmented pills, ten-pip sliders, key rebinding and a scrolling
   Controls page.
+
+The shell fills the window: the 480×270 design space is mapped onto the viewport
+by one uniform scale, so it works on a laptop, a 4K monitor and a phone, and the
+UI type is drawn as a real webfont — crisp at any size, measured in whole design
+pixels so the layouts the gates check are the layouts the page draws.
 - **Codex / Credits** — placeholder cards; the pages themselves are the next work.
 
 Two documented deviations shape the flow: the menu ground is plain **white**, and
@@ -100,5 +105,6 @@ Coast LLC, used here without permission and with no challenge to any trademark o
 copyright. Rules text is sourced from the System Reference Document 5.2.1
 (CC-BY-4.0); the attribution block ships on the game's legal screen, in the
 credits and in [`07_PIXEL_PROLOGUE_YARD_AND_MENU_BUILD_SPEC.md`](07_PIXEL_PROLOGUE_YARD_AND_MENU_BUILD_SPEC.md) §14.2.
-Typefaces are the 5×7 system face (MIT) and Silkscreen (OFL-1.1); the licences
-sit beside the fonts in `web/assets/fonts/LICENCES`.
+Type is **Inter** (OFL-1.1), subset to the shipped copy by
+`tools/build_text_faces.py`; the licence sits beside the fonts in
+`web/assets/fonts/LICENCES`.

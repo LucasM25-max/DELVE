@@ -1,22 +1,25 @@
-// Menu — screen 3 of boot: the main menu (GDD-07 §5.4).
+// Menu — screen 3 of boot: the main menu (GDD-07 §5.4, composed in the third
+// pass; the full rationale is in `docs/PIXEL_MENU_BUILD_NOTES.md` §2.14).
 //
-// Exact 480×270 layout, straight from the spec table and `shell_timings.json`:
+// The spec's skeleton is kept — column x 29, items on a 21 px pitch, one footer
+// row — and the screen is built around it:
 //
-//   (29, 22, 96, 24)  lockup: emblem + wordmark
-//   (29, 92, 140, 18) PLAY        + 21 px pitch per row
-//   (29, 113 …)       CONTINUE
-//   (29, 134 …)       OPTIONS
-//   (29, 155 …)       CODEX
-//   (29, 176 …)       CREDITS
-//   (29, y+14, w, 2)  hover underline, bronze, drawn left to right in 0.18 s
-//   (10, 254, 348, 8) abridged fan-work disclaimer, 5 px, 60 % alpha
-//   right-aligned to (470, 262)  version stamp
+//   header    the emblem at 2x (48 px) with the typed wordmark and the two brand
+//             lines beside it, closed by a bronze rule
+//   items     (29, 92, 140, 18) PLAY, then CONTINUE / OPTIONS / CODEX / CREDITS
+//             at 21 px pitch, 15 px display type, 4 px of tracking, the focused
+//             row carrying the kit's cursor and the §5.4 underline (drawn left to
+//             right in 0.18 s, now measured to the word rather than the column)
+//   panel     (196, 96, 255, 132) the latest contract — or the reason CONTINUE
+//             is dimmed — in the same parchment card the ledger uses
+//   footer    the key hint bottom-left, then the bronze rule, then the §5.4
+//             disclaimer and version stamp on one row
 //
-// Footer note: §5.4 puts both footer lines on one row at y 259, but at the
-// shipped 5 px face the disclaimer measures 360 px and the stamp 252 px — 612 of
-// 480 — so one row would overprint. They are stacked instead (both verbatim,
-// both anchored, both inside the canvas); the reasoning and the spec's original
-// numbers live in `data/shell_timings.json` -> `menu._footer_note`/`spec_rects`.
+// Footer note: §5.4 puts both footer lines on one row at y 259. The shipped 9 px
+// face measures the disclaimer 249 px and the stamp 195 px — 444 of 480 — so the
+// spec's single row ships; it sits at y 258 because the row's line box is 12 px
+// and the spec's 259 would cut the descender row. See
+// `data/shell_timings.json` -> `menu._footer_note`/`spec_rects`.
 //
 // NAVIGATION: arrows / W-S / stick / mouse hover; ESC does nothing on the menu —
 // the menu is the root of the shell, so there is no back-exit.
@@ -31,6 +34,7 @@
 // rather than being a shell state, because §5.5 draws it over the menu: the menu
 // stays visible behind it and comes back untouched when the card closes.
 
+import { Brand } from '../core/brand.js'
 import { ShellData } from '../core/data.js'
 import { Palette } from '../core/palette.js'
 import { SaveStore } from '../core/save.js'
@@ -48,7 +52,7 @@ const ITEMS = [
   { id: 'credits', string: 'STR_MENU_CREDITS' },
 ]
 
-const TOOLTIP_SIZE = { w: 164, h: 12 }
+const TOOLTIP_SIZE = { w: 164, h: 14 }
 
 export class MenuScreen extends ShellScreen {
   constructor(shell) {
@@ -73,8 +77,10 @@ export class MenuScreen extends ShellScreen {
         id: item.id,
         face: Face.DISPLAY,
         colour: Palette.ink,
-        disabledColour: Palette.stone_1,
-        disabledDim: Number(this.layout.disabled_dim ?? 0.4),
+        tracking: Number(this.layout.item_tracking ?? 4),
+        idleDim: Number(this.layout.item_idle_dim ?? 0.78),
+        disabledColour: Palette.stone_2,
+        disabledDim: Number(this.layout.disabled_dim ?? 0.8),
         underline: {
           colour: Palette.bronze_2,
           offsetY: Number(this.layout.underline_offset_y ?? 14),
@@ -139,7 +145,14 @@ export class MenuScreen extends ShellScreen {
   select(index, playSound = true) {
     const changed = index !== this.selected
     this.selected = Math.max(0, Math.min(this.rows.length - 1, index))
-    this.rows.forEach((row, rowIndex) => row.setFocus(rowIndex === this.selected))
+    // The rows are one exclusive group: only the selected row may be lit, so a
+    // hover that the pointer left behind when the keyboard took over is cleared
+    // here. Without this, moving with ↑↓ after a hover leaves two cursors up
+    // (found by watching `web/tests/reel.mjs`, not by the stills).
+    this.rows.forEach((row, rowIndex) => {
+      row.setFocus(rowIndex === this.selected)
+      if (rowIndex !== this.selected) row.setHovered(false)
+    })
     this.underlineProgress = 0
     this.underlineActive = true
     if (changed && playSound) Sound.play('SFX_UI_MOVE')
@@ -224,26 +237,120 @@ export class MenuScreen extends ShellScreen {
 
   draw() {
     Ui.white()
-
-    const lockup = this.rect('lockup_rect', [29, 22, 96, 24])
-    Ui.image(`${UI_DIR}logo_menu.png`, lockup.x, lockup.y)
-    if (this.emblemLit) {
-      // The lit-steps overlay sits exactly on the emblem inside the lockup, so
-      // the selection flicker only ever changes the steps.
-      const emblem = ShellData.brand.emblem?.size ?? [24, 24]
-      Ui.image(`${UI_DIR}logo_emblem_steps.png`, lockup.x, lockup.y, {
-        region: { x: 0, y: 0, w: emblem[0], h: emblem[1] },
-      })
-    }
-
+    this.drawHeader()
     for (const row of this.rows) row.draw()
-    this.tooltip.draw()
+    this.drawKeysHint() // the hint line doubles as the §5.4 tooltip slot
+    this.drawContractPanel()
     this.drawFooter()
 
     if (this.overlayOpen) this.drawOverlay()
   }
 
+  /** Emblem at 2x, the typed wordmark and the brand lines, closed by a rule. */
+  drawHeader() {
+    const layout = this.layout.header ?? {}
+    const mark = Rect.from(layout.mark_rect, [29, 16, 48, 48])
+    const markFile = ShellData.brand.emblem?.variants?.mark_2x ?? 'logo_emblem_2x.png'
+    Ui.image(`${UI_DIR}${markFile}`, mark.x, mark.y)
+    if (this.emblemLit) {
+      // §5.4's 0.2 s flicker: the same mark with its three steps lit. Whole
+      // numbers only — the 24 px steps art would land in the wrong pixels here,
+      // so `build_brand.py` ships the mark's 2x lit variant as well.
+      const litFile = ShellData.brand.emblem?.variants?.mark_2x_steps ?? 'logo_emblem_steps_2x.png'
+      Ui.image(`${UI_DIR}${litFile}`, mark.x, mark.y)
+    }
+
+    const wordmark = Rect.from(layout.wordmark_rect, [87, 14, 320, 28])
+    Ui.label(ShellData.brand.wordmark?.text ?? 'DELVE', wordmark.x, wordmark.y, {
+      face: Face.WORDMARK, colour: Palette.ink,
+    })
+
+    const sublock = Rect.from(layout.sublock_rect, [87, 42, 360, 12])
+    const sublock2 = Rect.from(layout.sublock2_rect, [87, 54, 360, 12])
+    Ui.label(this.t('STR_SUBLOCK_1'), sublock.x, sublock.y, {
+      face: Face.UI, colour: Palette.bronze_1, tracking: 2,
+    })
+    Ui.label(this.t('STR_SUBLOCK_2'), sublock2.x, sublock2.y, {
+      face: Face.UI, colour: Palette.bronze_1, alpha: 0.75, tracking: 2,
+    })
+
+    const rule = Rect.from(layout.rule_rect, [29, 76, 422, 1])
+    Ui.rect(rule, Palette.bronze_2, 0.6)
+  }
+
+  /**
+   * The foot of the item column: the keyboard hint, or — while the pointer is on
+   * a disabled CONTINUE — §5.4's `No contracts signed yet.` tooltip, which takes
+   * the same line. Anchoring it here rather than beside the row keeps it clear of
+   * the contract card the third pass added to the right-hand half.
+   */
+  drawKeysHint() {
+    const rect = Rect.from(this.layout.keys_rect, [29, 206, 164, 14])
+    if (this.tooltip.visible) {
+      const box = this.tooltip.rect
+      Ui.patch('tooltip', box, { state: 'normal' })
+      Ui.label(this.tooltip.text, box.x + 4, box.y + 1, { face: Face.UI, colour: Palette.ink })
+      return
+    }
+    Ui.label(this.t('STR_MENU_KEYS'), rect.x, rect.y, {
+      face: Face.UI, colour: Palette.stone_2,
+    })
+  }
+
+  /**
+   * The right-hand card: the latest contract, or why CONTINUE is dimmed.
+   *
+   * It reads `SaveStore` on every frame — the ledger, the First Run page and the
+   * overlay all change the save — so the card and the menu can never disagree
+   * about whether a contract exists. `refreshContinue()` runs on `enter()`,
+   * which is the path every one of those screens returns through, so the row's
+   * enabled state and the card move together.
+   */
+  drawContractPanel() {
+    const layout = this.layout.contract_panel ?? {}
+    const panel = Rect.from(layout.rect, [196, 92, 255, 148])
+    Ui.panel('panel_parchment', panel)
+
+    const entry = SaveStore.latestContract()
+    const hasContract = Boolean(entry?.name)
+    const stamp = Rect.from(layout.stamp_rect, [212, 110, 24, 24])
+    const title = Rect.from(layout.title_rect, [244, 116, 191, 12])
+    const name = Rect.from(layout.name_rect, [212, 142, 223, 20])
+    const detail = Rect.from(layout.detail_rect, [212, 166, 223, 12])
+    const rule = Rect.from(layout.rule_rect, [212, 186, 223, 1])
+    const hint = Rect.from(layout.hint_rect, [212, 196, 223, 24])
+
+    const beats = ShellData.content.tutorial_beats?.p1 ?? []
+    const done = hasContract ? (entry.beats ?? []).length : 0
+    Ui.image(`${UI_DIR}${Brand.stampFile(Brand.stepsLitFor(done, beats.length))}`, stamp.x, stamp.y)
+
+    Ui.label(this.t(hasContract ? 'STR_MENU_PANEL_TITLE' : 'STR_MENU_PANEL_EMPTY_TITLE'), title.x, title.y, {
+      face: Face.UI, colour: Palette.bronze_1, tracking: 2,
+    })
+    if (hasContract) {
+      Ui.label(String(entry.name), name.x, name.y, {
+        face: Face.DISPLAY, colour: Palette.ink, width: name.w,
+      })
+      Ui.label(this.t('STR_MENU_PANEL_DETAIL', [entry.class ?? '—', Number(entry.level ?? 1), entry.chapter ?? '—']),
+        detail.x, detail.y, { face: Face.UI, colour: Palette.ink, alpha: 0.7, width: detail.w })
+    } else {
+      // The empty state is prose, not a headline: the card should read as a
+      // quiet note beside the menu, not as a second title.
+      Ui.label(this.t('STR_MENU_PANEL_EMPTY_BODY'), name.x, name.y + 8, {
+        face: Face.BODY, colour: Palette.ink, alpha: 0.85, width: name.w,
+      })
+    }
+    Ui.rect(rule, Palette.bronze_2, 0.45)
+    Ui.label(hasContract
+      ? this.t('STR_MENU_PANEL_STATUS', [done, beats.length])
+      : this.t('STR_MENU_PANEL_EMPTY_HINT'),
+    hint.x, hint.y, { face: Face.UI, colour: Palette.ink, alpha: 0.62, width: hint.w })
+  }
+
   drawFooter() {
+    const rule = Rect.from(this.layout.footer_rule_rect, [29, 250, 422, 1])
+    Ui.rect(rule, Palette.bronze_2, 0.5)
+
     const alpha = Number(this.layout.disclaimer_alpha ?? 0.6)
     const disclaimer = this.rect('disclaimer_rect', [10, 254, 348, 8])
     Ui.label(this.t('STR_DISCLAIMER_ABRIDGED'), disclaimer.x, disclaimer.y, {
@@ -271,16 +378,18 @@ export class MenuScreen extends ShellScreen {
 
   // --- tooltip ----------------------------------------------------------
 
+  /**
+   * §5.4: CONTINUE with no saves shows its tooltip on hover. The box is parked at
+   * the foot of the item column (see `drawKeysHint`), so it never lands on the
+   * contract card; the row it belongs to is still passed for the highlight and
+   * for anything that wants the anchor later.
+   */
   showTooltip(visible, row = null) {
     this.tooltip.visible = visible
     if (!visible || !row) return
     this.tooltip.setText(this.t('STR_MENU_NOSAVE'))
-    this.tooltip.rect = Rect.of(
-      row.rect.right + 8,
-      Math.round(row.rect.y + (row.rect.h - TOOLTIP_SIZE.h) / 2),
-      TOOLTIP_SIZE.w,
-      TOOLTIP_SIZE.h,
-    )
+    const keys = Rect.from(this.layout.keys_rect, [29, 206, 164, 14])
+    this.tooltip.rect = Rect.of(keys.x, keys.y, TOOLTIP_SIZE.w, TOOLTIP_SIZE.h)
   }
 
   flickerEmblem() {

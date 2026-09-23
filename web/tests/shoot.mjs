@@ -76,6 +76,48 @@ class StubImage {
   }
 }
 
+// --- the offline text atlas ---------------------------------------------
+//
+// The page draws its text with a webfont; a Node process has no font
+// rasteriser, so the previews draw the same strings from the 1:1 coverage atlas
+// `tools/build_text_faces.py` bakes next to it. Faces are keyed by the CSS font
+// string the pages set (`600 15px "Delve Sans"`), so text lands where the page
+// puts it.
+
+const atlas = JSON.parse(readFileSync(join(ROOT, 'tools', 'atlas', 'glyph_atlas.json'), 'utf8'))
+const metrics = JSON.parse(readFileSync(join(WEB, 'assets', 'fonts', 'font_metrics.json'), 'utf8'))
+const manifest = JSON.parse(readFileSync(join(WEB, 'data', 'fonts.json'), 'utf8'))
+const atlasImages = new Map()
+
+function atlasFaceFor(font) {
+  const match = /^(\d+)\s+([\d.]+)px\s+"([^"]+)"/.exec(String(font))
+  if (!match) return null
+  const [, weight, size, family] = match
+  if (family !== manifest.family) return null
+  for (const [role, face] of Object.entries(atlas.faces)) {
+    const source = manifest.faces[role]
+    if (Number(weight) === Number(face.weight) && Number(size) === Number(source.size)) return face
+  }
+  return null
+}
+
+function atlasOk(face) { return Boolean(face && face.file) }
+
+/** Advance in whole pixels: the same rounding the page and the Python gate use. */
+function advanceOf(face, character) {
+  const source = metrics.sources[face.source]
+  const units = source.advances[character.charCodeAt(0)]
+  if (units === undefined) return Math.max(1, Math.round(face.size * 0.5))
+  return Math.max(1, Math.round((units * face.size) / source.unitsPerEm))
+}
+
+function atlasPixels(file) {
+  // `decode()` resolves against `web/`; the atlas lives in `tools/atlas/`.
+  const path = join('..', 'tools', 'atlas', file)
+  if (!atlasImages.has(path)) atlasImages.set(path, decode(path))
+  return atlasImages.get(path)
+}
+
 // --- a canvas that keeps its pixels --------------------------------------
 
 function parseColour(value) {
@@ -122,10 +164,85 @@ class Surface {
 class Context2D {
   constructor(surface) {
     this.surface = surface
+    this.canvas = surface
     this.fillStyle = '#000000'
     this.globalAlpha = 1
     this.globalCompositeOperation = 'source-over'
     this.imageSmoothingEnabled = false
+    this.font = '400 10px "Delve Sans"'
+    this.textAlign = 'left'
+    this.textBaseline = 'alphabetic'
+    this.transform = { scale: 1, x: 0, y: 0 }
+    this.stack = []
+  }
+
+  /**
+   * The shell's viewport transform.
+   *
+   * These previews are renders of the 480×270 design space at 1:1 — that is what
+   * makes them comparable frame to frame — so the harness keeps the window at
+   * the design size and the only transform it ever sees is the identity one. The
+   * full-screen mapping is `fitViewport()` in `web/js/ui/render.js`, unit-tested
+   * in `run.mjs`; a shot that resizes the window has to teach this stub how to
+   * scale first, and this refuses rather than drawing something wrong.
+   */
+  setTransform(scale, _skewX, _skewY, _scaleY, x, y) {
+    if (scale === 1 && x === 0 && y === 0) {
+      this.transform = { scale: 1, x: 0, y: 0 }
+      return
+    }
+    throw new Error(`shoot stub: unsupported viewport transform (scale ${scale}, ${x}, ${y})`)
+  }
+
+  save() {
+    this.stack.push({
+      fillStyle: this.fillStyle,
+      globalAlpha: this.globalAlpha,
+      globalCompositeOperation: this.globalCompositeOperation,
+      font: this.font,
+    })
+  }
+
+  restore() {
+    const state = this.stack.pop()
+    if (state) Object.assign(this, state)
+  }
+
+  /** Text, drawn glyph by glyph from the offline atlas (`tools/atlas/`). */
+  fillText(string, x, y) {
+    const face = atlasFaceFor(this.font)
+    if (!face || !face.file) return
+    const pixels = atlasPixels(face.file)
+    const [r, g, b, base] = parseColour(this.fillStyle)
+    const alpha = (base / 255) * this.globalAlpha
+    let pen = Math.round(x)
+    const top = Math.round(y) - face.ascent
+    for (const character of String(string)) {
+      const rect = face.glyphs[character.charCodeAt(0)]
+      if (rect) {
+        const [sx, sy, sw, sh, offsetX, offsetY] = rect
+        for (let row = 0; row < sh; row += 1) {
+          for (let column = 0; column < sw; column += 1) {
+            const source = ((sy + row) * pixels.width + sx + column) * 4
+            const coverage = pixels.pixels[source + 3] / 255
+            if (coverage <= 0) continue
+            const dx = pen + offsetX + column
+            const dy = top + offsetY + row
+            if (dx < 0 || dy < 0 || dx >= this.surface.width || dy >= this.surface.height) continue
+            blend(this.surface.pixels, (dy * this.surface.width + dx) * 4, r, g, b, coverage * alpha)
+          }
+        }
+      }
+      pen += advanceOf(face, character)
+    }
+  }
+
+  /** The metrics table is the authority on widths, exactly as in the page. */
+  measureText(string) {
+    const face = atlasFaceFor(this.font)
+    let width = 0
+    for (const character of String(string)) width += face ? advanceOf(face, character) : 0
+    return { width }
   }
 
   clearRect(x, y, w, h) {
@@ -265,8 +382,9 @@ globalThis.document = {
   addEventListener() {},
 }
 globalThis.window = {
-  innerWidth: 1280,
-  innerHeight: 720,
+  // The design space: these previews are 1:1 renders of it (see Context2D.setTransform).
+  innerWidth: 480,
+  innerHeight: 270,
   addEventListener() {},
   matchMedia: () => ({ matches: false }),
   Delve: {},
@@ -296,6 +414,8 @@ const { GameState, State } = await import('../js/core/state.js')
 const { SaveStore } = await import('../js/core/save.js')
 const { Ui, Face } = await import('../js/ui/kit.js')
 const { Palette } = await import('../js/core/palette.js')
+
+for (const face of Object.values(atlas.faces)) atlasPixels(face.file)
 
 const shell = new Shell(canvas)
 await shell.boot()
@@ -330,9 +450,27 @@ const shots = {
     // CONTINUE is dimmed with no ledger entry, so hovering it shows the tooltip.
     shell.active.handlePointerMove(80, 113)
   },
+  // The menu with a contract in the ledger: the right-hand card carries it.
+  'menu-contract': () => {
+    contract()
+    shell.go_to(State.MENU)
+  },
+  // The §5.4 flicker: the emblem's steps lit for 0.2 s after a selection.
+  'menu-flicker': () => {
+    shell.go_to(State.MENU)
+    shell.active.select(0, false)
+    // The state `flickerEmblem()` leaves behind, without the navigation a real
+    // confirmation would trigger (the menu holds no save in this run).
+    shell.active.emblemLit = true
+    shell.active.flickerUntil = 0.2
+  },
+  // The same menu with the new-contract card open over it (§5.5). The selection
+  // is set explicitly: shots share one shell, and a hover from an earlier shot
+  // would otherwise leave ENTER aimed at whichever row that shot touched.
   'menu-new-contract': () => {
     contract()
     shell.go_to(State.MENU)
+    shell.active.select(0, false)
     shell.active.onKey(key('Enter'))
   },
   // The page dims whatever is behind it (first_run.draw() opens with Ui.dim(0.6)),
@@ -384,20 +522,21 @@ const shots = {
   },
   codex: () => shell.go_to(State.STUB_CARD, { stub: 'codex' }),
   credits: () => shell.go_to(State.STUB_CARD, { stub: 'credits' }),
-  // A measuring stick rather than a page: the three faces side by side, so a
+  // A measuring stick rather than a page: every shipped face side by side, so a
   // font or metric regression is visible in the images.
   faces: () => () => {
     Ui.ground('#FFFFFF')
     Ui.label('PLAYA Sg1 jam', 8, 6, { face: Face.DISPLAY, colour: Palette.ink })
-    Ui.label('The quick brown fox jumps over it.', 8, 30, { face: Face.BODY, colour: Palette.ink })
-    Ui.label('PRESS ANY BUTTON TO CONTINUE.', 8, 48, { face: Face.UI, colour: Palette.ink })
-    Ui.label('0123456789 · 480×270 · 16 px', 8, 64, { face: Face.BODY, colour: Palette.stone_1 })
-    Ui.panel('panel_parchment', { x: 8, y: 90, w: 180, h: 60 })
-    Ui.panel('panel_ink', { x: 200, y: 90, w: 180, h: 60 })
-    Ui.patch('button', { x: 8, y: 160, w: 120, h: 18 }, { state: 'normal' })
-    Ui.patch('pill', { x: 140, y: 160, w: 90, h: 16 }, { state: 'selected' })
-    Ui.sprite('wax_seal', 250, 158)
-    Ui.sprite('item_cursor', 300, 160)
+    Ui.label('DELVE', 8, 24, { face: Face.WORDMARK, colour: Palette.ink })
+    Ui.label('The quick brown fox jumps over it.', 8, 54, { face: Face.BODY, colour: Palette.ink })
+    Ui.label('PRESS ANY BUTTON TO CONTINUE.', 8, 72, { face: Face.UI, colour: Palette.ink })
+    Ui.label('0123456789 · 480×270 · 16 px', 8, 88, { face: Face.BODY, colour: Palette.stone_1 })
+    Ui.panel('panel_parchment', { x: 8, y: 110, w: 180, h: 60 })
+    Ui.panel('panel_ink', { x: 200, y: 110, w: 180, h: 60 })
+    Ui.patch('button', { x: 8, y: 180, w: 120, h: 18 }, { state: 'normal' })
+    Ui.patch('pill', { x: 140, y: 180, w: 90, h: 16 }, { state: 'selected' })
+    Ui.sprite('wax_seal', 250, 178)
+    Ui.sprite('item_cursor', 300, 180)
   },
 }
 
@@ -435,34 +574,44 @@ checkTextInk()
 void GameState
 
 /**
- * Tinted text must ink the whole glyph box.
+ * Text must ink the whole glyph box, on every face.
  *
- * `info size` in an `.fnt` is the nominal em, not the ink: the display face says
- * 10 px and its glyphs are 14 px tall. A tint that fills only `font.px` rows
- * leaves the bottom of every glyph white — invisible on the white menu ground,
- * where `PLAY` drew as a stem, a box and a Y. Each face is measured here instead,
- * which is how that was found (PIXEL_MENU_BUILD_NOTES §3.1, defect 4).
+ * The faces are drawn from the same coverage atlas the offline renderer blits,
+ * so the honest question is whether a string lands where the metrics say it
+ * will: the two characters that reach highest and lowest in the face are drawn
+ * as one probe, and the ink has to fill those rows exactly — top row to bottom
+ * row, no clipped ascender, no descender left outside the line box. This is the
+ * check that caught the 4 px short ink box of the bitmap build (see
+ * `docs/PIXEL_MENU_BUILD_NOTES.md` §3.1) and it still catches a face whose
+ * ascent/descent no longer hold its glyphs.
  */
 function checkTextInk() {
   const failures = []
   Ui.ground('#FFFFFF')
-  ;[Face.DISPLAY, Face.BODY, Face.UI].forEach((face, row) => {
-    const font = Ui.font(face)
-    // The two glyphs that reach highest and lowest, so the probe spans the face's
-    // whole box; the expected rows come from the same descriptor the painter uses.
-    const box = { top: Infinity, bottom: -Infinity, characters: [] }
-    for (const [code, glyph] of font.chars) {
-      if (glyph.w <= 0) continue
-      if (glyph.offsetY < box.top) { box.top = glyph.offsetY; box.characters[0] = String.fromCharCode(code) }
-      if (glyph.offsetY + glyph.h > box.bottom) { box.bottom = glyph.offsetY + glyph.h; box.characters[1] = String.fromCharCode(code) }
+  ;[Face.DISPLAY, Face.WORDMARK, Face.BODY, Face.UI].forEach((face, row) => {
+    const definition = manifest.faces[face]
+    const cell = atlasFaceFor(`${atlas.faces[face].weight} ${definition.size}px "${manifest.family}"`)
+    if (!cell) {
+      failures.push(`${face}: no offline atlas cell for ${definition.size}px`)
+      return
     }
-    const probe = box.characters.join('')
-    const top = 8 + row * 80
-    Ui.label(probe, 8, top, { face, colour: Palette.ink })
+    let top = Infinity
+    let bottom = -Infinity
+    const characters = []
+    for (const [code, rect] of Object.entries(cell.glyphs)) {
+      const [, , width, height, , offsetY] = rect
+      if (width <= 0 || height <= 0) continue
+      if (offsetY < top) { top = offsetY; characters[0] = String.fromCharCode(code) }
+      if (offsetY + height > bottom) { bottom = offsetY + height; characters[1] = String.fromCharCode(code) }
+    }
+    const probe = characters.join('')
+    // Four faces on one 270 px canvas: 64 px rows, the probe drawn in the top 60.
+    const originY = 8 + row * 64
+    Ui.label(probe, 8, originY, { face, colour: Palette.ink })
     let first = null
     let last = null
-    for (let y = top; y < top + 40; y += 1) {
-      for (let x = 8; x < 8 + font.measure(probe); x += 1) {
+    for (let y = originY; y < originY + 60; y += 1) {
+      for (let x = 8; x < 8 + 60; x += 1) {
         const offset = (y * canvas.width + x) * 4
         const ink = canvas.pixels[offset] !== 255 || canvas.pixels[offset + 1] !== 255 || canvas.pixels[offset + 2] !== 255
         if (!ink) continue
@@ -470,17 +619,20 @@ function checkTextInk() {
         last = y
       }
     }
-    const expected = box.bottom - box.top
-    const height = first === null ? 0 : last - first + 1
-    if (height !== expected || (first !== null && first - top !== box.top)) {
-      failures.push(`${face}: tinted text inks rows ${first === null ? 'none' : `${first - top}..${last - top}`}, the face measures ${box.top}..${box.bottom - 1}`)
+    if (first === null) {
+      failures.push(`${face}: '${probe}' drew nothing`)
+      return
+    }
+    if (first - originY !== top || last - originY !== bottom - 1) {
+      failures.push(`${face}: '${probe}' inks rows ${first - originY}..${last - originY}, the atlas measures ${top}..${bottom - 1}`)
     }
   })
   if (failures.length > 0) {
     for (const line of failures) console.error(`  ! ${line}`)
-    console.error('  tinted text is clipped — see tintedRun() in web/js/ui/font.js')
+    console.error('  text does not fill its line box — see tools/build_text_faces.py')
     process.exitCode = 1
     return
   }
-  console.log('  tinted text inks its full glyph box on all three faces')
+  console.log(`  text inks its full line box on all ${[Face.DISPLAY, Face.WORDMARK, Face.BODY, Face.UI].length} faces`)
 }
+

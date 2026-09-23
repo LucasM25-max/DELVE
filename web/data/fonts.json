@@ -1,9 +1,36 @@
 {
-  "schema": 1,
-  "description": "The three bitmap faces the shell draws with, by role. Each name is an AngelCode `.fnt` descriptor plus its PNG atlas in assets/fonts/ (tools/build_fonts.py bakes them; tools/check_project.py verifies the glyph rects, the atlas bounds and the glyph coverage of every shipped string). Roles are the kit's names: `ui` is the 5 px chrome face, `body` the 8 px prose face, `display` the 10 px heading face.",
+  "schema": 2,
+  "description": "The text faces the shell draws with, by role. Each face names a source in assets/fonts/font_metrics.json (the shipped webfont plus its per-character advances), a size in game pixels, and the vertical metrics the layout uses: `ascent` is the baseline offset from the top of the line box, `descent` the room below it, and `lineHeight` the step between wrapped lines. `tracking` is the default extra letter-spacing, in whole pixels. `ui` is the 9 px chrome face, `body` the 9 px prose face, `display` the 15 px heading face and `wordmark` the 22 px letterspaced brand face. tools/build_text_faces.py bakes the fonts, the metrics table and the offline atlases from tools/sources/; tools/check_project.py measures every page layout from the same numbers.",
+  "family": "Delve Sans",
   "faces": {
-    "ui": "pixel_ui_5",
-    "body": "pixel_body_8",
-    "display": "pixel_display_10"
+    "ui": {
+      "source": "inter-600",
+      "size": 9,
+      "ascent": 9,
+      "descent": 3,
+      "lineHeight": 12
+    },
+    "body": {
+      "source": "inter-400",
+      "size": 9,
+      "ascent": 9,
+      "descent": 3,
+      "lineHeight": 12
+    },
+    "display": {
+      "source": "inter-600",
+      "size": 15,
+      "ascent": 15,
+      "descent": 4,
+      "lineHeight": 18
+    },
+    "wordmark": {
+      "source": "inter-600",
+      "size": 22,
+      "ascent": 22,
+      "descent": 6,
+      "lineHeight": 28,
+      "tracking": 6
+    }
   }
 }

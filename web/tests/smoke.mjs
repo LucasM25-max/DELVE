@@ -23,16 +23,28 @@ const WEB = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 const drawCalls = { count: 0 }
 
-function context2D() {
+function context2D(canvas) {
   const ctx = {
-    canvas: null,
+    canvas,
     fillStyle: '#000',
     globalAlpha: 1,
     globalCompositeOperation: 'source-over',
     imageSmoothingEnabled: false,
+    font: '400 10px "Delve Sans"',
+    textAlign: 'left',
+    textBaseline: 'alphabetic',
+    // The shell installs one viewport transform through `Painter.setViewport`;
+    // this stub records it so the smoke run also proves the fit is sane (see the
+    // 'canvas sizing' step below).
+    transform: { scale: 1, x: 0, y: 0 },
+    setTransform: (scale, _skewX, _skewY, _scaleY, x, y) => {
+      ctx.transform = { scale, x, y }
+    },
     fillRect: () => { drawCalls.count += 1 },
     clearRect: () => {},
     drawImage: () => { drawCalls.count += 1 },
+    fillText: () => { drawCalls.count += 1 },
+    measureText: (string) => ({ width: String(string).length * 5 }),
     save: () => {},
     restore: () => {},
   }
@@ -44,7 +56,7 @@ function makeCanvas() {
     width: 480,
     height: 270,
     style: {},
-    getContext: () => context2D(),
+    getContext: () => (canvas.__ctx ??= context2D(canvas)),
     addEventListener: () => {},
     setPointerCapture: () => {},
     getBoundingClientRect: () => ({ left: 0, top: 0, width: canvas.width, height: canvas.height }),
@@ -103,8 +115,11 @@ globalThis.document = {
   addEventListener: (type, handler) => { listeners[type] = handler },
 }
 globalThis.window = {
+  // A deliberately awkward window: not 16:9, and not a whole multiple of
+  // 480x270, so the fit is exercised on every frame of this suite.
   innerWidth: 1920,
   innerHeight: 1080,
+  devicePixelRatio: 2,
   addEventListener: (type, handler) => { listeners[type] = handler },
   matchMedia: () => ({ matches: false }),
 }
@@ -164,6 +179,24 @@ const canvas = globalThis.document.getElementById('screen')
 const shell = new Shell(canvas)
 await shell.boot()
 
+step('canvas sizing', () => {
+  const { transform } = canvas.getContext('2d')
+  const expected = Math.min(canvas.width / 480, canvas.height / 270)
+  check(Math.abs(transform.scale - expected) < 1e-9, 'the design is scaled to fit the window')
+  check(canvas.width >= window.innerWidth && canvas.height >= window.innerHeight,
+    'the canvas fills the window in device pixels')
+  check(480 * transform.scale <= canvas.width + 1 && 270 * transform.scale <= canvas.height + 1,
+    'the 480x270 design fits inside it')
+  eq(transform.x, Math.round((canvas.width - 480 * transform.scale) / 2), 'the remainder is centred horizontally')
+  eq(transform.y, Math.round((canvas.height - 270 * transform.scale) / 2), 'the remainder is centred vertically')
+  const rect = canvas.getBoundingClientRect()
+  const centre = shell.toCanvas({ clientX: rect.width / 2, clientY: rect.height / 2 })
+  check(Math.abs(centre.x - 240) <= 1 && Math.abs(centre.y - 135) <= 1,
+    `the middle of the window is the middle of the design (${centre.x}, ${centre.y})`)
+  const corner = shell.toCanvas({ clientX: 0, clientY: 0 })
+  check(corner.x <= 0 && corner.y <= 0, 'the top-left of the window is outside the design, not inside it')
+}, { draw: false })
+
 const active = () => shell.active
 const key = (code, extra = {}) => ({ type: 'keydown', code, key: '', ...extra })
 const frames = (count = 4, delta = 0.1) => {
@@ -197,6 +230,15 @@ step('the menu draws, moves and opens the First Run page', () => {
   eq(menu.selected, 1, 'the down arrow moves the menu cursor')
   menu.handleKey(key('ArrowUp'))
   frames(3, 0.1)
+
+  // One lit row at a time. A hover the pointer leaves behind when the keyboard
+  // takes over would put two cursors on screen at once — the reel caught it.
+  menu.rows[3].setHovered(true)
+  menu.handleKey(key('ArrowDown'))
+  eq(menu.rows.filter((row) => row.focused || row.hovered).length, 1,
+    'exactly one menu row stays lit after a hover and then a keyboard move')
+  check(menu.rows[menu.selected].focused, 'the row that stays lit is the selected one')
+  menu.rows[3].setHovered(false)
   menu.select(0, false)
   menu.handleKey(key('Enter'))
   eq(GameState.state, State.FIRST_RUN, 'PLAY opens the First Run contract page')
