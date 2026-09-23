@@ -3,11 +3,12 @@
 The pixel version of DELVE, built from **GDD-06** (browser pixel conversion plan) and
 **GDD-07** (pixel prologue build spec).
 
-**This build ships the shell rings it was asked for: the boot sequence (legal →
-logo sting) and the main menu.** The five menu items are inert — activating one opens a
-small placeholder card instead of the real page. Everything else in §5 is wired but not
-built: the enum values, strings, timings, options schema and audio cue table are already
-in place, so each page is a drop-in.
+**This build ships the boot sequence (legal → logo sting), the main menu, and the real
+Play, Continue and Options pages** — the First Run contract page and the `Begin a new
+contract?` overlay (§5.5), the eight-slot contract ledger (§5.5), and the schema-driven
+Options rail (§5.6). Two things are stubbed on purpose: the Loading screen and the yard do
+not exist yet, so every button that would leave the menu for them returns to the menu
+instead (its text is unchanged), and CODEX / CREDITS still open placeholder cards.
 
 ```
 pixel/
@@ -17,8 +18,10 @@ pixel/
 │  ├ core/          palette · brand · shell_data · game_state · save_store ·
 │  │                rng_streams · dice · sound · input_actions
 │  └ ui/            ui_pixel · shell_screen · pixel_menu_item · menu_background ·
-│                   screen_legal · screen_sting · screen_menu · screen_stub · shell
-├ scenes/ui/        shell.tscn + screens/{legal,sting,menu,stub}.tscn
+│                   pixel_pill_group · pixel_slider · pixel_options_row ·
+│                   pixel_ledger_row · screen_legal · screen_sting · screen_menu ·
+│                   screen_first_run · screen_ledger · screen_options · screen_stub · shell
+├ scenes/ui/        shell.tscn + screens/{legal,sting,menu,first_run,ledger,options,stub}.tscn
 ├ assets/
 │  ├ fonts/         pixel_ui_5 · pixel_body_8 · pixel_display_10 (+ LICENCES)
 │  ├ pixel/palette/ the locked 32 + 8 ramp + LUT
@@ -54,13 +57,18 @@ ignored by Git.
 | mouse hover | select the row under the pointer |
 | Enter / Space / F / pad A | activate the selected row |
 | Esc | **does nothing on the menu** (§5.4: there is no back-exit) |
-| Esc | closes a placeholder card (back) |
+| Esc | closes the contract card / leaves the ledger / commits Options and goes BACK |
+| ↑ / ↓ on First Run, Ledger, Options | move between groups and rows |
+| ← / → on Options | change the focused row's value (pills step, sliders ±10) |
+| Tab on Options | next tab |
+| Delete on the Ledger | raise the `Break this contract?` card |
 
 ### Test hooks
 
-`--screen=legal|sting|menu|stub` (CLI) and `?s=legal|sting|menu|stub` (web export) jump to
-a page. Hooks only run when the flag or query string is present; shipped behaviour is
-untouched without them.
+`--screen=legal|sting|menu|first_run|ledger|options|stub` (CLI) and
+`?s=legal|sting|menu|first_run|ledger|options|stub` (web export) jump to a page. Hooks
+only run when the flag or query string is present; shipped behaviour is untouched without
+them.
 
 ---
 
@@ -72,7 +80,11 @@ untouched without them.
 | §5.2.2 logo sting: 4.0 s, emblem draws in 8 steps, three steps light, five chisel strikes, sublock fade + bronze sweep, skippable after 1.5 s, reduced-motion cut | built |
 | §5.2.3/§5.4 menu: exact 480×270 rects, 10 px display items on a 21 px pitch, bronze underline drawn in 0.18 s, selection flicker, CONTINUE dim 40 % + tooltip + deny cue, abridged disclaimer, version stamp, Esc inert | built |
 | §5.4 background: three-layer painted dawn parallax + motes | **flat white for now** (see below) |
-| §5.5 PLAY/CONTINUE/first-run/ledger flows, §5.6 options, §5.7 codex, §5.8 credits, §5.9 loading | strings, timings, schema and cue table ship in `data/`; screens are placeholder cards |
+| §5.5 PLAY: no save → First Run page; save exists → `Begin a new contract?` card; `SIGN & DESCEND` writes the next free slot (`New contract`, P1 label) | built (returns to the menu rather than Loading → YARD, see below) |
+| §5.5 CONTINUE → ledger: 8 rows at 24 px, emblem stamp (steps lit = beats completed), `{class} · {chapter}`, date, `DELETE` → blood confirm card, `— empty —` at 40 %, corrupt-save card | built (a chosen contract returns to the menu — the yard is not built) |
+| §5.5 First Run page: parchment panel (40, 16, 400, 238), pill groups at y 56/104/152, verbatim help, `SECONDARY` tag + tooltip, `BACK` / `SIGN & DESCEND` | built |
+| §5.6 options: tab rail (8, 16, 72, 238), rows panel (88, 16, 384, 238), row h 20, pills / toggle / 10-pip sliders / rebinds, `BACK` commits and writes save v2 | built |
+| §5.7 codex, §5.8 credits, §5.9 loading | strings, timings, schema and cue table ship in `data/`; screens are placeholder cards |
 | §5.10 audio cues | all 121 cues declared and wired by id; files land via `tools/fetch_audio.py` (the menu theme and Corwin's VO keepers are copied from this repo) |
 
 ### Deliberate deviations (all documented in `docs/PIXEL_MENU_BUILD_NOTES.md`)
@@ -86,9 +98,15 @@ untouched without them.
 3. **Wordmark face grid.** §5.1 asks for a "5×7-pixel display face" with an **18 px cap
    height** — impossible on a pixel grid (18 ÷ 7 is not an integer), so the wordmark is
    authored on a 6×9 grid at 2× to hit 18 px and 2 px letter-spacing exactly.
-4. **Placeholder cards.** Activating a menu item opens a parchment card whose title and
-   body already live in `data/strings.json` (`STR_STUB_<ID>_*`) — the real screen drops
-   into the same slot.
+4. **Placeholder cards.** CODEX and CREDITS open a parchment card whose title and body
+   already live in `data/strings.json` (`STR_STUB_<ID>_*`) — the real screens drop into the
+   same slot.
+5. **Buttons that would leave the menu return to the menu.** §5.5 sends `SIGN & DESCEND`
+   and a chosen ledger row to **Loading → YARD**; neither screen exists yet, so both write
+   everything they are specified to write and then return to the menu (where CONTINUE lights
+   up and the ledger shows the new contract). Every such button keeps its spec text; the
+   change is one call site each (`screen_first_run.gd::_sign_and_descend`,
+   `screen_ledger.gd::_on_row_selected`). Full detail in `docs/PIXEL_MENU_BUILD_NOTES.md` §2.8.
 
 ---
 
@@ -111,8 +129,9 @@ godot --headless --path pixel res://tests/test_runner.tscn   # 100+ runtime chec
   layout change:
 
   ```bash
-  python3 tools/preview_screen.py                 # every screen
-  python3 tools/preview_screen.py menu --scale 2  # one screen, enlarged
+  python3 tools/preview_screen.py                    # every screen
+  python3 tools/preview_screen.py first-run ledger   # one or two, at 2x
+  python3 tools/preview_screen.py options-controls   # the scrolling Controls tab
   ```
 * `check_project.py` also runs the **§7.4 art lint**: every pixel of every committed PNG
   must sit inside the locked 40-colour palette, and `assets/pixel/` must stay under
@@ -121,7 +140,9 @@ godot --headless --path pixel res://tests/test_runner.tscn   # 100+ runtime chec
   (§5.11 master, the 16 loading tips, the sublock, both disclaimers, the SRD block).
 * `tests/test_runner.gd` covers the palette mirror, string master, save ledger, dice and
   RNG streams, the shell state machine, text wrapping, the §5.4 menu rects, screen
-  build-out and brand geometry.
+  build-out and brand geometry, plus this build's pages: pill groups, the 10-pip slider,
+  the First Run defaults and its `SIGN & DESCEND` write, the contract card, the ledger and
+  the options rows.
 
 Asset builders are deterministic: running `tools/build_all.py` twice produces
 byte-identical PNGs and JSON.

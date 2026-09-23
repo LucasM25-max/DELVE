@@ -82,10 +82,46 @@ KIT = {
             "states": ["normal", "hover", "pressed", "disabled"],
             "use": "all confirm/back buttons in cards",
         },
+        "button_blood": {
+            "file": "button_blood_{state}.png",
+            "size": [16, 16],
+            "margin": 4,
+            "states": ["normal", "hover", "pressed", "disabled"],
+            "use": "destructive confirms: ledger DELETE and the BREAK button (§5.5 blood #8E2F26)",
+        },
+        "pill": {
+            "file": "pill_{state}.png",
+            "size": [16, 16],
+            "margin": 4,
+            "states": ["normal", "selected", "hover"],
+            "use": "segmented pill groups (h 16, gap 4); selected = bronze fill + ink text (§5.5)",
+        },
+        "tab": {
+            "file": "tab_{state}.png",
+            "size": [16, 16],
+            "margin": 4,
+            "states": ["normal", "selected", "hover"],
+            "use": "options tab rail (tabs x3, §7.4)",
+        },
+        "scrollbar": {
+            "file": "scrollbar_{part}.png",
+            "size": [4, 16],
+            "margin": 2,
+            "states": ["thumb", "track"],
+            "use": "options/tab scrolling",
+        },
+        "tooltip": {
+            "file": "tooltip_box.png",
+            "size": [16, 16],
+            "margin": 4,
+            "use": "hover tooltips (menu CONTINUE, SECONDARY pill)",
+        },
     },
     "sprites": {
         "wax_seal": {"file": "wax_seal.png", "size": [24, 24], "use": "save stamps, cards"},
         "item_cursor": {"file": "item_cursor.png", "size": [10, 10], "use": "menu/list selection"},
+        "portrait_frame": {"file": "portrait_frame.png", "size": [24, 24],
+                           "use": "initiative queue and journal portrait frames"},
     },
 }
 
@@ -142,6 +178,105 @@ def button(state: str) -> Canvas:
     if state == "pressed":
         canvas.hline(1, 0, size - 2, dark)
         canvas.vline(0, 1, size - 2, dark)
+    return canvas
+
+
+def button_blood(state: str) -> Canvas:
+    """Blood-faced button for destructive confirms (§5.5 `DELETE` / `BREAK`).
+
+    Same 4 px frame as `button()`, so a card can mix faces without the geometry
+    shifting; only the fill changes (blood #8E2F26, per the palette's
+    "destructive confirms" entry).
+    """
+    size = 16
+    canvas = Canvas(size, size)
+    fills = {
+        # Locked-palette blood family: BLOOD_0 #5C1C17, BLOOD_1 #8E2F26, #B4553F.
+        "normal": (BLOOD_1, hex_to_rgba("#B4553F"), BLOOD_0),
+        "hover": (hex_to_rgba("#B4553F"), hex_to_rgba("#B4553F"), BLOOD_0),
+        "pressed": (BLOOD_0, BLOOD_1, BLOOD_0),
+        "disabled": (STONE_1, hex_to_rgba("#6C757B"), hex_to_rgba("#2C3238")),
+    }
+    fill, light, dark = fills[state]
+    canvas.rect(0, 0, size, size, fill)
+    canvas.hline(0, 0, size, light)
+    canvas.vline(0, 0, size, light)
+    canvas.hline(0, size - 1, size, dark)
+    canvas.vline(size - 1, 0, size, dark)
+    canvas.frame(0, 0, size, size, INK_0)
+    if state == "pressed":
+        canvas.hline(1, 0, size - 2, dark)
+        canvas.vline(0, 1, size - 2, dark)
+    return canvas
+
+
+def pill(state: str) -> Canvas:
+    """Segmented pill: parchment when idle, bronze fill when selected (§5.5)."""
+    size = 16
+    canvas = Canvas(size, size)
+    fill, border, highlight = {
+        "normal": (PARCH_2, BRONZE_1, PARCH_3),
+        "hover": (PARCH_3, BRONZE_2, PARCH_3),
+        "selected": (BRONZE_2, BRONZE_0, BRONZE_3),
+    }[state]
+    canvas.rect(0, 0, size, size, fill)
+    canvas.frame(0, 0, size, size, border)
+    canvas.hline(1, 1, size - 2, highlight)
+    return canvas
+
+
+def tab(state: str) -> Canvas:
+    """Options tab: ink slab when idle, bronze when selected (§5.6)."""
+    size = 16
+    canvas = Canvas(size, size)
+    fill, border, highlight = {
+        "normal": (INK_2, hex_to_rgba("#2C3238"), hex_to_rgba("#263038")),
+        "hover": (hex_to_rgba("#263038"), BRONZE_1, hex_to_rgba("#474F55")),
+        "selected": (BRONZE_2, BRONZE_0, BRONZE_3),
+    }[state]
+    canvas.rect(0, 0, size, size, fill)
+    canvas.frame(0, 0, size, size, border)
+    canvas.hline(1, 1, size - 2, highlight)
+    # A fat left edge marks the active tab even in monochrome.
+    if state == "selected":
+        canvas.rect(1, 1, 2, size - 2, BRONZE_0)
+    return canvas
+
+
+def scrollbar(part: str) -> Canvas:
+    """4 px wide scroll parts: a stone track and a bronze thumb."""
+    canvas = Canvas(4, 16)
+    if part == "track":
+        canvas.rect(0, 0, 4, 16, INK_2)
+        canvas.vline(0, 0, 16, hex_to_rgba("#2C3238"))
+        canvas.vline(3, 0, 16, INK_0)
+    else:
+        canvas.rect(0, 0, 4, 16, BRONZE_1)
+        canvas.vline(0, 0, 16, BRONZE_2)
+        canvas.vline(3, 0, 16, BRONZE_0)
+        canvas.hline(0, 0, 4, BRONZE_3)
+    return canvas
+
+
+def tooltip_box() -> Canvas:
+    """Small parchment nine-patch for hover tooltips."""
+    canvas = Canvas(16, 16)
+    canvas.rect(0, 0, 16, 16, PARCH_2)
+    canvas.frame(0, 0, 16, 16, BRONZE_1)
+    canvas.hline(1, 1, 14, PARCH_3)
+    return canvas
+
+
+def portrait_frame() -> Canvas:
+    """24 px portrait frame for the initiative queue and the journal."""
+    canvas = Canvas(24, 24)
+    canvas.frame(0, 0, 24, 24, BRONZE_0)
+    canvas.frame(1, 1, 22, 22, BRONZE_2)
+    canvas.frame(2, 2, 20, 20, INK_0)
+    canvas.hline(2, 2, 20, BRONZE_1)
+    # Corner nicks, so the frame reads as beaten metal rather than a plain box.
+    for corner in ((1, 1), (22, 1), (1, 22), (22, 22)):
+        canvas.set(corner[0], corner[1], BRONZE_3)
     return canvas
 
 
@@ -207,7 +342,16 @@ def main() -> int:
         "panel_ink": panel(4, INK_2, hex_to_rgba("#263038"), INK_0, INK_0),
     }
     buttons = {state: button(state) for state in ("normal", "hover", "pressed", "disabled")}
-    extras = {"wax_seal": wax_seal(), "item_cursor": item_cursor()}
+    blood_buttons = {state: button_blood(state) for state in ("normal", "hover", "pressed", "disabled")}
+    pills = {state: pill(state) for state in ("normal", "hover", "selected")}
+    tabs = {state: tab(state) for state in ("normal", "hover", "selected")}
+    scroll = {part: scrollbar(part) for part in ("thumb", "track")}
+    extras = {
+        "wax_seal": wax_seal(),
+        "item_cursor": item_cursor(),
+        "tooltip_box": tooltip_box(),
+        "portrait_frame": portrait_frame(),
+    }
 
     if args.preview:
         print(preview_grid(list(panels.values())))
@@ -219,13 +363,23 @@ def main() -> int:
         canvas.save(os.path.join(OUT_DIR, "%s.png" % name))
     for state, canvas in buttons.items():
         canvas.save(os.path.join(OUT_DIR, "button_%s.png" % state))
+    for state, canvas in blood_buttons.items():
+        canvas.save(os.path.join(OUT_DIR, "button_blood_%s.png" % state))
+    for state, canvas in pills.items():
+        canvas.save(os.path.join(OUT_DIR, "pill_%s.png" % state))
+    for state, canvas in tabs.items():
+        canvas.save(os.path.join(OUT_DIR, "tab_%s.png" % state))
+    for part, canvas in scroll.items():
+        canvas.save(os.path.join(OUT_DIR, "scrollbar_%s.png" % part))
     for name, canvas in extras.items():
         canvas.save(os.path.join(OUT_DIR, "%s.png" % name))
     with open(os.path.join(OUT_DIR, "ui_kit.json"), "w", encoding="utf-8") as fh:
         json.dump(KIT, fh, indent=2, ensure_ascii=False)
         fh.write("\n")
-    print("wrote %d panels, %d button states, %d sprites + ui_kit.json"
-          % (len(panels), len(buttons), len(extras)))
+    print("wrote %d panels, %d buttons (+%d blood), %d pills, %d tabs, %d scroll parts, "
+          "%d sprites"
+          % (len(panels), len(buttons), len(blood_buttons), len(pills), len(tabs),
+             len(scroll), len(extras)))
     return 0
 
 

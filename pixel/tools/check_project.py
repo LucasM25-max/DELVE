@@ -23,6 +23,7 @@ import json
 import os
 import re
 import sys
+from typing import Sequence
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -306,9 +307,14 @@ def check_ui_kit() -> None:
         fail("ui_kit.json declares no styles")
     for name, entry in styles.items():
         declared = entry.get("size")
-        files = [entry.get("file", "")] if "{state}" not in entry.get("file", "") else [
-            entry["file"].replace("{state}", state) for state in entry.get("states", [])
-        ]
+        pattern: str = entry.get("file", "")
+        files = [pattern]
+        # `states` covers both the {state} and the {part} placeholder families.
+        if "{state}" in pattern or "{part}" in pattern:
+            files = [
+                pattern.replace("{state}", state).replace("{part}", state)
+                for state in entry.get("states", [])
+            ]
         for filename in files:
             path = os.path.join(ROOT, "assets", "pixel", "ui", filename)
             if not os.path.exists(path):
@@ -370,6 +376,160 @@ def _locked_colours() -> set[str]:
 
 # --- main --------------------------------------------------------------
 
+
+
+def _font_advances(name: str) -> dict[str, int]:
+    """Character -> advance map for a shipped `.fnt` face."""
+    parsed = parse_fnt(os.path.join(ROOT, "assets", "fonts", "%s.fnt" % name))
+    return {entry["id"]: int(entry["xadvance"]) for entry in parsed.get("chars", [])
+            if "xadvance" in entry}
+
+
+def _text_width(advances: dict[str, int], text: str) -> int:
+    return sum(advances.get(char, 0) for char in text)
+
+
+def _wrap_lines(advances: dict[str, int], text: str, width: int) -> list[str]:
+    lines: list[str] = []
+    current = ""
+    for word in text.split(" "):
+        candidate = word if not current else current + " " + word
+        if _text_width(advances, candidate) > width and current:
+            lines.append(current)
+            current = word
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+    return lines
+
+
+def _inside(rect: Sequence, bounds: Sequence, label: str, margins: int = 0) -> None:
+    x, y, w, h = rect
+    bx, by, bw, bh = bounds
+    if x < bx - margins or y < by or x + w > bx + bw + margins or y + h > by + bh:
+        fail("%s %s falls outside %s" % (label, list(rect), list(bounds)))
+
+
+def check_screen_layouts() -> None:
+    """Every rect the Play / Continue / Options pages draw must fit its panel.
+
+    These are the numbers a screenshot alone cannot prove: the body face is 11 px
+    tall per line while §5.5's group pitch is 48 px, so the help blocks pass
+    `line_spacing: -3` and must land inside their group; the overlay card's body
+    must fit above its buttons; the ledger's eighth row must clear the hint.
+    """
+    timings = load_json("data/shell_timings.json").get("screens", {})
+    schema = load_json("data/options_schema.json")
+    rows = {row["id"]: row for tab in schema.get("tabs", []) for row in tab.get("rows", [])}
+    ui = _font_advances("pixel_ui_5")
+    body = _font_advances("pixel_body_8")
+    canvas = [0, 0, 480, 270]
+
+    first_run = timings.get("first_run", {})
+    panel = first_run.get("panel")
+    if panel != [40, 16, 400, 238]:
+        fail("first_run panel must be (40,16,400,238) per §5.5")
+    group_ys = first_run.get("group_ys", [])
+    pitch = 48
+    for index, y in enumerate(group_ys):
+        if y != 56 + pitch * index:
+            fail("first_run group %d must sit at y %d per §5.5" % (index, 56 + pitch * index))
+    pills_y = first_run.get("label_to_pills", 8)
+    help_y = first_run.get("help_offset_y", 24)
+    spacing = first_run.get("help_line_spacing", -3)
+    line_pitch = 11 + spacing
+    for index, y in enumerate(group_ys):
+        if pills_y + 16 > help_y:
+            fail("first_run pills overlap the help block at group %d" % index)
+        # A group may use the whole 48 px pitch for label + pills + help.
+        limit = y + pitch - (pitch if index == len(group_ys) - 1 else 0)
+        for row_id in ("difficulty", "combat_pacing")[index:index + 1]:
+            text = rows.get(row_id, {}).get("help", "")
+            lines = _wrap_lines(body, text, first_run.get("content_w", 384))
+            bottom = y + help_y + len(lines) * line_pitch
+            if bottom > limit:
+                fail("first_run %s help runs to y %d, past the y %d group pitch "
+                     "(§5.5 fixes the group ys)" % (row_id, bottom, limit))
+    for key in ("back_rect", "go_rect"):
+        rect = first_run.get(key)
+        if rect is None:
+            fail("first_run.%s is missing" % key)
+            continue
+        _inside(rect, canvas, "first_run.%s" % key)
+    footer_ok = (first_run.get("back_rect") == [56, 224, 148, 18]
+                 and first_run.get("go_rect") == [276, 224, 148, 18])
+    if not footer_ok:
+        fail("first_run footer buttons must be (56,224,148,18) and (276,224,148,18) per §5.5")
+    for key in ("comfort_help_rect", "comfort_right_help_rect"):
+        rect = first_run.get(key, [0, 0, 0, 0])
+        if rect[0] + rect[2] > panel[0] + panel[2] - 8 or rect[1] + 3 * line_pitch > 224:
+            fail("first_run.%s %s collides with the footer or the panel edge" % (key, rect))
+
+    card = timings.get("new_contract_card", {})
+    card_rect = card.get("rect", [0, 0, 0, 0])
+    body_rect = card.get("body_rect", [0, 0, 0, 0])
+    text = load_json("data/strings.json").get("spec", {}).get("STR_NEW_BODY", "")
+    for token, value in (("{0}", "New contract"), ("{1}", "Unassigned"),
+                         ("{2}", "1"), ("{3}", "Prologue")):
+        text = text.replace(token, value)
+    lines = _wrap_lines(body, text, body_rect[2])
+    if body_rect[1] + len(lines) * 11 > card.get("begin_rect", [0, 0, 0, 0])[1]:
+        fail("the Begin-a-new-contract body needs %d lines and would run into its buttons"
+             % len(lines))
+    for key in ("seal_rect", "title_rect", "body_rect", "begin_rect", "back_rect"):
+        _inside(card.get(key, [0, 0, 0, 0]), card_rect, "new_contract_card.%s" % key)
+
+    ledger = timings.get("ledger", {})
+    led_panel = ledger.get("panel")
+    if led_panel != [60, 24, 360, 222]:
+        fail("ledger panel must be (60,24,360,222) per §5.5")
+    row_rect = ledger.get("row_rect", [0, 0, 0, 0])
+    pitch = ledger.get("row_pitch", 24)
+    count = ledger.get("row_count", 8)
+    last_bottom = row_rect[1] + pitch * (count - 1) + row_rect[3]
+    if last_bottom > led_panel[1] + led_panel[3]:
+        fail("ledger row %d ends at y %d, past the panel bottom %d"
+             % (count, last_bottom, led_panel[1] + led_panel[3]))
+    hint = ledger.get("hint_rect", [0, 0, 0, 0])
+    if hint[1] < last_bottom:
+        fail("the ledger hint at y %d would sit on row %d (rows end at y %d)"
+             % (hint[1], count, last_bottom))
+
+    options = timings.get("options", {})
+    opt_panel = options.get("rows_panel")
+    if opt_panel != [88, 16, 384, 238]:
+        fail("options rows panel must be (88,16,384,238) per §5.6")
+    if options.get("tab_rail") != [8, 16, 72, 238]:
+        fail("options tab rail must be (8,16,72,238) per §5.6")
+    tab_rect, tab_pitch = options.get("tab_rect", [0, 0, 0, 0]), options.get("tab_pitch", 28)
+    tabs = len(schema.get("tabs", []))
+    rail_bottom = options["tab_rail"][1] + options["tab_rail"][3]
+    if tab_rect[1] + tab_pitch * (tabs - 1) + tab_rect[3] > rail_bottom:
+        fail("the %d options tabs do not fit the rail: widen tab_rect or tab_pitch" % tabs)
+    row_rect, row_pitch = options.get("row_rect", [0, 0, 0, 0]), options.get("row_pitch", 20)
+    visible = options.get("visible_rows", 10)
+    if row_rect[0] + row_rect[2] > opt_panel[0] + opt_panel[2]:
+        fail("options rows %s run past the rows panel" % row_rect)
+    if row_rect[1] + row_pitch * visible > options.get("help_rect", [0, 0, 0, 0])[1]:
+        fail("options rows reach y %d and would sit under the help line at y %d"
+             % (row_rect[1] + row_pitch * visible, options["help_rect"][1]))
+    help_rect = options.get("help_rect", [0, 0, 0, 0])
+    help_line = options.get("help_line_height", 8)
+    longest = max((_wrap_lines(ui, row.get("help", ""), help_rect[2]) for row in rows.values()),
+                  key=len, default=[""])
+    if help_rect[1] + len(longest) * help_line > 270:
+        fail("the longest options help (%d lines) runs off the 270 px canvas" % len(longest))
+    back_rect = options.get("back_rect", [0, 0, 0, 0])
+    if help_rect[0] < back_rect[0] + back_rect[2]:
+        fail("the options help line at x %d overlaps BACK (%s)" % (help_rect[0], list(back_rect)))
+    _inside(options.get("scrollbar_rect", [0, 0, 0, 0]), canvas, "options.scrollbar_rect")
+
+    if not failures:
+        ok("screen layouts: First Run, contract card, ledger and Options all fit their panels")
+
+
+
 def main() -> int:
     check_referenced_paths()
     check_autoloads_and_main_scene()
@@ -378,6 +538,7 @@ def main() -> int:
     check_fonts()
     check_palette_mirror()
     check_ui_kit()
+    check_screen_layouts()
     check_art_lint()
 
     for message in notes:

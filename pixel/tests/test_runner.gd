@@ -10,11 +10,13 @@ extends Node
 ## Coverage (GDD-07 §13 QA list, the parts that exist in this build):
 ##   palette mirror · string master · save ledger · dice & RNG streams ·
 ##   shell state machine · text wrapping · menu layout rects · screen build-out ·
-##   brand geometry · art brief compliance.
+##   brand geometry · art brief compliance · the §5.5 Play/Continue pages ·
+##   the §5.6 options rows, sliders and rebinds.
 ##
 ## The suite backs up and restores `user://delve_v2.json`, so it can be run on a
 ## machine that already has a real contract ledger.
 
+const MENU_SCENE := "res://scenes/ui/screens/menu.tscn"
 const SAVE_PATH := "user://delve_v2.json"
 const SAVE_BACKUP := "user://delve_v2.test-backup.json"
 
@@ -36,6 +38,12 @@ func _ready() -> void:
 	_run("boot screens", test_boot_screens)
 	_run("legal page fits", test_legal_page_fits)
 	_run("brand geometry", test_brand)
+	_run("pill group", test_pill_group)
+	_run("slider", test_slider)
+	_run("first run page", test_first_run_page)
+	_run("contract card", test_contract_card)
+	_run("ledger screen", test_ledger_screen)
+	_run("options screen", test_options_screen)
 	_restore_save()
 	_report()
 
@@ -241,7 +249,7 @@ func test_menu_layout() -> void:
 
 
 func test_menu_screen() -> void:
-	var packed: PackedScene = load("res://scenes/ui/screens/menu.tscn")
+	var packed: PackedScene = load(MENU_SCENE)
 	var menu: ShellScreen = packed.instantiate()
 	add_child(menu)
 	menu.enter({})
@@ -294,6 +302,188 @@ func test_legal_page_fits() -> void:
 	check(bottom < 250.0, "legal content clears the pulse at y = 250 (bottom is %.1f px)" % bottom)
 	legal.leave()
 	legal.queue_free()
+
+
+
+
+# --- §5.5 / §5.6 pages -------------------------------------------------
+
+func test_pill_group() -> void:
+	var group := PixelPillGroup.new()
+	add_child(group)
+	var seen: Array = []
+	group.value_changed.connect(func(value: String) -> void: seen.append(value))
+	group.setup(["Off", "On"], "On", Rect2(0, 0, 40, 16))
+	eq(group.value, "On", "the group opens on the requested value")
+	eq(group.index(), 1, "index() reports the selected pill")
+	eq(PixelPillGroup.measure(["Off", "On"]),
+		UiPixel.text_width("Off", UiPixel.UI) + 6 + 4 + UiPixel.text_width("On", UiPixel.UI) + 6,
+		"measure() is the width PixelOptionsRow right-aligns against")
+	group.select_index(0)
+	eq(group.value, "Off", "select_index moves the selection")
+	eq(seen, ["Off"], "and emits exactly one change")
+	check(group.pill_for("On") != null, "pill_for returns the pill node")
+	group.select_index(1)
+	eq(seen.size(), 2, "a second change emits again")
+	group.queue_free()
+
+
+func test_slider() -> void:
+	var slider := PixelSlider.new()
+	add_child(slider)
+	var seen: Array = []
+	slider.value_changed.connect(func(value: int) -> void: seen.append(value))
+	slider.setup(90, Rect2(0, 0, 95, 20))
+	eq(slider.value, 90, "the slider opens on the saved volume")
+	eq(slider.pips_filled(), 9, "90 shows nine of the ten pips")
+	slider.set_value(100, true)
+	eq(slider.pips_filled(), 10, "100 fills every pip")
+	slider.set_value(105, true)
+	eq(slider.value, 100, "values clamp to 100")
+	slider.set_value(0, true)
+	eq(slider.value, 0, "and to 0")
+	slider.set_value(45)
+	eq(seen.size(), 3, "set_value only emits when asked to")
+	slider.queue_free()
+
+
+func test_first_run_page() -> void:
+	var packed: PackedScene = load("res://scenes/ui/screens/first_run.tscn")
+	check(packed != null, "the First Run scene loads")
+	var page: ShellScreen = packed.instantiate()
+	add_child(page)
+	page.enter({})
+	var groups: Dictionary = page.call("groups")
+	eq(groups.size(), 4, "the page builds Difficulty, Combat pacing, Subtitles and comfort")
+	var difficulty: PixelPillGroup = groups.get("difficulty")
+	var pacing: PixelPillGroup = groups.get("combat_pacing")
+	check(difficulty != null and pacing != null, "both schema groups exist")
+	eq(difficulty.value, "Balanced", "Difficulty defaults to Balanced (§5.5)")
+	eq(pacing.value, "Table Mode (turn-based)", "Combat pacing defaults to Table Mode (§5.5)")
+	eq(pacing.values.size(), 2, "pacing offers Table Mode and Skirmish Mode")
+	eq(groups.get("subtitles").value, "On", "subtitles default to On")
+	eq(groups.get("reduced_motion").value, "Standard", "camera comfort defaults to Standard")
+	# The one documented deviation: SIGN & DESCEND writes the slot, then comes
+	# back to the menu instead of riding into Loading -> YARD.
+	var next: Array = []
+	page.finished.connect(func(state: int, _payload: Dictionary) -> void: next.append(state))
+	_clear_ledger()
+	page.call("_sign_and_descend")
+	check(SaveStore.has_any_contract(), "SIGN & DESCEND writes the contract into the ledger")
+	eq(SaveStore.first_empty_slot(), 1, "the contract went into the first free slot (index 0)")
+	eq(SaveStore.slot(0).get("name"), ShellData.t("STR_CONTRACT_NEW_NAME"),
+		"the slot is labelled 'New contract' until the yard names it (P1)")
+	eq(SaveStore.slot(0).get("chapter"), ShellData.t("STR_CONTRACT_CHAPTER"), "it lands in the prologue")
+	eq(next, [GameState.State.MENU], "and the page returns to the menu")
+	page.call("_on_back")
+	eq(next, [GameState.State.MENU, GameState.State.MENU], "BACK also returns to the menu")
+	page.leave()
+	page.queue_free()
+
+
+func test_contract_card() -> void:
+	var packed: PackedScene = load(MENU_SCENE)
+	var menu: ShellScreen = packed.instantiate()
+	add_child(menu)
+	menu.enter({})
+	var next: Array = []
+	menu.finished.connect(func(state: int, _payload: Dictionary) -> void: next.append(state))
+	_clear_ledger()
+	menu.call("_on_play")
+	eq(next, [GameState.State.FIRST_RUN], "PLAY with no save opens First Run (§5.5)")
+	SaveStore.create_contract(0, {"name": "New contract", "class": "Unassigned",
+		"level": 1, "chapter": "Prologue"})
+	menu.call("_on_play")
+	check(menu.get("_overlay") != null, "PLAY with a save raises the overlay card")
+	var overlay: Control = menu.get("_overlay")
+	var found_body := false
+	for child in overlay.get_children():
+		if child is Label and (child as Label).text.contains("already exists"):
+			found_body = true
+	check(found_body, "the card carries the verbatim body string")
+	check(next.size() == 1, "the card does not leave the menu")
+	menu.call("_close_overlay")
+	check(menu.get("_overlay") == null, "BACK closes the card")
+	menu.leave()
+	menu.queue_free()
+
+
+func test_ledger_screen() -> void:
+	_clear_ledger()
+	SaveStore.create_contract(0, {"name": "New contract", "class": "Unassigned",
+		"level": 1, "chapter": "Prologue"})
+	var packed: PackedScene = load("res://scenes/ui/screens/ledger.tscn")
+	var page: ShellScreen = packed.instantiate()
+	add_child(page)
+	page.enter({})
+	var rows: Array = page.call("rows")
+	eq(rows.size(), 8, "the ledger shows eight slots (§5.5)")
+	eq(rows[0].used, true, "row 1 holds the signed contract")
+	eq(rows[1].used, false, "row 2 is free")
+	eq(Brand.stamp_file(Brand.steps_lit_for(0, 5)), "logo_emblem.png",
+		"an untouched contract gets the plain stamp")
+	eq(Brand.stamp_file(Brand.steps_lit_for(1, 5)), "logo_emblem_step1.png",
+		"one finished beat lights the first step")
+	eq(Brand.stamp_file(Brand.steps_lit_for(5, 5)), "logo_emblem_steps.png",
+		"a finished yard lights all three")
+	# Selecting a slot is the other documented deviation: the yard is not built,
+	# so the ledger hands the slot back to the menu.
+	var next: Array = []
+	page.finished.connect(func(state: int, _payload: Dictionary) -> void: next.append(state))
+	page.call("_on_row_selected", 0)
+	eq(next, [GameState.State.MENU], "choosing a contract returns to the menu")
+	# DELETE raises the blood confirm card; BREAK empties the slot.
+	page.call("_on_delete_requested", 0)
+	check(page.get("_card") != null, "DELETE raises the confirm card")
+	page.call("_on_break_confirmed")
+	check(SaveStore.slot(0).is_empty(), "BREAK empties the slot")
+	check(page.get("_card") == null, "and dismisses the card")
+	page.leave()
+	page.queue_free()
+
+
+func test_options_screen() -> void:
+	var packed: PackedScene = load("res://scenes/ui/screens/options.tscn")
+	var page: ShellScreen = packed.instantiate()
+	add_child(page)
+	page.enter({})
+	eq(page.call("current_tab_id"), "graphics", "the page opens on Graphics")
+	eq(page.call("rows").size(), 3, "Graphics holds the three §5.6 rows")
+	eq(GameState.settings.get("frame_rate_cap"), "60", "the FPS cap defaults to 60 (§5.6)")
+	eq(GameState.settings.get("volume_master"), 90, "the master volume defaults to 90")
+	page.call("_show_tab", 4)
+	eq(page.call("current_tab_id"), "controls", "the rail reaches Controls")
+	var rows: Array = page.call("rows")
+	eq(rows.size(), 12, "Controls holds the twelve rebind rows")
+	eq(rows[0].action, "game_move", "the first rebind drives game_move")
+	page.call("_scroll_by", 2)
+	eq(page.get("_scroll"), 2, "the twelve rows scroll by two")
+	page.call("_show_tab", 1)
+	var locked: PixelOptionsRow = null
+	for row in page.call("rows"):
+		if row.row_id == "fast_travel":
+			locked = row
+	check(locked != null and locked.locked, "Fast travel is a locked row (§5.6)")
+	eq(locked.value(), "Off", "and reads Off")
+	# Sliders write through to the save and the audio buses.
+	page.call("_on_row_value_changed", "volume_music", 40)
+	eq(GameState.settings.get("volume_music"), 40, "a slider change lands in GameState")
+	eq(SaveStore.settings().get("volume_music"), 40, "and in the save")
+	var next: Array = []
+	page.finished.connect(func(state: int, _payload: Dictionary) -> void: next.append(state))
+	page.call("_on_back")
+	eq(next, [GameState.State.MENU], "BACK commits and returns to the menu")
+	GameState.settings["volume_music"] = 80
+	SaveStore.set_setting("volume_music", 80)
+	page.leave()
+	page.queue_free()
+
+
+func _clear_ledger() -> void:
+	for index in SaveStore.SLOT_COUNT:
+		if SaveStore.is_slot_used(index):
+			SaveStore.delete_contract(index)
+
 
 
 func test_brand() -> void:

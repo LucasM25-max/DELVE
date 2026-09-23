@@ -39,6 +39,17 @@ func _ready() -> void:
 	_apply_settings()
 
 
+## §5.6 `Mute when unfocused` (default On): silence the Master bus while the
+## window/ tab is in the background, then re-apply the saved mix on return (so
+## coming back never unmutes a player who set Master to 0).
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		if String(_settings.get("mute_when_unfocused", "On")) == "On" and buses.has("Master"):
+			AudioServer.set_bus_mute(buses["Master"], true)
+	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
+		_apply_settings()
+
+
 ## Play a one-shot cue (SFX or a stinger). Unknown or unloaded cues are no-ops.
 func play(id: String, volume_db: float = 0.0) -> void:
 	var cue: Dictionary = cues.get(id, {})

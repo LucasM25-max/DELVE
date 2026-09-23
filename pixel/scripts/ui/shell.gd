@@ -27,6 +27,9 @@ const SCREENS := {
 	GameState.State.STING: preload("res://scenes/ui/screens/sting.tscn"),
 	GameState.State.MENU: preload("res://scenes/ui/screens/menu.tscn"),
 	GameState.State.STUB_CARD: preload("res://scenes/ui/screens/stub.tscn"),
+	GameState.State.FIRST_RUN: preload("res://scenes/ui/screens/first_run.tscn"),
+	GameState.State.LEDGER: preload("res://scenes/ui/screens/ledger.tscn"),
+	GameState.State.OPTIONS: preload("res://scenes/ui/screens/options.tscn"),
 }
 
 const FADE_LAYER := 100
@@ -37,6 +40,9 @@ const DEBUG_SCREEN_IDS := {
 	"sting": GameState.State.STING,
 	"menu": GameState.State.MENU,
 	"stub": GameState.State.STUB_CARD,
+	"first_run": GameState.State.FIRST_RUN,
+	"ledger": GameState.State.LEDGER,
+	"options": GameState.State.OPTIONS,
 	"loading": GameState.State.LOADING,
 	"yard": GameState.State.YARD,
 }
@@ -51,6 +57,11 @@ var _fade_tween: Tween
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	InputActions.ensure()
+	# Autoloads are all ready by the time the main scene builds: fold the save's
+	# choices into GameState, then apply them to the input map and the buses.
+	GameState.sync_settings_from_save()
+	InputActions.apply_overrides(GameState.settings)
+	Sound.apply_settings(GameState.settings)
 	_build_layers()
 	GameState.state_changed.connect(_on_state_changed)
 	_apply_debug_hooks()

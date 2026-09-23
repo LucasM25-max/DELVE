@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "description": "Options schema for the pixel shell (GDD-07 §5.6). The 3D rows of the retired GDD-02 set are deleted; every row here is reachable from the pixel Options screen.",
+  "description": "Options schema for the pixel shell (GDD-07 §5.6). The 3D rows of the retired GDD-02 set are deleted; every row here is reachable from the pixel Options screen. `control` selects the pixel control: list/toggle = segmented pills, slider = 10 pips, rebind = key capture, locked = read-only.",
   "tabs": [
     {
       "id": "graphics",
@@ -12,9 +12,9 @@
           "control": "list",
           "values": [
             "Native",
-            "960x540",
-            "1440x810",
-            "1920x1080"
+            "960×540",
+            "1440×810",
+            "1920×1080"
           ],
           "default": "Native",
           "help": "The game always renders in whole pixels."
@@ -131,7 +131,7 @@
             "Tactical"
           ],
           "default": "Balanced",
-          "help": ""
+          "help": "Story: forgiving foes, longer reaction timers. Balanced: the intended table. Tactical: sharper foes, alert states bite."
         },
         {
           "id": "combat_pacing",
@@ -141,9 +141,9 @@
             "Table Mode (turn-based)",
             "Skirmish Mode (real-time, pausable)"
           ],
-          "default": "Table Mode",
+          "default": "Table Mode (turn-based)",
           "tag": "SECONDARY",
-          "help": "Coming after the Table Mode yard ships."
+          "help": "Table Mode is the intended experience: full turns, full information. Skirmish Mode runs the same rules in flowing real time with pause."
         },
         {
           "id": "fast_travel",
@@ -170,7 +170,7 @@
             "On"
           ],
           "default": "On",
-          "help": ""
+          "help": "Subtitles drive the VO captions."
         },
         {
           "id": "subtitle_size",
@@ -206,7 +206,7 @@
             "Tritanopia"
           ],
           "default": "Off",
-          "help": "Remaps overlay tints only, never the art palette."
+          "help": "Three LUT variants of overlay tints only, never the art palette."
         },
         {
           "id": "high_contrast_ui",
@@ -224,10 +224,10 @@
           "label": "Reading magnification (ui_scale)",
           "control": "list",
           "values": [
-            "1x",
-            "2x"
+            "1×",
+            "2×"
           ],
-          "default": "1x",
+          "default": "1×",
           "help": ""
         },
         {
@@ -340,84 +340,96 @@
           "label": "Move",
           "control": "rebind",
           "default": "WASD / arrows",
-          "help": ""
+          "help": "",
+          "action": "game_move"
         },
         {
           "id": "bind_sprint",
           "label": "Sprint",
           "control": "rebind",
           "default": "Shift",
-          "help": ""
+          "help": "",
+          "action": "game_sprint"
         },
         {
           "id": "bind_interact",
           "label": "Interact / confirm",
           "control": "rebind",
           "default": "F",
-          "help": ""
+          "help": "",
+          "action": "game_interact"
         },
         {
           "id": "bind_end_turn",
           "label": "End turn / confirm",
           "control": "rebind",
           "default": "Space",
-          "help": ""
+          "help": "",
+          "action": "game_end_turn"
         },
         {
           "id": "bind_pause",
           "label": "Pause / back",
           "control": "rebind",
           "default": "Esc",
-          "help": ""
+          "help": "",
+          "action": "game_pause"
         },
         {
           "id": "bind_grid",
           "label": "Grid overlay",
           "control": "rebind",
           "default": "G",
-          "help": ""
+          "help": "",
+          "action": "grid_overlay"
         },
         {
           "id": "bind_folio",
           "label": "Folio",
           "control": "rebind",
           "default": "Tab",
-          "help": ""
+          "help": "",
+          "action": "folio"
         },
         {
           "id": "bind_journal",
           "label": "Journal",
           "control": "rebind",
           "default": "J",
-          "help": ""
+          "help": "",
+          "action": "journal"
         },
         {
           "id": "bind_codex",
           "label": "Codex",
           "control": "rebind",
           "default": "C",
-          "help": ""
+          "help": "",
+          "action": "codex"
         },
         {
           "id": "bind_hide",
           "label": "Hide",
           "control": "rebind",
           "default": "H",
-          "help": ""
+          "help": "",
+          "action": "hide"
         },
         {
           "id": "bind_zoom",
           "label": "View-zoom",
           "control": "rebind",
           "default": "V",
-          "help": ""
+          "help": "",
+          "action": "zoom_view"
         },
         {
           "id": "bind_pad_layout",
           "label": "Pad layout A/B swap",
           "control": "rebind",
           "default": "A",
-          "help": ""
+          "help": "",
+          "action": "pad_layout"
         }
       ]
     }

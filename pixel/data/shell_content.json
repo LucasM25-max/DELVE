@@ -77,5 +77,15 @@
       ]
     }
   ],
-  "credits_end_key": "STR_CREDITS_END"
+  "credits_end_key": "STR_CREDITS_END",
+  "tutorial_beats": {
+    "_comment": "P1 beat list (§ P1 row: T0, T1, T3, T4, T8). The ledger stamp lights one emblem step per third of this list completed (§5.5).",
+    "p1": [
+      "T0",
+      "T1",
+      "T3",
+      "T4",
+      "T8"
+    ]
+  }
 }

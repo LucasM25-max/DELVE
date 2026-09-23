@@ -127,7 +127,8 @@ static func button(
 	parent: Node,
 	text: String,
 	on_pressed: Callable = Callable(),
-	kind: StringName = UI
+	kind: StringName = UI,
+	family: String = "button"
 ) -> Button:
 	var node := Button.new()
 	node.text = text
@@ -139,8 +140,11 @@ static func button(
 	node.add_theme_color_override("font_pressed_color", Palette.ink)
 	node.add_theme_color_override("font_focus_color", Palette.ink)
 	node.add_theme_color_override("font_disabled_color", Palette.stone_1)
-	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
-		node.add_theme_stylebox_override(state, _button_style(state))
+	# `button` is the parchment face; `button_blood` is the destructive confirm
+	# face §5.5 asks for (DELETE / BREAK), same frame, different fill.
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		node.add_theme_stylebox_override(state, state_style(family, state))
+	node.add_theme_stylebox_override("focus", state_style(family, "hover"))
 	parent.add_child(node)
 	if on_pressed.is_valid():
 		node.pressed.connect(on_pressed)
@@ -154,6 +158,110 @@ static func backdrop(parent: Node, colour: Color) -> ColorRect:
 	node.mouse_filter = Control.MOUSE_FILTER_STOP
 	node.set_anchors_preset(Control.PRESET_FULL_RECT)
 	return node
+
+
+## A nine-patch sprite by name from the kit (`wax_seal`, `item_cursor`,
+## `portrait_frame`, `tooltip_box`).
+static func sprite(parent: Node, name: String) -> TextureRect:
+	var entry: Dictionary = _kit_data().get("sprites", {}).get(name, {})
+	return image(parent, String(entry.get("file", name + ".png")))
+
+
+## StyleBoxTexture for any {state} kit family (`pill`, `tab`, `button`).
+static func state_style(family: String, state: String) -> StyleBoxTexture:
+	var entry := _style(family)
+	var box := StyleBoxTexture.new()
+	var pattern: String = String(entry.get("file", family + "_{state}.png"))
+	box.texture = _texture(pattern.replace("{state}", state))
+	var margin := int(entry.get("margin", 4))
+	box.texture_margin_left = margin
+	box.texture_margin_top = margin
+	box.texture_margin_right = margin
+	box.texture_margin_bottom = margin
+	# Breathing room so a label never touches the frame.
+	box.content_margin_left = 6.0
+	box.content_margin_right = 6.0
+	box.content_margin_top = 3.0
+	box.content_margin_bottom = 3.0
+	return box
+
+
+## A segmented pill button (`pill_normal` / `pill_selected` / `pill_hover`).
+static func pill(
+	parent: Node,
+	text: String,
+	on_pressed: Callable,
+	kind: StringName = UI
+) -> Button:
+	var node := Button.new()
+	node.text = text
+	node.toggle_mode = true
+	node.focus_mode = Control.FOCUS_ALL
+	node.add_theme_font_override("font", font(kind))
+	node.add_theme_font_size_override("font_size", font_size(kind))
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		node.add_theme_color_override(state, Palette.ink)
+	node.add_theme_stylebox_override("normal", state_style("pill", "normal"))
+	node.add_theme_stylebox_override("hover", state_style("pill", "hover"))
+	node.add_theme_stylebox_override("focus", state_style("pill", "hover"))
+	node.add_theme_stylebox_override("pressed", state_style("pill", "selected"))
+	node.add_theme_stylebox_override("disabled", state_style("pill", "normal"))
+	var selected := state_style("pill", "selected")
+	for state in ["hover_pressed", "disabled_pressed"]:
+		node.add_theme_stylebox_override(state, selected)
+	node.add_theme_color_override("font_disabled_color", Palette.stone_1)
+	parent.add_child(node)
+	if on_pressed.is_valid():
+		node.pressed.connect(on_pressed)
+	return node
+
+
+## A tab button for the options rail (`tab_normal` / `tab_selected`).
+static func tab(
+	parent: Node,
+	text: String,
+	on_pressed: Callable,
+	kind: StringName = UI
+) -> Button:
+	var node := Button.new()
+	node.text = text
+	node.toggle_mode = true
+	node.focus_mode = Control.FOCUS_ALL
+	node.clip_text = false  # labels may overhang the rail into its 8 px gap
+	node.add_theme_font_override("font", font(kind))
+	node.add_theme_font_size_override("font_size", font_size(kind))
+	node.add_theme_color_override("font_color", Palette.parchment)
+	node.add_theme_color_override("font_hover_color", Palette.parchment_3)
+	node.add_theme_color_override("font_pressed_color", Palette.ink)
+	node.add_theme_color_override("font_focus_color", Palette.parchment_3)
+	node.add_theme_stylebox_override("normal", state_style("tab", "normal"))
+	node.add_theme_stylebox_override("hover", state_style("tab", "hover"))
+	node.add_theme_stylebox_override("focus", state_style("tab", "hover"))
+	node.add_theme_stylebox_override("pressed", state_style("tab", "selected"))
+	node.add_theme_stylebox_override("hover_pressed", state_style("tab", "selected"))
+	parent.add_child(node)
+	if on_pressed.is_valid():
+		node.pressed.connect(on_pressed)
+	return node
+
+
+## A 4 px scrollbar pair (track + thumb) sized by `ratio` (0-1) and `offset`.
+static func scrollbar(
+	parent: Node,
+	rect: Rect2,
+	ratio: float,
+	offset: float
+) -> Array:
+	var track := image(parent, UI_DIR + "scrollbar_track.png")
+	UiPixel.place(track, rect)
+	var thumb := image(parent, UI_DIR + "scrollbar_thumb.png")
+	var span := rect.size.y - 8.0
+	var height := maxf(8.0, span * clampf(ratio, 0.1, 1.0))
+	UiPixel.place(thumb, Rect2(
+		rect.position + Vector2(0, 4.0 + span * clampf(offset, 0.0, 1.0)),
+		Vector2(rect.size.x, height)
+	))
+	return [track, thumb]
 
 
 # --- text helpers ------------------------------------------------------
@@ -255,20 +363,3 @@ static func _texture(path: String) -> Texture2D:
 		push_error("UiPixel: missing texture %s" % full)
 		return null
 	return load(full) as Texture2D
-
-
-static func _button_style(state: String) -> StyleBoxTexture:
-	var box := StyleBoxTexture.new()
-	var file: String = String(_style("button").get("file", "button_{state}.png"))
-	box.texture = _texture(file.replace("{state}", state if state != "focus" else "hover"))
-	var margin := int(_style("button").get("margin", 4))
-	box.texture_margin_left = margin
-	box.texture_margin_top = margin
-	box.texture_margin_right = margin
-	box.texture_margin_bottom = margin
-	# Breathing room so the label never touches the frame.
-	box.content_margin_left = 6.0
-	box.content_margin_right = 6.0
-	box.content_margin_top = 3.0
-	box.content_margin_bottom = 3.0
-	return box

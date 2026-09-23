@@ -150,14 +150,23 @@ class Shell:
                     255,
                 ))
 
-    def panel(self, canvas: Canvas, style: str, rect: tuple[int, int, int, int]) -> None:
+    def panel(self, canvas: Canvas, style: str, rect: tuple[int, int, int, int],
+              state: str = "normal") -> None:
         """Nine-patch draw: corners 1:1, edges stretched, middle tiled.
 
-        Mirrors Godot's `NinePatchRect` with `patch_margin_*` = the kit margin.
+        Mirrors Godot's `NinePatchRect` / `StyleBoxTexture` with
+        `patch_margin_*` = the kit margin, so a 16 px pill or tab stretches to
+        whatever width the layout asks for.
         """
         entry = self.kit["styles"][style]
-        source = self.image(entry["file"].replace("{state}", "normal"))
-        margin = entry["margin"]
+        filename = entry["file"].replace("{state}", state)
+        if "{part}" in filename:
+            filename = filename.replace("{part}", state)
+        self.nine(canvas, filename, entry["margin"], rect)
+
+    def nine(self, canvas: Canvas, filename: str, margin: int,
+             rect: tuple[int, int, int, int]) -> None:
+        source = self.image(filename)
         size = source.width
         middle = size - margin * 2
         x, y, w, h = rect
@@ -312,17 +321,287 @@ def screen_stub(shell: Shell, stub: str = "play") -> Canvas:
     return canvas
 
 
-def _blend(front, back, alpha: float):
-    return tuple(int(front[i] * alpha + back[i] * (1 - alpha)) for i in range(3)) + (255,)
+
+def _pill_row_selected(shell: Shell, canvas: Canvas, rect, values, selected) -> None:
+    """Segmented pills exactly as PixelPillGroup lays them out (§5.5/§5.6):
+    width = text + 6 px padding, height 16, gap 4, selected = bronze fill + ink."""
+def _pill_row_selected(shell: Shell, canvas: Canvas, rect, values, selected) -> None:
+    ui = shell.fonts["ui"]
+    x, y, _, _ = rect
+    for value in values:
+        width = ui.text_width(value) + 6
+        state = "selected" if value == selected else "normal"
+        shell.panel(canvas, "pill", (x, y, width, 16), state)
+        ui.draw_centred(canvas, value, x + width // 2, y + 5, INK)
+        x += width + 4
+
+
+def _help_block(shell: Shell, canvas: Canvas, text: str,
+                rect: tuple[int, int, int, int]) -> None:
+    """Help prose: body 8 px, wrapped to the rect, line pitch 8 px (§5.5)."""
+    if not text:
+        return
+    body = shell.fonts["body"]
+    pitch = body.line_height + shell.timings["screens"]["first_run"].get("help_line_spacing", -3)
+    colour = _blend(INK, (214, 198, 163, 255), 0.78)
+    for index, line in enumerate(body.wrap(text, rect[2]).split("\n")):
+        body.draw(canvas, line, rect[0], rect[1] + index * pitch, colour)
+
+
+def _control_width(shell: Shell, values) -> int:
+    ui = shell.fonts["ui"]
+    return sum(ui.text_width(value) + 6 for value in values) + 4 * (len(values) - 1)
+
+
+def screen_new_contract(shell: Shell) -> Canvas:
+    """The menu with the `Begin a new contract?` overlay card on top (§5.5)."""
+    canvas = _dim(screen_menu(shell))
+    card = shell.timings["screens"]["new_contract_card"]
+    rect = tuple(card["rect"])
+    shell.panel(canvas, "panel_parchment", rect)
+    shell.blit(canvas, shell.image("wax_seal.png"), card["seal_rect"][0], card["seal_rect"][1])
+    ui, body = shell.fonts["ui"], shell.fonts["body"]
+    title_rect = card["title_rect"]
+    ui.draw(canvas, shell.t("STR_NEW_TITLE"), title_rect[0], title_rect[1] + 2, INK)
+    text = shell.t("STR_NEW_BODY").format("New contract", "Unassigned", 1, "Prologue")
+    body_rect = card["body_rect"]
+    for index, line in enumerate(body.wrap(text, body_rect[2]).split("\n")):
+        body.draw(canvas, line, body_rect[0], body_rect[1] + index * body.line_height, INK)
+    _button(shell, canvas, tuple(card["begin_rect"]), shell.t("STR_NEW_BEGIN"))
+    _button(shell, canvas, tuple(card["back_rect"]), shell.t("STR_BACK"))
+    return canvas
+
+
+def screen_first_run(shell: Shell) -> Canvas:
+    """The First Run contract page (§5.5): panel, three pill groups, footer."""
+    layout = shell.timings["screens"]["first_run"]
+    canvas = Canvas(WIDTH, HEIGHT, WHITE)
+    panel = tuple(layout["panel"])
+    shell.panel(canvas, "panel_parchment", panel)
+    display, ui, body = shell.fonts["display"], shell.fonts["ui"], shell.fonts["body"]
+    display.draw_centred(canvas, shell.t("STR_FR_TITLE"), panel[0] + panel[2] // 2,
+                         panel[1] + 8, INK)
+
+    content_x = layout["content_x"]
+    content_w = layout["content_w"]
+    group_ys = layout["group_ys"]
+    pills_y = layout["label_to_pills"]
+    schema = json.load(open(os.path.join(ROOT, "data", "options_schema.json"), encoding="utf-8"))
+    rows = {row["id"]: row for tab in schema["tabs"] for row in tab["rows"]}
+
+    groups = [
+        (shell.t("STR_FR_DIFF"), group_ys[0], "difficulty", rows["difficulty"]),
+        (shell.t("STR_FR_PACE"), group_ys[1], "combat_pacing", rows["combat_pacing"]),
+    ]
+    help_y = layout["help_offset_y"]
+    for label, y, row_id, row in groups:
+        ui.draw(canvas, label, content_x, y, INK)
+        _pill_row_selected(shell, canvas, (content_x, y + pills_y, 0, 0),
+                           row["values"], row["default"])
+        _help_block(shell, canvas, row.get("help", ""),
+                    (content_x, y + help_y, content_w, 24))
+    # Skirmish's SECONDARY tag, right-aligned on the Combat pacing label line.
+    tag = "SECONDARY"
+    tag_x = content_x + content_w - ui.text_width(tag) - 4
+    ui.draw(canvas, tag, tag_x, group_ys[1], BRONZE)
+    canvas.rect(tag_x, group_ys[1] + 7, ui.text_width(tag) + 4, 1, BRONZE_3)
+
+    # Subtitles + Camera comfort preset share the third group's line.
+    right_x = layout["right_column_x"]
+    ui.draw(canvas, shell.t("STR_FR_SUBS"), content_x, group_ys[2], INK)
+    _pill_row_selected(shell, canvas, (content_x, group_ys[2] + pills_y, 0, 0),
+                       rows["subtitles"]["values"], rows["subtitles"]["default"])
+    ui.draw(canvas, shell.t("STR_FR_COMFORT"), right_x, group_ys[2], INK)
+    _pill_row_selected(shell, canvas, (right_x, group_ys[2] + pills_y, 0, 0),
+                       rows["reduced_motion"]["values"], "Standard")
+    _help_block(shell, canvas, rows["subtitles"].get("help", ""),
+                tuple(layout["comfort_help_rect"]))
+    _help_block(shell, canvas, rows["reduced_motion"].get("help", ""),
+                tuple(layout["comfort_right_help_rect"]))
+
+    _button(shell, canvas, tuple(layout["back_rect"]), shell.t("STR_BACK"))
+    _button(shell, canvas, tuple(layout["go_rect"]), shell.t("STR_FR_GO"))
+    return canvas
+
+
+def screen_ledger(shell: Shell) -> Canvas:
+    """The contract ledger (§5.5) with one signed contract in slot 1."""
+    layout = shell.timings["screens"]["ledger"]
+    canvas = Canvas(WIDTH, HEIGHT, WHITE)
+    panel = tuple(layout["panel"])
+    shell.panel(canvas, "panel_parchment", panel)
+    display, ui = shell.fonts["display"], shell.fonts["ui"]
+    display.draw_centred(canvas, shell.t("STR_LEDGER_TITLE"), panel[0] + panel[2] // 2,
+                         layout["title_y"], INK)
+
+    row_x, row_y, row_w, row_h = layout["row_rect"]
+    pitch = layout["row_pitch"]
+    samples = [
+        {"name": "New contract", "class": "Unassigned", "chapter": "Prologue",
+         "date": "2026-09-23", "stamp": "logo_emblem_step1.png"},
+    ]
+    for index in range(layout["row_count"]):
+        y = row_y + pitch * index
+        if index < len(samples):
+            entry = samples[index]
+            shell.blit(canvas, shell.image(entry["stamp"]), row_x + layout["stamp_x"], y)
+            ui.draw(canvas, entry["name"], row_x + layout["name_x"], y + 2, INK)
+            ui.draw(canvas, "%s · %s" % (entry["class"], entry["chapter"]),
+                    row_x + layout["name_x"], y + 13, _blend(INK, (214, 198, 163, 255), 0.7))
+            ui.draw_right(canvas, entry["date"], row_x + row_w - 52, y + 2,
+                          _blend(INK, (214, 198, 163, 255), 0.6))
+            _button(shell, canvas, (row_x + row_w - 46, y + 3, 46, 18),
+                    shell.t("STR_LEDGER_DELETE"), "button_blood", PARCHMENT)
+        else:
+            ui.draw(canvas, shell.t("STR_LEDGER_EMPTY"), row_x + layout["name_x"],
+                    y + 8, _blend(INK, (214, 198, 163, 255), 0.4))
+
+    hint = layout["hint_rect"]
+    ui.draw(canvas, shell.t("STR_LEDGER_HINT"), hint[0], hint[1], _blend(INK, WHITE, 0.6))
+    _button(shell, canvas, tuple(layout["back_rect"]), shell.t("STR_BACK"))
+    return canvas
+
+
+def screen_ledger_confirm(shell: Shell) -> Canvas:
+    """The blood confirm card: `Break this contract?` · `BREAK` · `KEEP`."""
+    canvas = screen_ledger(shell)
+    layout = shell.timings["screens"]["ledger"]
+    canvas = _dim(canvas)
+    rect = tuple(layout["card_rect"])
+    shell.panel(canvas, "panel_parchment", rect)
+    ui = shell.fonts["ui"]
+    ui.draw_centred(canvas, shell.t("STR_BREAK_TITLE"), rect[0] + rect[2] // 2, rect[1] + 28, INK)
+    _button(shell, canvas, tuple(layout["break_rect"]), shell.t("STR_BREAK_YES"),
+            "button_blood", PARCHMENT)
+    _button(shell, canvas, tuple(layout["keep_rect"]), shell.t("STR_BREAK_NO"))
+    return canvas
+
+
+def screen_options(shell: Shell, tab_index: int = 0, scroll: int = 0,
+                   listening_row: str = "") -> Canvas:
+    """The Options page (§5.6) for one tab: rail, rows, help line, BACK."""
+    layout = shell.timings["screens"]["options"]
+    canvas = Canvas(WIDTH, HEIGHT, WHITE)
+    shell.panel(canvas, "panel_ink", tuple(layout["tab_rail"]))
+    shell.panel(canvas, "panel_parchment", tuple(layout["rows_panel"]))
+
+    labels = ["STR_OPTIONS_TAB_GRAPHICS", "STR_OPTIONS_TAB_GAMEPLAY",
+              "STR_OPTIONS_TAB_ACCESSIBILITY", "STR_OPTIONS_TAB_AUDIO",
+              "STR_OPTIONS_TAB_CONTROLS"]
+    ui = shell.fonts["ui"]
+    tab_x, tab_y, tab_w, tab_h = layout["tab_rect"]
+    for index, key in enumerate(labels):
+        y = tab_y + layout["tab_pitch"] * index
+        state = "selected" if index == tab_index else "normal"
+        shell.panel(canvas, "tab", (tab_x, y, tab_w, tab_h), state)
+        colour = INK if index == tab_index else PARCHMENT
+        ui.draw_centred(canvas, shell.t(key), tab_x + tab_w // 2, y + 9, colour)
+
+    schema = json.load(open(os.path.join(ROOT, "data", "options_schema.json"), encoding="utf-8"))
+    tab = schema["tabs"][tab_index]
+    rows = tab["rows"]
+    row_x, row_y, row_w, row_h = layout["row_rect"]
+    pitch = layout["row_pitch"]
+    visible = layout["visible_rows"]
+    for index in range(scroll, min(scroll + visible, len(rows))):
+        row = rows[index]
+        y = row_y + pitch * (index - scroll)
+        ui.draw(canvas, row["label"], row_x + layout["label_x"], y + 5, INK)
+        _draw_control(shell, canvas, row, row_x + layout["control_right"], y,
+                      listening_row == row["id"])
+
+    focused = rows[scroll] if rows else None
+    if listening_row:
+        # The page shows the capture prompt in its help line while it listens.
+        ui.draw(canvas, shell.t("STR_REBIND_LISTEN"), layout["help_rect"][0],
+                layout["help_rect"][1], _blend(INK, WHITE, 0.8))
+    elif focused is not None:
+        help_text = focused.get("help", "")
+        for line_index, line in enumerate(ui.wrap(help_text, layout["help_rect"][2]).split("\n")):
+            ui.draw(canvas, line, layout["help_rect"][0],
+                    layout["help_rect"][1] + line_index * ui.line_height,
+                    _blend(INK, WHITE, 0.8))
+    if len(rows) > visible:
+        ratio = visible / len(rows)
+        span = len(rows) - visible
+        offset = scroll / span if span else 0.0
+        track = layout["scrollbar_rect"]
+        shell.blit(canvas, shell.image("scrollbar_track.png"), track[0], track[1])
+        height = max(8, int((track[3] - 8) * ratio))
+        thumb_y = track[1] + 4 + int((track[3] - 8) * offset)
+        shell.blit(canvas, shell.image("scrollbar_thumb.png"), track[0], thumb_y)
+    _button(shell, canvas, tuple(layout["back_rect"]), shell.t("STR_BACK"))
+    return canvas
+
+
+def _draw_control(shell: Shell, canvas: Canvas, row: dict, right_x: int, y: int,
+                  listening: bool) -> None:
+    """One row's right-aligned control, drawn the way `PixelOptionsRow` builds it."""
+    ui = shell.fonts["ui"]
+    control = row["control"]
+    if control in ("list", "toggle"):
+        values = row.get("values", [])
+        width = _control_width(shell, values)
+        _pill_row_selected(shell, canvas, (right_x - width, y + 2, 0, 0),
+                           values, row.get("default", ""))
+        return
+    if control == "slider":
+        x = right_x - 95
+        value = int(row.get("default", 50))
+        filled = int(round(value / 10.0))
+        for index in range(10):
+            colour = BRONZE if index < filled else hex_to_rgba("#5E3D19")
+            canvas.rect(x + index * 7, y + 5, 6, 10, colour)
+        ui.draw_right(canvas, str(value), right_x, y + 5, INK)
+        return
+    if control == "rebind":
+        text = shell.t("STR_REBIND_LISTEN") if listening else str(row.get("default", ""))
+        width = max(60, ui.text_width(text) + 12)
+        shell.panel(canvas, "pill", (right_x - width, y + 2, width, 16), "normal")
+        ui.draw_centred(canvas, text, right_x - width // 2, y + 7, INK)
+        return
+    # locked: dimmed, read-only
+    text = str(row.get("default", ""))
+    ui.draw_right(canvas, text, right_x, y + 5, _blend(INK, (214, 198, 163, 255), 0.5))
+
+
+def _button(shell: Shell, canvas: Canvas, rect: tuple[int, int, int, int], text: str,
+            family: str = "button", colour=INK) -> None:
+    """A nine-patched button: parchment `button` or blood `button_blood` (§5.5)."""
+    shell.panel(canvas, family, rect)
+    ui = shell.fonts["ui"]
+    ui.draw_centred(canvas, text, rect[0] + rect[2] // 2, rect[1] + 6, colour)
+
+
+def _dim(canvas: Canvas) -> Canvas:
+    for y in range(HEIGHT):
+        for x in range(WIDTH):
+            r, g, b, _ = canvas.get(x, y)
+            canvas.set(x, y, (int(r * 0.5 + 8), int(g * 0.5 + 10), int(b * 0.5 + 12), 255))
+    return canvas
 
 
 SCREENS = {
     "legal": screen_legal,
     "menu": screen_menu,
     "menu-tooltip": screen_menu_tooltip,
+    "menu-new-contract": screen_new_contract,
     "sting-end": screen_sting_end,
     "stub": screen_stub,
+    "first-run": screen_first_run,
+    "ledger": screen_ledger,
+    "ledger-confirm": screen_ledger_confirm,
+    "options-graphics": lambda shell: screen_options(shell, 0),
+    "options-accessibility": lambda shell: screen_options(shell, 2),
+    "options-audio": lambda shell: screen_options(shell, 3),
+    "options-controls": lambda shell: screen_options(shell, 4, scroll=2),
+    "options-rebind": lambda shell: screen_options(shell, 4, scroll=1,
+                                                   listening_row="bind_interact"),
 }
+
+
+def _blend(front, back, alpha: float):
+    return tuple(int(front[i] * alpha + back[i] * (1 - alpha)) for i in range(3)) + (255,)
 
 
 def upscale(canvas: Canvas, factor: int) -> Canvas:

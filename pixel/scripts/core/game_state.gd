@@ -18,6 +18,9 @@ enum State {
 	STING,      ## 4.0 s logo sting, skippable after 1.5 s
 	MENU,       ## the main menu (§5.4)
 	STUB_CARD,  ## placeholder page behind a menu item in this build
+	FIRST_RUN,  ## the First Run contract page (§5.5)
+	LEDGER,     ## the contract ledger (§5.5)
+	OPTIONS,    ## schema-driven options page (§5.6)
 	LOADING,    ## loading screen (§5.9) — reserved, not built yet
 	YARD,       ## zone YRD (§6) — reserved, not built yet
 }
@@ -43,6 +46,22 @@ var _history: Array[int] = []
 func _ready() -> void:
 	if has_node("/root/ShellData"):
 		settings = ShellData.option_defaults()
+
+
+## Layer the saved choices over the schema defaults. Autoload order means
+## `GameState._ready()` runs before `SaveStore` has read the file, so the shell
+## calls this once at boot (and the Options page writes through both).
+func sync_settings_from_save() -> void:
+	if not has_node("/root/SaveStore"):
+		return
+	var saved := SaveStore.settings()
+	for row_id in saved:
+		settings[row_id] = saved[row_id]
+
+
+## Write one options value in memory (the pages persist it through SaveStore).
+func set_setting(row_id: String, value: Variant) -> void:
+	settings[row_id] = value
 
 
 ## Move to a new state. Screens are swapped by the shell in response to the

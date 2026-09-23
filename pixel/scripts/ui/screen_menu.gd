@@ -24,10 +24,16 @@ extends ShellScreen
 ##
 ## CONTINUE is dimmed to 40 % with no signed contract, shows the
 ## `No contracts signed yet.` tooltip on hover, and plays SFX_UI_DENY if
-## pressed (§5.4) — the one "action" the menu owns in this build.
+## pressed (§5.4).
 ##
-## Button activation hands `{"stub": id}` to the placeholder page. When the real
-## pages land, replace that one line with the real state transitions.
+## Routing (§5.5/§5.6): PLAY opens the First Run contract page, or the
+## `Begin a new contract?` overlay card when a contract already exists;
+## CONTINUE opens the ledger; OPTIONS opens the schema-driven options page.
+## CODEX and CREDITS stay stub cards until their pages are built.
+##
+## The overlay card is a child of this screen rather than a shell state, because
+## §5.5 draws it *over* the menu: the menu stays visible behind it and comes back
+## untouched when the card closes.
 ##
 ## Background: plain white for now — see `menu_background.gd`.
 
@@ -43,6 +49,8 @@ var _emblem_lit: TextureRect
 var _tooltip: Control
 var _tooltip_label: Label
 var _flicker_timer: Timer
+var _overlay: Control
+var _overlay_open := false
 var _layout: Dictionary = {}
 
 
@@ -65,6 +73,7 @@ func _build() -> void:
 
 func on_enter(_payload: Dictionary = {}) -> void:
 	input_locked = false
+	_close_overlay()
 	_refresh_continue()
 	_select(_selected, false)
 	Sound.play_loop("MUS_MENU_THEME")
@@ -153,7 +162,7 @@ func _build_footer() -> void:
 
 ## CONTINUE is dimmed 40 % until a contract exists (§5.4).
 func _refresh_continue() -> void:
-	var has_contract := SaveStore.has_any_contract() if has_node("/root/SaveStore") else false
+	var has_contract := _has_contract()
 	for item in _items:
 		if item.id == "continue":
 			item.set_enabled(has_contract)
@@ -187,9 +196,24 @@ func _on_item_activated(index: int) -> void:
 	item.confirm_underline()
 	Sound.play("SFX_UI_CONFIRM")
 	_flicker_emblem()
-	# Placeholder routing: every page is a stub card for now (§5.5 wiring comes
-	# later). Swap this single call for the real transitions.
-	go_to(GameState.State.STUB_CARD, {"stub": item.id})
+	match item.id:
+		"play":
+			_on_play()
+		"continue":
+			go_to(GameState.State.LEDGER)
+		"options":
+			go_to(GameState.State.OPTIONS)
+		_:
+			# CODEX and CREDITS (§5.7/§5.8) are still placeholder pages.
+			go_to(GameState.State.STUB_CARD, {"stub": item.id})
+
+
+## §5.5 PLAY: no save -> First Run page; save exists -> the overlay card.
+func _on_play() -> void:
+	if not _has_contract():
+		go_to(GameState.State.FIRST_RUN)
+		return
+	_show_new_contract_card()
 
 
 func _on_item_denied(index: int) -> void:
@@ -197,6 +221,91 @@ func _on_item_denied(index: int) -> void:
 	_select(index, false)
 	Sound.play("SFX_UI_DENY")
 	_show_tooltip(item)
+
+
+# --- "Begin a new contract?" overlay (§5.5) ----------------------------
+
+## Overlay card: parchment nine-patch, wax emblem 24 px, title `Begin a new
+## contract?`, body verbatim with the existing contract in it, `BEGIN NEW` ·
+## `BACK`. Built on demand so the body always names the current save.
+func _show_new_contract_card() -> void:
+	if _overlay != null:
+		return
+	_overlay_open = true
+	_overlay = Control.new()
+	add_child(_overlay)
+	UiPixel.backdrop(_overlay, Color(Palette.ink, 0.55))
+
+	var layout: Dictionary = ShellData.screen_timing().get("new_contract_card", {})
+	var card_rect := _raw_rect(layout.get("rect", []), Rect2(80, 60, 320, 150))
+	var face := UiPixel.panel(_overlay, "panel_parchment")
+	UiPixel.place(face, card_rect)
+
+	var seal := UiPixel.image(_overlay, UiPixel.UI_DIR + "wax_seal.png")
+	UiPixel.place(seal, _raw_rect(layout.get("seal_rect", []), Rect2(88, 68, 24, 24)))
+
+	var title := UiPixel.label(
+		_overlay, ShellData.t("STR_NEW_TITLE"), UiPixel.UI, Palette.ink
+	)
+	UiPixel.place(title, _raw_rect(layout.get("title_rect", []), Rect2(120, 72, 272, 12)))
+
+	var body_rect := _raw_rect(layout.get("body_rect", []), Rect2(96, 100, 288, 40))
+	var body := UiPixel.block(
+		_overlay,
+		UiPixel.wrap(_overlay_body(), body_rect.size.x, UiPixel.BODY),
+		UiPixel.BODY,
+		Palette.ink
+	)
+	UiPixel.place(body, body_rect)
+
+	var begin := UiPixel.button(_overlay, ShellData.t("STR_NEW_BEGIN"), _on_begin_new)
+	UiPixel.place(begin, _raw_rect(layout.get("begin_rect", []), Rect2(96, 172, 148, 18)))
+	var back := UiPixel.button(_overlay, ShellData.t("STR_BACK"), _close_overlay)
+	UiPixel.place(back, _raw_rect(layout.get("back_rect", []), Rect2(252, 172, 148, 18)))
+	back.grab_focus()
+
+
+## The body string verbatim: `A signed contract already exists: "{slot name} —
+## {class}, {level}, {chapter}". Starting anew will not erase it; up to 8
+## contracts may rest in the ledger.`
+func _overlay_body() -> String:
+	var latest := SaveStore.latest_contract()
+	return ShellData.t("STR_NEW_BODY", [
+		String(latest.get("name", "—")),
+		String(latest.get("class", "—")),
+		int(latest.get("level", 1)),
+		String(latest.get("chapter", "—")),
+	])
+
+
+## `BEGIN NEW` -> First Run with the first empty slot (§5.5). With all eight
+## slots used the card refuses rather than silently overwriting a contract —
+## the spec does not cover a full ledger, so the press is denied and the card
+## stays put.
+func _on_begin_new() -> void:
+	if SaveStore.first_empty_slot() < 0:
+		Sound.play("SFX_UI_DENY")
+		return
+	_close_overlay()
+	go_to(GameState.State.FIRST_RUN)
+
+
+func _close_overlay() -> void:
+	if _overlay != null:
+		_overlay.queue_free()
+		_overlay = null
+	_overlay_open = false
+	Sound.play("SFX_UI_BACK")
+
+
+func _has_contract() -> bool:
+	return SaveStore.has_any_contract() if has_node("/root/SaveStore") else false
+
+
+func _raw_rect(raw: Variant, fallback: Rect2) -> Rect2:
+	if typeof(raw) == TYPE_ARRAY and (raw as Array).size() == 4:
+		return Rect2(float(raw[0]), float(raw[1]), float(raw[2]), float(raw[3]))
+	return fallback
 
 
 func _flicker_emblem() -> void:
@@ -227,6 +336,13 @@ func _tooltip_size() -> Vector2:
 ## ESC deliberately does nothing here (§5.4: no back-exit from the menu).
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible or input_locked:
+		return
+	if _overlay_open:
+		# The card owns the input while it is up: ESC is its BACK button, and
+		# the menu behind it must not move under the player's feet.
+		if event.is_action_pressed("ui_cancel"):
+			accept_event()
+			_close_overlay()
 		return
 	if event.is_action_pressed("menu_up"):
 		accept_event()

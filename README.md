@@ -36,14 +36,18 @@ The pixel version of DELVE (GDD-06 + GDD-07) lives in [`pixel/`](pixel/README.md
 clean, self-contained Godot 4.7.2 project: 480×270 viewport, integer scaling, locked
 32 + 8 palette, two bitmap faces, deterministic asset builders.
 
-**Built so far:** the boot sequence (legal screen → 4.0 s logo sting) and the **main
-menu** (§5.4 layout, strings, timings and cues to the letter). The menu background is
-plain white for now, and the five menu items are inert — activating one opens a
-placeholder card.
+**Built so far:** the boot sequence (legal screen → 4.0 s logo sting), the **main menu**
+(§5.4 layout, strings, timings and cues to the letter), and the real **Play / Continue /
+Options** pages — the §5.5 First Run contract page and `Begin a new contract?` overlay, the
+eight-slot contract ledger, and the §5.6 schema-driven Options rail. The menu background is
+plain white for now; CODEX and CREDITS still open placeholder cards, and because the
+loading screen and the yard are not built, the buttons that would leave the menu for them
+return to the menu instead (their spec text is unchanged).
 
 ```bash
-godot --path pixel                    # play the boot sequence and menu
-godot --path pixel -- --screen=menu   # jump straight to the menu
+godot --path pixel                        # play the boot sequence and menu
+godot --path pixel -- --screen=menu       # jump straight to the menu
+godot --path pixel -- --screen=options    # ...or first_run / ledger / options
 ```
 
 Verification (all of it runs without Godot except the last line):
@@ -56,8 +60,9 @@ python3 tools/check_strings.py        # byte-for-byte string parity with GDD-07
 godot --headless --path pixel res://tests/test_runner.tscn
 ```
 
-Deviations from the spec (fonts, the wordmark's grid, the white background, placeholder
-cards) are listed with reasons in [`pixel/docs/PIXEL_MENU_BUILD_NOTES.md`](pixel/docs/PIXEL_MENU_BUILD_NOTES.md).
+Deviations from the spec (fonts, the wordmark's grid, the white background, the two exits
+that return to the menu, the ledger's `BACK`, the Options help line) are listed with reasons
+in [`pixel/docs/PIXEL_MENU_BUILD_NOTES.md`](pixel/docs/PIXEL_MENU_BUILD_NOTES.md).
 
 The web shell below and the old 3D blockout in `godot/` are the previous iterations; the
 pixel build shares no code or assets with either.

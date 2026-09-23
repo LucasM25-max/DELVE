@@ -24,6 +24,7 @@ var _combat_stats: Dictionary = {}
 var _settings: Dictionary = {}
 var _write_timer: SceneTreeTimer = null
 var _loaded := false
+var _corrupt := false
 
 
 func _ready() -> void:
@@ -38,9 +39,13 @@ func load_ledger() -> void:
 		_ledger.append(null)
 	var doc := _read_json(SAVE_PATH)
 	if doc.is_empty():
+		# A file that exists but does not parse is the §5.5 corrupt-save case;
+		# an absent file is simply a fresh player.
+		_corrupt = FileAccess.file_exists(SAVE_PATH)
 		_loaded = true
 		ledger_changed.emit()
 		return
+	_corrupt = false
 	if int(doc.get("schema", 1)) != SCHEMA:
 		push_warning("SaveStore: unexpected schema %s (expected %d); loading anyway"
 			% [doc.get("schema", "?"), SCHEMA])
@@ -78,6 +83,12 @@ func has_any_contract() -> bool:
 		if typeof(entry) == TYPE_DICTIONARY and not entry.is_empty():
 			return true
 	return false
+
+
+## §5.5 boot edge case: the save exists but failed its checksum. The Ledger shows
+## the scorched-save card while this is true; a successful write clears it.
+func has_corrupt_save() -> bool:
+	return _corrupt
 
 
 ## The most recently touched contract, used by the PLAY overlay body string.
@@ -216,6 +227,8 @@ func _flush() -> void:
 	var error := dir.rename(TMP_PATH.get_file(), "delve_v2.json")
 	if error != OK:
 		push_error("SaveStore: rename failed (%d)" % error)
+		return
+	_corrupt = false
 
 
 func _exit_tree() -> void:

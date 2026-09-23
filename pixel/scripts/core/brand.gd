@@ -43,6 +43,24 @@ func wordmark_letters() -> PackedStringArray:
 ## The emblem's three descending steps as rects in emblem-local pixels. The
 ## boot sting lights them top to bottom; the loading seal lights them at
 ## 33 / 66 / 100 %.
+## Save-stamp art for a contract: `steps_lit` of the emblem's three steps lit
+## (§5.5 "emblem stamp (steps lit = beats completed)"). `build_brand.py` writes
+## the four variants into `brand.json`; these fall back to the plain emblem.
+func stamp_file(steps_lit: int) -> String:
+	var variants: Dictionary = data.get("emblem", {}).get("variants", {})
+	var key := "stamp_%d" % clampi(steps_lit, 0, 3)
+	return String(variants.get(key, variants.get("stamp_0", "logo_emblem.png")))
+
+
+## How many of the emblem's three steps a contract has earned: one step per
+## third of the P1 beat list completed, rounded up (so the first finished beat
+## already shows a light).
+func steps_lit_for(completed: int, total: int) -> int:
+	if completed <= 0 or total <= 0:
+		return 0
+	return clampi(int(ceil(float(completed) / float(total) * 3.0)), 1, 3)
+
+
 func emblem_step_rects() -> Array[Rect2]:
 	var out: Array[Rect2] = []
 	for step in data.get("emblem", {}).get("steps", []):

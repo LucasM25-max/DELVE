@@ -9,15 +9,22 @@ Build date: 2026-09-23 · branch `arena/01a0cedd-delve` · spec: GDD-06, GDD-07 
 
 ## 1. Scope of this build
 
-Requested: *"build the game menu, including boot up sequence, but do not make the buttons do
-anything for now. Keep the background of the menu plain white."*
+Two passes, both on this branch:
+
+1. *"build the game menu, including boot up sequence, but do not make the buttons do
+   anything for now. Keep the background of the menu plain white."*
+2. *"build the Play, Continue and Options menus completely per §5.5/§5.6 — but buttons in
+   Play and Continue that are meant to move out of the game menu must just return to the
+   menu, while keeping the proper spec text."*
 
 Shipped:
 
 | Ring | Contents |
 |---|---|
-| P0 (partial) | boot sequence: legal screen → logo sting → menu, plus placeholder cards behind the five menu items |
-| Not built | §5.5 first run / ledger, §5.6 options, §5.7 codex, §5.8 credits, §5.9 loading, §6 yard |
+| P0 (partial) | boot sequence: legal screen → logo sting → menu; **§5.5 PLAY** (First Run contract page + `Begin a new contract?` overlay card); **§5.5 CONTINUE** (eight-slot ledger, `DELETE` confirm, corrupt-save card); **§5.6 Options** (5 tabs, 39 schema-driven rows, pills / toggles / 10-pip sliders / rebinds, save v2 on BACK) |
+| Stubbed on purpose | Loading (§5.9) and the yard (§6) do not exist, so the two buttons that lead to them return to the menu instead — §2.8 |
+| Still a placeholder card | CODEX (§5.7) and CREDITS (§5.8) |
+| Not built | §5.9 loading, §6 yard |
 
 Everything the unbuilt pages need is already in `data/`: the string master (§5.11), the
 timings (§5.2/§5.4), the options schema (§5.6, 39 rows over 5 tabs), the brand geometry,
@@ -99,12 +106,13 @@ both inside the canvas. The spec's original numbers and the reasoning are record
 stay right-aligned to 470 and never overlap. Both labels also set `clip_text`, so no
 future font change can spill them.
 
-### 2.6 Placeholder cards instead of the real pages (requested)
+### 2.6 Placeholder cards for the last two pages
 
-Activating a menu item shows a parchment card: title, one-line body, hint and `BACK`.
+CODEX and CREDITS still show a parchment card: title, one-line body, hint and `BACK`.
 Titles and bodies live in `data/strings.json` as `STR_STUB_<ID>_TITLE` / `_BODY`, so
-replacing the card with the real page touches one call site
-(`screen_menu.gd::_on_item_activated`).
+replacing a card with the real page touches one call site
+(`screen_menu.gd::_on_item_activated`). PLAY, CONTINUE and OPTIONS now route to their real
+screens.
 
 CONTINUE follows §5.4 exactly even in this build: dimmed to 40 % with no contract, tooltip
 `No contracts signed yet.` on hover, `SFX_UI_DENY` when pressed.
@@ -118,6 +126,101 @@ id. Files are not in Git: the tracks that already exist in the repository are co
 silent. `pixel/assets/audio/` is git-ignored, matching the repo's existing "no big binaries
 in Git" convention.
 
+
+### 2.8 The two exits that would leave the menu return to the menu (requested)
+
+§5.5 ends both play routes with **Loading (§5.9) → YARD (§6)**:
+
+* `SIGN & DESCEND` → save slot created → Loading → YARD
+* Ledger: select a slot → Loading → YARD (resume)
+
+Neither screen is built, and the request for this pass was explicit: *buttons that move out
+of the game menu must just return to the menu, with the spec text unchanged*. So:
+
+| Button | Spec effect | Shipped |
+|---|---|---|
+| `SIGN & DESCEND` | writes the next free slot (`New contract`, P1 label), then Loading → YARD | writes the slot **and every chosen option** through `SaveStore` (contract, difficulty, pacing, subtitles, comfort), flushes save v2, then returns to the menu — where CONTINUE lights up and the ledger shows the contract |
+| Ledger row (select) | resumes that contract → Loading → YARD | returns to the menu with `{"resume_slot", "resume_name"}` in `GameState.payload`, so the yard can consume it unchanged |
+
+Text, layout, sounds and the save format are exactly as specified. Each deviation is one
+call site, named in the code: `screen_first_run.gd::_sign_and_descend()` and
+`screen_ledger.gd::_on_row_selected()`. When Loading lands, those two calls become
+`go_to(GameState.State.LOADING, …)`; nothing else in either page changes.
+
+Two smaller, related decisions:
+
+* **A full ledger refuses.** §5.5 does not cover `BEGIN NEW` with all eight slots used. The
+  card plays `SFX_UI_DENY` and stays up rather than overwriting a contract; First Run cannot
+  be reached in that state (PLAY only offers the card when a slot is free).
+* **The ledger needed an exit.** §5.5 gives the ledger no exit control and §5.4 only forbids
+  ESC from quitting the *menu*. `BACK` (60, 244, 80, 18) was added — the same rect the
+  Options page uses — plus ESC. Without it a mouse player could not leave the page.
+
+### 2.9 First Run help: the spec's own 48 px group pitch
+
+§5.5 fixes the three group labels at y **56 / 104 / 152** — a 48 px pitch — and puts 8 px help
+under the group. Label (8) + pills (16) + three 8 px help lines (24) = exactly 48, so the
+groups stack with no gap. That only works if the help line pitch is 8 px, but the shipped
+body face has an 11 px line height, so help blocks pass `line_spacing: -3`
+(`data/shell_timings.json → screens.first_run.help_line_spacing`).
+
+Content runs 48…432 — the panel's *inner* width rather than an arbitrary 360 px inset —
+which keeps the difficulty help to two lines and the longer combat-pacing help to three.
+`tools/check_project.py::check_screen_layouts()` re-measures both strings with the shipped
+`.fnt` metrics and fails the build if a help block would overrun its group.
+
+The third group's two prose notes ("subtitles drive VO captions", "comfort freezes
+motes…") are drawn under their own columns at y 178, where the spec leaves 48 px of free
+panel above the footer buttons.
+
+### 2.10 Options: the help line, the scrolling Controls tab, one overhanging label
+
+§5.6 fixes the rail, the rows panel, the row height and the control types, but says nothing
+about a help line or about tabs with more rows than fit. Three decisions:
+
+1. **Help line.** The schema's `help` text is drawn at (176, 246, 288, 8) — to the right of
+   `BACK`, inside the panel — wrapped to that width. The longest string (Difficulty, 111
+   characters) takes three 8 px-class lines and overhangs the panel's bottom edge by the
+   same 8 px `BACK` already does at its spec rect. Ink reads on both the parchment panel and
+   the white field, so no colour swap is needed. `check_screen_layouts()` fails if a help
+   block would run off the 270 px canvas.
+2. **Scrolling.** Ten rows fit between the panel's top edge and the help line. Accessibility
+   has 10 and Controls has 12, so the page scrolls (wheel, ↑/↓ at the ends) and shows the
+   4 px scrollbar the kit already builds. The spec's row height and panel rect are unchanged.
+3. **One label overhangs.** `Accessibility` is 78 px at the shipped 5 px face — 3 px wider
+   each side than the spec's 64 px tab. The label is centred and `clip_text` is off, so the
+   overhang falls inside the rail's unused 8 px gutter and clears the rows panel at x 88.
+   Nothing else in the rail moves.
+
+Rebinds are unchanged from the retired `options_page.gd`: the pill becomes `Press a key…`,
+ESC cancels with `Rebind cancelled.`, and the choice is stored as a display string plus a
+`<row id>_keycode` so `InputActions.apply_overrides()` re-applies it at boot. The twelve
+yard actions are registered with the spec's default keys in `InputActions.YARD_BINDINGS`.
+
+### 2.11 Ledger details the spec left open
+
+* **Stamps.** "steps lit = beats completed" with three steps and a five-beat P1 list
+  (`T0 T1 T3 T4 T8`, now in `data/shell_content.json → tutorial_beats.p1`) is read as one
+  step per third completed, rounded up: `Brand.steps_lit_for(completed, total)` →
+  `logo_emblem.png` / `logo_emblem_step1.png` / `logo_emblem_step2.png` /
+  `logo_emblem_steps.png` (variants published in `data/brand.json → emblem.variants`).
+* **Date.** The save's `signed_at` ISO stamp trimmed to its date half, right-aligned on the row.
+* **Keyboard hint.** Rows end at y 240 and the panel at y 246, so the hint sits beside BACK
+  on the white field at (148, 250) — `check_screen_layouts()` asserts it can never land on
+  the eighth row.
+* **Corrupt save.** `SaveStore.has_corrupt_save()` is true when the file exists but does not
+  parse; the ledger then shows the ink card from §5.5 with `RETRY` (re-reads the file) and
+  `CONTINUE WITHOUT SAVING` (keeps the session in memory; a later successful write clears the
+  flag).
+
+### 2.12 The card and the overlay keep the menu behind them
+
+§5.5 draws `Begin a new contract?` as an *overlay* — the menu stays visible behind it. The
+card is therefore a child of `screen_menu.gd` (`_show_new_contract_card()`), not a shell
+state: closing it returns the untouched menu, ESC closes it too, and the menu's own input
+handler stands down while it is up. The wax seal, the title and the verbatim body
+(`STR_NEW_BODY`) are laid out from `data/shell_timings.json → screens.new_contract_card`.
+
 ---
 
 ## 3. Seeing a screen without the engine
@@ -127,12 +230,19 @@ shipped assets — same rects, same strings, same `.fnt` fonts, same nine-patche
 `pixel/preview/` (git-ignored):
 
 ```bash
-python3 tools/preview_screen.py                 # legal, menu, menu-tooltip, sting-end, stub
-python3 tools/preview_screen.py menu --scale 2  # one screen, 2x for legibility
+python3 tools/preview_screen.py                    # every screen
+python3 tools/preview_screen.py menu --scale 2     # one screen, 2x for legibility
+python3 tools/preview_screen.py first-run ledger options-rebind
 ```
 
-It is how the footer collision above was found, and it is the fastest way to check a
-layout change on a machine without Godot.
+Screens: `legal` · `menu` · `menu-tooltip` · `menu-new-contract` · `sting-end` · `stub` ·
+`first-run` · `ledger` · `ledger-confirm` · `options-graphics` · `options-audio` ·
+`options-accessibility` · `options-controls` (scrolled) · `options-rebind` (capturing a key).
+
+It is how the footer collision (§2.5), the first-run help overflow (§2.9) and the ledger
+hint landing on row 8 (§2.11) were all found — and it is the fastest way to check a layout
+change on a machine without Godot. `check_project.py` now enforces the same numbers
+statically.
 
 ---
 
@@ -153,6 +263,20 @@ Verified by `tools/check_project.py` (numbers) and `tests/test_runner.gd` (runti
 | version stamp | right-aligned to (470, 259) | right-aligned to 470 at y 262 — stacked |
 | top-right | clean — nothing | same |
 
+First Run, ledger and Options (§5.5/§5.6), same verification:
+
+| Element | Spec | Shipped |
+|---|---|---|
+| First Run panel | (40, 16, 400, 238) | same |
+| First Run groups | y 56 / 104 / 152, pills h 16 gap 4 | same; help stacked to the 48 px pitch (§2.9) |
+| First Run footer | (56, 224, 148, 18) `BACK` · (276, 224, 148, 18) `SIGN & DESCEND` | same |
+| Contract card | parchment nine-patch, wax emblem 24 px, title + verbatim body, `BEGIN NEW` · `BACK` | same; body wraps to 4 lines and clears the buttons by 28 px |
+| Ledger panel | (60, 24, 360, 222) | same |
+| Ledger rows | 8 × 24 px at y 48 + 24i | same; last row ends at y 240, hint outside the panel |
+| Options tab rail | (8, 16, 72, 238) | same |
+| Options rows panel | (88, 16, 384, 238), row h 20 | same; rows at x 96, controls right-aligned to 460 |
+| Options `BACK` | (88, 244, 80, 18) | same (commits + writes save v2 atomically) |
+
 Boot timings (§5.2) live in `data/shell_timings.json` and are read, not hard-coded:
 0.8 s reveal · steps at 800/1200/1600 ms · chisel at 2000/2200/2400/2600/2800 ms · sublock
 fade at 3000 ms with the sweep to 3600 ms · 4.0 s total · skip from 1.5 s · reduced-motion
@@ -165,8 +289,8 @@ minimum 1.0 s.
 | Next piece | Touch points |
 |---|---|
 | §5.3 painted backdrop | `scripts/ui/menu_background.gd`; drop the layer PNGs in `assets/pixel/backdrops/` |
-| §5.5 first run + ledger | new `screen_first_run.gd` / `screen_ledger.gd`; `SaveStore.create_contract()`, `slots()`, `delete_contract()` are done; add rows to `SCREENS` + `DEBUG_SCREEN_IDS` |
-| §5.6 options | `data/options_schema.json` is the whole row set; build a generic row renderer (pill / toggle / 10-pip slider) in `ui_pixel.gd`, persist through `SaveStore.set_setting()` |
+| §5.9 loading → §6 yard | `data/shell_timings.json → loading` has the dwell and weights, the 16 tips are in `shell_content.json`; the two call sites listed in §2.8 become `go_to(GameState.State.LOADING, …)` and the yard consumes `GameState.payload.resume_slot` |
+| §5.7 codex / §5.8 credits | copy a `screen_stub.gd` page, register it in `SCREENS` + `DEBUG_SCREEN_IDS`; rules text R1–R15 is in GDD-07 §4 |
 | §5.7 codex | `data/shell_content.json` + the rules primer R1–R15 of GDD-07 §4 (SRD-sourced) |
 | §5.9 loading | `data/shell_timings.json → loading` has the dwell and weights; the 16 tips are already in `shell_content.json` |
 | §6 yard | new `scenes/world/yard.tscn`; the tile builder will read a `data/yard_map.json` in the schema of GDD-07 §12 |
@@ -188,8 +312,8 @@ the Roll Moment), `Streams` (deterministic, per-domain seeds), `SaveStore` (sche
 2. **Font import.** `.fnt` files import as bitmap `FontFile`. If an atlas fails to import,
    `UiPixel.font()` pushes an error naming the file — check the atlas PNG sits beside the
    `.fnt` (it does) and that the `.fnt`'s `page` line names it.
-3. **Only the boot + menu path is exercised.** The unbuilt screens exist only as enum
-   values, strings and data.
+3. **Only what shipped is exercised.** Codex, credits and loading still exist only as
+   strings, timings and data; the yard is not started.
 4. **Sound is silent until files land.** `Sound` prints one line per missing cue the first
    time it is asked for it (`[sound] cue 'X' not loaded yet`) — that is expected, not an
    error, until `tools/fetch_audio.py` has been run or real audio is dropped in.

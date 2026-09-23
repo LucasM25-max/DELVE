@@ -6,6 +6,13 @@
       24,
       24
     ],
+    "variants": {
+      "stamp_0": "logo_emblem.png",
+      "stamp_1": "logo_emblem_step1.png",
+      "stamp_2": "logo_emblem_step2.png",
+      "stamp_3": "logo_emblem_steps.png"
+    },
+    "comment_stamps": "Save stamps light one step per third of the beat list completed (steps lit = beats completed, §5.5).",
     "steps": [
       {
         "x": 6,

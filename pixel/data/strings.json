@@ -57,6 +57,23 @@
     "STR_STUB_CODEX_TITLE": "CODEX",
     "STR_STUB_CODEX_BODY": "Rules, Lore and Bestiary. Rules entries ship pre-loaded; lore unlocks in play.",
     "STR_STUB_CREDITS_TITLE": "CREDITS",
-    "STR_STUB_CREDITS_BODY": "Full-screen scroll at 15 px/s with the attribution blocks and an end card."
+    "STR_STUB_CREDITS_BODY": "Full-screen scroll at 15 px/s with the attribution blocks and an end card.",
+    "STR_REBIND_LISTEN": "Press a key…",
+    "STR_REBIND_CANCELLED": "Rebind cancelled.",
+    "STR_SKIRMISH_TOOLTIP": "Coming after the Table Mode yard ships.",
+    "STR_LEDGER_SCORCHED": "The ledger is scorched. (save failed checksum)",
+    "STR_LEDGER_SKIP": "CONTINUE WITHOUT SAVING",
+    "STR_LEDGER_HINT": "Enter resumes a contract. DELETE breaks one.",
+    "STR_LEDGER_DELETE": "DELETE",
+    "STR_CONTRACT_UNASSIGNED": "Unassigned",
+    "STR_CONTRACT_CHAPTER": "Prologue",
+    "STR_CONTRACT_NEW_NAME": "New contract",
+    "STR_OPTIONS_TITLE": "OPTIONS",
+    "STR_OPTIONS_TAB_GRAPHICS": "Graphics",
+    "STR_OPTIONS_TAB_GAMEPLAY": "Gameplay",
+    "STR_OPTIONS_TAB_ACCESSIBILITY": "Accessibility",
+    "STR_OPTIONS_TAB_AUDIO": "Audio",
+    "STR_OPTIONS_TAB_CONTROLS": "Controls",
+    "STR_FR_SEAL_NOTE": "Signed in the muster-yard of the Neverwinter guard."
   }
 }
