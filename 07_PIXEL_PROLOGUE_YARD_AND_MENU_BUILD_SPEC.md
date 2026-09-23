@@ -4,12 +4,12 @@
 | Field | Value |
 |---|---|
 | Document | `07_PIXEL_PROLOGUE_YARD_AND_MENU_BUILD_SPEC.md` (GDD-07) |
-| Version | 1.0 (2026-09-23) |
+| Version | 1.1 (2026-09-23) — web build: static site, GitHub → Vercel |
 | Status | **ACTIVE** — binding content spec for the pixel shell and the entire prologue training yard |
 | Author | Arena.ai agent session (`arena/01a0cdae-delve`) |
 | Pixelates | GDD-02 (shell spec), GDD-03 (3D yard spec) — wherever this doc and those differ, **this doc wins for the pixel build** |
 | Reconciles with | GDD-06 (tech/pipeline/milestones; §3.1 first-playable slice → ship ring P1 below), GDD-01 (beat sheet, Table Mode), GDD-00 (pillars, palette thesis) |
-| Target | Godot 4.7.2 · 480×270 base viewport · integer stretch · 16 px tiles · Compatibility renderer · Web export |
+| Target | Browser · 480×270 canvas · integer CSS scale · 16 px tiles · HTML + ES modules + JSON + PNG/OGG · static site published by Vercel (`outputDirectory: "web"`) |
 | **Standalone guarantee** | Every screen rect, string, rule text, tile coordinate, prop, trigger, statblock, audio cue and VO line needed to build **the complete menu and the complete training yard (areas A–M)** is contained here. Rules texts are inline at each teaching station (SRD 5.2.1 wording, CC-BY attribution §16) so no other document and no rulebook is required. |
 
 ---
@@ -19,8 +19,9 @@
 **Conventions**
 
 - Coordinates: **tiles** on a 16 px grid (§3.1); UI coordinates: **pixels on the 480×270 canvas**, origin top-left. Both are integers — no fractional positions exist anywhere in this build.
+- Surfaces: every rect, string and timing named in this document exists as data under `web/data/` (§12) and is read at runtime; nothing here is re-typed in code.
 - IDs: `T_` tiles · `PROP_`/`M_YRD_` props (manifest-compatible names, never renamed) · `A_` audio · `VO_` voice · `VFX_` effects · `TR_` triggers · `UI_`/`STR_` strings · `C1–C6` creation stations · `T0–T11` tutorial beats · `R1–R15` rules primer (§4) · `P0/P1/P2` ship rings.
-- Tags: **[P0]** ships with the menu · **[P1]** first-playable yard (GDD-06 §3.1 slice) · **P2** complete prologue (this document's full target) · **[CONVERT]** logic survives from today's shell · **[NEW]** does not exist yet.
+- Tags: **[P0]** ships with the menu · **[P1]** first-playable yard (GDD-06 §3.1 slice) · **P2** complete prologue (this document's full target) · **[CONVERT]** behaviour that already exists in the shell · **[BUILD]** new to the yard.
 
 **Ship rings (how "the whole yard" lands)**
 
@@ -43,7 +44,7 @@ P1 ⊂ P2: every P1 trigger is written as it works at P2 first, with an explicit
 - **Size:** interior **29 × 29 tiles = 464 × 464 px** walk-about footprint (44 m × 44 m in rules space). South of the gate: painted R1 lane card + R2 city vista card (never entered).
 - **Time of day:** 06:40 at T0 → 08:20 at departure (game clock ≈ 18 min real time); menu backdrop is the same yard frozen at **06:10** (§5.3).
 - **Weather:** clear, light harbour mist band until 07:30 (2-frame overlay), then clear. No gameplay effect (sandbox rule R15).
-- **Performance budget (pixel):** ≤ **32 draw calls** worst combat · ≤ **60 fps** at 1080p integer scale · PCK ≤ 2.5 MB · whole web transfer ≤ 15 MB · yard loads < 100 ms (loading screen kept for pacing, §5.9). 3D budgets from GDD-03 §1 (draw calls ≤ 200, triangles, streamed textures) are **retired**.
+- **Performance budget (web):** ≤ **32 batched blits** worst combat · **60 fps** at 1080p integer scale · whole transfer ≤ 15 MB · menu path ≤ 1 MB · yard load < 100 ms (the loading screen is kept for pacing, §5.9). The 3D budgets of GDD-03 §1 (draw calls ≤ 200, triangles, streamed textures) are **retired**.
 - **Rules sandbox overrides active in YRD (R15):** no death (yield at 1 HP); dummies reset after 6 s idle; infinite training arrows; rests free/instant-result; no alert states; no weather gameplay.
 
 ---
@@ -53,9 +54,9 @@ P1 ⊂ P2: every P1 trigger is written as it works at P2 first, with an explicit
 | Layer | GDD-02/03 (3D) | GDD-07 (pixel) |
 |---|---|---|
 | Camera | 3rd person default + first-person `V` toggle (T2), 60 px/s credits | Top-down follow, integer zoom **1× world / 2× dialogue** only; **no first person anywhere** — T2 becomes a 2× mirror zoom cue (§4.D); no pointer lock |
-| World | 44×44 m heightfield + glTF props | 29×29 tile `TileMapLayer`s from GDD-03 §3 plan; props = manifest-named 2D sprites, 16-px footprints |
+| World | 44×44 m heightfield + 3D props | 29×29 tile layer drawn from one map JSON (the GDD-03 §3 plan); props = manifest-named 2D sprites, 16-px footprints |
 | Rules grid | Invisible lattice under natural terrain (GDD-01 D3) | **Tiles are the grid** — 1 tile = 5 ft, literally countable; combat overlay tints cells (GDD-06 §4.6/§6.11); exploration still free-moves on pixels, not tile snaps |
-| Lighting | sun elev/azimuth, 2400→4200 K, real-time GI | 5-stop dawn `CanvasModulate` ramp on the locked palette (§10); lanterns = additive glow sprites |
+| Lighting | sun elevation/azimuth, real-time GI | 5-stop dawn ramp composited over the canvas from the locked palette (§10); lanterns = additive glow sprites |
 | Menu backdrop | live 3D yard, camera drift waypoints, f/2.8 DOF | 3-layer painted parallax + 8 motes (§5.3); low-spec fallback is the default (no pre-render loop needed) |
 | Dice theatre | in-world 3D die tumble | Roll Moment: 6-frame 2D tumble in UI layer, 0.4 s hold, ≤ 1.5 s total (R14) |
 | HUD | diegetic holdouts | nine-patch pixel HUD (§11); folio `Tab`, codex `C`, journal `J` unchanged |
@@ -67,10 +68,10 @@ P1 ⊂ P2: every P1 trigger is written as it works at P2 first, with an explicit
 
 ### 3.1 Tile grid (the only coordinate system)
 
-- Footprint **29×29 cells**: `tx ∈ [−14, +14]`, `ty ∈ [0, +28]`. Pixel world rect = (−224, 0) to (+240, 464) with origin-tile centre at pixel (0,0) offset — implemented as `yard.tscn` Node2D origin at tile (0,0) centre.
+- Footprint **29×29 cells**: `tx ∈ [−14, +14]`, `ty ∈ [0, +28]`. Pixel world rect = (−224, 0) to (+240, 464) with the origin-tile centre at pixel (0,0) — the camera works in this rect, and the tile layer is drawn with that offset applied.
 - **Origin (0,0)** = centre of the gate's inner threshold at floor line. **+X = east, +Y = north.** Metre→tile: `t = round(m / 1.524)`.
 - **Walls:** `tx = ±14` (east/west, all rows), `ty = 28` (north), `ty = 0` (south) **except gate gap `tx ∈ [−2, 2]`**. Wall cells: `solid`, `los_block`, cost n/a (impassable). Interior walkable: `tx ∈ [−13,13]`, `ty ∈ [1,27]`.
-- **Custom data layers** on the TileMap (GDD-06 §4.6, single source of truth): `solid:bool`, `cost:float`, `cover:int 0|2|5`, `elev:int` (5-ft steps), `los_block:bool`, `encounter:string`, `interact:string`.
+- **Per-tile fields** in the zone's map JSON (GDD-06 §4.6, single source of truth): `solid:bool`, `cost:float`, `cover:int 0|2|5`, `elev:int` (5-ft steps), `los_block:bool`, `encounter:string`, `interact:string`. The renderer, the walkability check and the combat overlay all read this one file.
 - **R1 forecourt strip** (walkable, part of A): `ty ∈ [1,4]`, `tx ∈ [−5,5]`, cobble. Beyond the south gate gap: **painted lane card** (P1+P2 both: lane is never walked in the pixel build — GDD-06 §3.1; the city-gate string still fires from a `TR_A_LANE` sight-line trigger at the gap, §4.A).
 
 ### 3.2 Scope rings (diegetic boundaries; no invisible walls inside R0)
@@ -178,7 +179,7 @@ Boundary strings (verbatim, fire on approach/look): wall walk — `Guard orders:
 
 ## 5. PART A — GAME MENU (SHELL) BUILD SPEC  [P0]
 
-> Pixelates GDD-02 completely. Screen state machine (CONVERT, today's `shell.gd`): `legal → sting → menu → {new_contract, ledger, options, codex, credits, contract_confirm} → loading → yard`, plus pause overlay inside the yard. All UI text ≥ 5 px, contrast ≥ 4.5:1 (palette lint). Fonts: `pixel_ui_5` (chrome, 5 px) and `pixel_body_8` (prose, 8 px) per GDD-06 §4.8; no TTF rasterises in the game build.
+> Pixelates GDD-02 completely. Screen state machine (`web/js/core/state.js`): `legal → sting → menu → {new_contract, ledger, options, codex, credits, contract_confirm} → loading → yard`, plus the pause overlay inside the yard. All UI text ≥ 5 px, contrast ≥ 4.5:1 (palette lint). Faces: `pixel_ui_5` (chrome, 5 px), `pixel_body_8` (prose, 8 px) and `pixel_display_10` (headings) per GDD-06 §4.5; bitmap atlases only — no webfont, no TTF and no `fillText` in the build.
 
 ### 5.1 Brand & lockups (pixel construction)
 
@@ -194,14 +195,14 @@ Boundary strings (verbatim, fire on approach/look): wall walk — `Guard orders:
 
 ### 5.2 Boot sequence (exact order, strings, timings)
 
-1. **Legal/attribution screen** — full-screen ink `#101418`, parchment text 8 px: emblem 24 px top-centre (y 20); disclaimer (§5.1) block at y 56, width 384 centred; **SRD CC-BY attribution block** (§16) y 116; engine line `Made with Godot Engine · MIT licence` y 168; font credits `UI type: Pixel Operator & m5x7 (CC0)` y 180; bottom centre pulse 5 px `Press any button to continue.` (0.8 s blink). **Any input continues AND unlocks audio** (WebAudio gesture gate). Shaders pre-warm here.
+1. **Legal/attribution screen** — full-screen ink `#101418`, parchment text 8 px: emblem 24 px top-centre (y 20); disclaimer (§5.1) block at y 56, width 384 centred; **SRD CC-BY attribution block** (§16) y 116; shipping line (`STR_ENGINE_LINE` = `Made with HTML, CSS & JavaScript`) y 168; font credits `UI type: 5×7 system font (MIT) & Silkscreen (OFL)` y 180; bottom centre pulse 5 px `Press any button to continue.` (0.8 s blink). **Any input continues AND unlocks audio** (the browser's gesture gate: nothing may play before a real input, so this page is where the audio graph starts and everything asked for earlier is queued). Font atlases are warmed here so the sting's first frame never waits on a fetch.
 2. **Logo sting** — 4.0 s, skippable after 1.5 s by any input; ink background; t 0.0–0.8 emblem outline draws + `SFX_BOOT_STONE`; 0.8–2.0 three steps light top→bottom (`SFX_BOOT_EMBERS` ×3); 2.0–3.0 wordmark chisels letter-by-letter (`SFX_BOOT_CHISEL` ×5); 3.0–3.6 sublock fades + bronze sweep (`MUS_BOOT_STING`); 3.6–4.0 hold → 0.6 s cross-fade to menu. Reduced-motion: cut straight to end frame, still ≥ 1.0 s.
 3. **Menu** — fade in 0.6 s (§5.4).
 
 ### 5.3 Menu backdrop — yard at dawn (painted, 3 layers)
 
 - **Scene reference (art direction, painted into 3 PNGs wider than 480):** the yard at **06:10**, mist band, gulls; **no tutorial triggers, NPCs idle-only**: clerk shuffles papers at B, sergeant oils a blade at J, two trainees spar at 30% intensity, **Gundren absent from E — empty chair, lantern still lit** (narrative tease). These reads are painted into the parallax art (P1); P2 polish may swap in live idle rigs behind the menu (optional, GDD-06 §7.2 keeps painted as default).
-- **Layers (backdrop.gd → `backdrop_pixel.gd`):** L0 sky/vista card (drift 0.4 px/s), L1 far walls + loft silhouette (0.8 px/s), L2 near yard furniture + mist band (1.6 px/s); mist = 2-frame swap at 1.5 Hz; **8 motes** 1-px bronze/mint rising at 6 px/s (frozen under reduced-motion / camera comfort `Reduced motion`).
+- **Layers (`js/screens/menu.js` drawing from `js/ui/`):** L0 sky/vista card (drift 0.4 px/s), L1 far walls + loft silhouette (0.8 px/s), L2 near yard furniture + mist band (1.6 px/s); mist = 2-frame swap at 1.5 Hz; **8 motes** 1-px bronze/mint rising at 6 px/s (frozen under reduced-motion / camera comfort `Reduced motion`). Each layer is a PNG wider than 480 blitted at an integer offset — no image is ever scaled.
 - **Look-at drift loop (replaces GDD-02 waypoint camera):** horizontal pan of the layer group, 90 s ping-pong across ±60 px, easing sine; no DOF (pixel-pure).
 - **Audio bed:** `AMB_YRD_DAWN_MENU` + `MUS_MENU_THEME` (90 s loop: hummed dwarf march, bouzouki + frame drum + low cello). **50% intensity variant** `MUS_MENU_THEME_VAR` when CONTINUE is hovered and saves exist.
 
@@ -245,7 +246,7 @@ Footer buttons **(56, 224, 148, 18)** `BACK` · **(276, 224, 148, 18)** `SIGN & 
 
 ### 5.6 Options (pixel row set)
 
-Schema-driven from `data/options_schema.json` (CONVERT; 3D rows **deleted**, GDD-06 §6.12). Layout: tab rail (8,16,72,238) tabs `Graphics` `Gameplay` `Accessibility` `Audio` `Controls`; rows panel (88,16,384,238); row h 20; controls right-aligned: segmented pills / toggle / slider-as-10-pips / rebind button. `BACK` (88,244,80,18) commits + writes save v2 (atomic tmp+rename).
+Schema-driven from `web/data/options_schema.json`: the page renders whatever the schema says, so a row is a data change (the 3D-only rows are **deleted**, GDD-06 §6.12). Layout: tab rail (8,16,72,238) tabs `Graphics` `Gameplay` `Accessibility` `Audio` `Controls`; rows panel (88,16,384,238); row h 20; controls right-aligned: segmented pills / toggle / slider-as-10-pips / rebind button. `BACK` (88,244,80,18) commits the settings and writes the save document.
 
 | Tab | Rows (label · control · values · default · help verbatim) |
 |---|---|
@@ -253,7 +254,7 @@ Schema-driven from `data/options_schema.json` (CONVERT; 3D rows **deleted**, GDD
 | Gameplay | `Show hit chances` On/Off **On** · `Rules grid overlay` Off/On-hover targeting/Always **Off** · `Enemy turn pace` Cinematic/Brisk/Instant **Cinematic** · `Reaction prompts` Ask always/Auto-take/Auto-pass **Ask always** · `Reaction timer` Off/6 s/10 s **6 s** · `Auto-end turn` On/Off **Off** · `Difficulty` (as first run) · `Combat pacing` (as first run) · `Fast travel` locked Off — help: `The road is part of the story. The map opens in later chapters.` |
 | Accessibility | `Subtitles` On/Off **On** · `Subtitle size` S/M/L **M** · `Speaker names in subtitles` On/Off **On** · `Colourblind filter` Off/Protanopia/Deuteranopia/Tritanopia **Off** (3 LUT variants of **overlay tints only**, never the art palette) · `High-contrast UI` On/Off **Off** · `Reading magnification (ui_scale)` 1×/2× **1×** · `Reduced motion` On/Off **Off** (freezes motes, skips dice tumble, shortens sting) · `Difficult-terrain outline` Off/Subtle/On **Subtle** · `Cover outlines` Off/On-hover/Always **On-hover** · `Touch controls` Auto/Off **Auto** |
 | Audio | `Master`/`Music`/`SFX`/`Voice` sliders 0–100 (**90/80/90/100**) · `Mute when unfocused` On/Off **On** |
-| Controls | rebind table: move (WASD/arrows) · sprint (Shift) · interact/confirm (F) · end turn/confirm (Space) · pause/back (Esc) · grid overlay (G) · folio (Tab) · journal (J) · codex (C) · hide (H) · view-zoom (V, §4.D) · pad layout A/B swap. Rebind flow unchanged from today's options_page (CONVERT). |
+| Controls | rebind table: move (WASD/arrows) · sprint (Shift) · interact/confirm (F) · end turn/confirm (Space) · pause/back (Esc) · grid overlay (G) · folio (Tab) · journal (J) · codex (C) · hide (H) · view-zoom (V, §4.D) · pad layout A/B swap. Rebind flow: the pill becomes `Press a key…`, the next physical key is captured (Esc cancels), and both the display label and the key code are stored in the save so the binding survives a reload — 12 actions, all re-applied at boot. |
 
 Deleted vs GDD-02 50-row set: all 3D camera rows (FOV, boom, snap turn, head bob, first-person default), ray-traced shadows, foliage density, quality beyond mist/motes — schema version bumps to record removal (GDD-06 §6.12).
 
@@ -267,11 +268,11 @@ Three-tab rail + scrolling folio page, page-turn 2-frame anim + `SFX_UI_PAGE`. B
 
 ### 5.8 Credits
 
-Full-screen ink; vertical scroll **15 px/s** (480-space equiv of GDD-02's 60 px/s @1600), hold-to-speed ×3; content blocks: Design & Direction / Engineering / Art & Lighting (incl. generated-art provenance note, `prompts.json`) / Audio & Voice / **Rules Texts** — SRD 5.2.1 attribution paragraph verbatim (§16) + fan disclaimer (§5.1) / Fonts (CC0/OFL names) / Engine (`Made with Godot Engine · MIT`) / Playtesters / end line `Made with love for the table. Never for sale.` End card: emblem 48 px, all three steps lit mint, hold 2 s → `BACK`.
+Full-screen ink; vertical scroll **15 px/s** (480-space equiv of GDD-02's 60 px/s @1600), hold-to-speed ×3; content blocks: Design & Direction / Engineering (`HTML, ES modules & canvas · no engine`) / Art & Lighting (incl. generated-art provenance note, `art_manifest.json`) / Audio & Voice / **Rules Texts** — SRD 5.2.1 attribution paragraph verbatim (§16) + fan disclaimer (§5.1) / Fonts (MIT/OFL names) / Hosting (`GitHub → Vercel · static deploy`) / Playtesters / end line `Made with love for the table. Never for sale.` End card: emblem 48 px, all three steps lit mint, hold 2 s → `BACK`.
 
 ### 5.9 Loading screen
 
-- **When:** menu→yard (first load & resume), save resume. Not for in-yard streaming (none exists). **Minimum dwell 1.2 s** always; yard loads < 100 ms so the route animation is a paced beat, not a lie (GDD-06 §7.4). Progress from real load weights (bundles 70% / scene 20% / data 10%); never regresses.
+- **When:** menu→yard (first load & resume), save resume. Not for in-yard streaming (none exists — the yard is a handful of tile atlases fetched once). **Minimum dwell 1.2 s** always; the load is well under 100 ms, so the route animation is a paced beat, not a lie (GDD-06 §7.4). Progress comes from real fetch weights (art & audio 70 % / yard map & tiles 20 % / data 10 %) and never regresses.
 - **Layout:** zone title top-centre y 14, 10 px: `NEVERWINTER — THE ROCKSEEKER CONTRACT` · parchment map card **(24, 32, 432, 164)** with the journey route **inking itself** in dark mint = progress (menu→yard draws Neverwinter harbour → yard glyph) · tip slip bottom-left **(24, 204, 320, 46)** (8 px, cross-fade 0.4 s, cycle 5 s) · wax-seal emblem **(416, 204, 48, 48)** rotating 6°/s with 8 px percentage inside; steps light at 33/66/100%.
 - **The 16 tips (verbatim, rotate in order):**
   1. `Goblins fight to the death until only one remains — and that one runs. Catch it, and the trail is yours.`
@@ -309,7 +310,7 @@ Full-screen ink; vertical scroll **15 px/s** (480-space equiv of GDD-02's 60 px/
 | `SFX_BOOT_STONE` `SFX_BOOT_EMBERS` `SFX_BOOT_CHISEL` ×5 `MUS_BOOT_STING` | one-shots | sting §5.2 |
 | `SFX_LOAD_STAMP` | one-shot | loading complete |
 
-All cues ≤ 150 KB each as MP3 for web (OGG twin kept desktop-side, GDD-06 §8). Existing keepers: `mus_menu_theme.ogg` + sting assets from the shell; VO lines §9.
+One-shots ≤ 150 KB each; a music bed is exempt (it cannot honestly fit, see GDD-06 §8.1). Existing keepers already in `web/assets/audio/`: `mus_menu_theme.ogg` + `vo_grd_001..003.ogg`; the rest of the table lands cue by cue — `tools/check_project.py` reports how many files are present, and a cue with no file is silent rather than fatal.
 
 ### 5.11 Shell string master table (every string the menu ships)
 
@@ -353,7 +354,7 @@ All cues ≤ 150 KB each as MP3 for web (OGG twin kept desktop-side, GDD-06 §8)
 ### 5.12 Player journey (menu → yard → combat → reset)
 
 ```
-[COLD LOAD] engine boot → canvas focus → audio unlocks on first gesture
+[COLD LOAD] browser boot → canvas focus → audio unlocks on first gesture
    ↓
 LEGAL (§5.2.1) → STING (4.0 s / skip 1.5 s) → MENU (§5.4)
    ├ PLAY (no save) → FIRST RUN → SIGN & DESCEND → LOADING (min 1.2 s) → YARD T0
@@ -611,7 +612,7 @@ Counts in the §3.3 manifest of GDD-06 remain authoritative for budgeting (**22 
 | Dummies ×2 + target butts | yes | idle(2) · yield(2) · rail-slide (A) · tip (B) | static frames + 2-frame resets |
 | Sparring partner = Marra | yes | as trainee | stats §4.J |
 
-Cutout rigs (not sprite sheets) per GDD-06 §5.5: 6–9 flat parts per human, AnimationPlayer transform tracks — frames consistent by construction. Speeds: walk 3 tiles/s, sprint 5 tiles/s, accel 12 tiles/s².
+Cutout rigs (not sprite sheets) per GDD-06 §5.5: 6–9 flat parts per human, animated by integer-rounded transform tracks driven in JavaScript — frames consistent by construction. Speeds: walk 3 tiles/s, sprint 5 tiles/s, accel 12 tiles/s². A baked atlas is available where the parts never change (dummy line).
 
 ### 7.4 UI nine-patches, FX, backdrops
 
@@ -627,8 +628,8 @@ Cutout rigs (not sprite sheets) per GDD-06 §5.5: 6–9 flat parts per human, An
 
 **Beds/loops:** `AMB_YRD_DAWN` (whole-zone: sparse gulls, harbour bell ~90 s, rope creak, distant blades) · `AMB_DOCK_LANE` (behind gate card) · `AMB_YRD_DAWN_MENU` (menu variant) · `A_LOOP_FLAG_SNAP` · `A_LOOP_BRAZIER_CRACKLE` · `A_LOOP_CANOPY_FLAP` · `A_LOOP_TACK_LEATHER_CREAK` · `A_LOOP_BRUSH_BIRDS_NEAR` · `A_LOOP_NOOK_BIRDS` · `A_LOOP_CROWD_YARD_SMALL` · `MUS_MENU_THEME` (+`_VAR`) · `MUS_YARD_DAWN` (90 s explore loop, new) · `MUS_COMBAT_TRAINING` (60 s loop, new) · `MUS_STING_SIGN` · `MUS_STING_SPAR_WIN` · `MUS_BOOT_STING`.
 **One-shots:** `A_ONE_GULL_CRY` · `A_ONE_CITY_BELL` · `A_ONE_GATE_CREAK` · `A_ONE_PAGE_TURN` · `A_ONE_QUILL` · `A_ONE_QUILL_SCRATCH_LONG` · `A_ONE_STAMP_THUNK` · `A_ONE_WAX_STAMP` · `A_ONE_DICE_CUP_SHAKE` · `A_ONE_DICE_ROLL_TABLE` · `A_ONE_PAPER_UNPIN` · `A_ONE_PEDESTAL_TURN` · `A_ONE_HOLO_SHIMME` · `A_ONE_RACK_RATTLE` · `A_ONE_SWING_WHOOSH_1/2/3` · `A_ONE_MISS_WHIFF` · `A_ONE_DUMMY_THOCK_L` · `A_ONE_DUMMY_THOCK_H` · `A_ONE_DUMMY_RAIL_SLIDE` · `A_ONE_DUMMY_TIP_CLATTER` · `A_ONE_CRIT_BELL` · `A_ONE_BOW_DRAW` · `A_ONE_BOW_RELEASE` · `A_ONE_ARROW_THUD` · `A_ONE_ARROW_BALE_THUD` · `A_ONE_ARROW_RICOCHET` · `A_ONE_LOFT_STAIR_CREAK` · `A_ONE_BRUSH_RUSTLE_1/2` · `A_ONE_HEARTBEAT_HIDE` · `A_ONE_SPAR_CLASH_1..6` · `A_ONE_SPAR_YIELD_WHISTLE` · `A_ONE_SAND_SCUFF` · `A_ONE_BENCH_SIT` · `A_ONE_BREAD_TEAR` · `A_ONE_CRATE_LID` · `A_ONE_PACK_STRAP` · `A_ONE_TOME_PAGE` · `A_ONE_BELL_PRACTICE` · `A_ONE_DOOR_CREAK_TACK` · `A_ONE_MIRROR_SHINE` · `A_ONE_FOOT_LIGHT/MEDIUM/HEAVY` · `A_ONE_BRIAR_SNAG` · `A_ONE_FIRE_WHOOSH` · `A_ONE_RADIANT_CHIME` · `A_ONE_SMOKE_POOF` · `A_ONE_WAGON_WHEEL_CREAK` (P2 T11) · `A_ONE_OX_SNORT` (P2) · UI set `SFX_UI_MOVE/CONFIRM/BACK/DENY/PAGE` · `SFX_BOOT_*` · `SFX_LOAD_STAMP` · `SFX_HIT/MISS/CRIT` (combat layer, new) · `SFX_DICE_ROLL` (new) · `AMB_YRD_DAWN` gull/harbour stems as above.
-**Mix notes:** VO ducks bed −6 dB · dice-theatre SFX +3 dB over bed · heartbeat only while hidden & observer < 3 tiles · four buses unchanged (Master/Music/SFX/Voice) + ducking from today's `sound.gd`.
-**Budget:** all yard+shell audio ≤ **1.2 MB** in PCK (existing 4 tracks ≈ 600 KB MP3 + ~14 new cues ≤ 150 KB each; one-shot family synthesised first, replaced by generated files when approved). MP3 twins for every shipped track (Safari/iOS — GDD-06 §8.1).
+**Mix notes:** VO ducks bed −6 dB · dice-theatre SFX +3 dB over bed · heartbeat only while hidden & observer < 3 tiles · four WebAudio buses (Master/Music/SFX/Voice) with gain-node ducking in `web/js/core/sound.js`.
+**Budget:** all yard+shell audio ≤ **1.2 MB** (the four keepers are ~1.2 MB today, one of them the 90 s music bed; new one-shots target ≤ 150 KB each and the one-shot family is synthesised first, replaced by generated files when approved). Ship an MP3 twin for any track that needs one for iOS playback (GDD-06 §8.1).
 
 ---
 
@@ -669,7 +670,7 @@ Cutout rigs (not sprite sheets) per GDD-06 §5.5: 6–9 flat parts per human, An
 
 ## 10. LIGHTING & DAY CLOCK (pixel translation)
 
-- **Day clock** (`day_clock.gd`): game time **06:40 → 08:20 across ~18 min real** (menu backdrop = frozen 06:10). Drives a **5-stop dawn ramp** via fullscreen `CanvasModulate` (all stops derived from the locked 32-colour surface ramp):
+- **Day clock** (`js/world/day_clock.js`): game time **06:40 → 08:20 across ~18 min real** (menu backdrop = frozen 06:10). Drives a **5-stop dawn ramp** composited full-screen over the canvas (all stops derived from the locked 32-colour surface ramp):
 
 | Game time | Stop | Modulate (approx tint) | Notes |
 |---|---|---|---|
@@ -681,7 +682,7 @@ Cutout rigs (not sprite sheets) per GDD-06 §5.5: 6–9 flat parts per human, An
 
 - Interpolate linearly between stops; integer-friendly (modulate only — no new colours enter sprites, palette lint unaffected).
 - **Practicals:** lantern/brazier sprites carry additive glow quads (bronze `#D9A463` 40% falloff, 1.5-tile radius); brazier flickers 3-frame at 8 Hz subtle; glow sprites are FX-layer, not light nodes.
-- **Below-LUT** (infection) is **not used in the yard** (surface-only zone); shader ships tested for later zones (GDD-06 §5.3/T-20).
+- **Below-LUT** (infection) is **not used in the yard** (surface-only zone); the remap ships tested for later zones (GDD-06 §5.3/T-20): a per-pixel remap on an offscreen surface, driven by one 0–1 scalar.
 
 ---
 
@@ -701,7 +702,7 @@ Cutout rigs (not sprite sheets) per GDD-06 §5.5: 6–9 flat parts per human, An
 | `UI_YRD_CARDS` | rule cards | parchment panel (60, 60, 360, 150): title 10 px, body 8 px, `R#` chip top-right, `GOT IT` confirm |
 | `UI_YRD_RESULT` | encounter result | centre card `Training complete.` / `Good spar.` / `YIELDED` |
 | `UI_YRD_PAUSE` | pause overlay | ink 80% dim (0,0,480,270): `PAUSED` · `RESUME` `OPTIONS` `RETURN TO MENU` — Esc opens; **no pointer lock exists to lose** |
-| `UI_YRD_JOURNAL` / `FOLIO` / `CODEX` | J / Tab / C | reuse shell screen implementations (CONVERT) |
+| `UI_YRD_JOURNAL` / `FOLIO` / `CODEX` | J / Tab / C | reuse the shell screen classes in `web/js/screens/` |
 | `UI_YRD_CLOCK` | top-left HUD | time glyph + weather word (`mist`/`clear`), 5 px |
 | `UI_YRD_HP` | player chip | bottom-left above prompt: 8 px portrait + HP pips + AC number |
 
@@ -711,7 +712,7 @@ All text ≥ 5 px; contrast pairs lint-checked ≥ 4.5:1 (GDD-06 §6.11/T-22).
 
 ## 12. DATA FILES & SCHEMAS (the three new JSONs + contracts)
 
-`data/` files ship via export `include_filter` (already on). All authored by hand or by `build_tile_yard.py`; loaders validate keys and fail loud in CI.
+`web/data/` files are served as-is (they sit beside the page). All authored by hand or by `build_tile_yard.py`; loaders validate keys and fail loud in the gates (`tools/check_project.py`, `node web/tests/run.mjs`).
 
 **`data/yard_map.json`** — geometry truth for the tile builder:
 ```json
@@ -793,9 +794,9 @@ All text ≥ 5 px; contrast pairs lint-checked ≥ 4.5:1 (GDD-06 §6.11/T-22).
   "bell_replays": "all_done_ids"
 }
 ```
-Completion ids persist in save v2 `tutorial.completed_beats` (GDD-06 §4.10); seen toasts in `seen_toasts`.
+Completion ids persist in the save document v2 `tutorial.completed_beats` (GDD-06 §4.7); seen toasts in `seen_toasts`.
 
-**Existing files (KEEP):** `shell_content.json` (codex tips/rules text — Rules entries re-sourced per §5.7/T-47) · `options_schema.json` (pruned rows §5.6) · save `user://delve_v2.json` (8-slot ledger + tutorial/codex/combat_stats + `schema: 2`, atomic writes).
+**Existing files (KEEP, now under `web/data/`):** `shell_content.json` (codex tips/rules text — Rules entries re-sourced per §5.7/T-47) · `options_schema.json` (§5.6 rows) · the save document `localStorage['delve_v2']` (8-slot ledger + tutorial/codex/combat_stats + `schema: 2`; written through `web/js/core/save.js`, which reports a refused write instead of losing the session).
 
 ---
 
@@ -804,19 +805,21 @@ Completion ids persist in save v2 `tutorial.completed_beats` (GDD-06 §4.10); se
 **Build order (content track; tech milestones stay in GDD-06 §12):**
 1. P0 screens greyboxed at 480×270 with string parity vs §5.11 — no art, bitmap font only.
 2. Menu art: palette + nine-patch kit + backdrop layers + emblem/wordmark (unblocks M2/M3).
-3. Yard greybox: `build_tile_yard.py` paints `yard_map.json` layers; every `TR_` volume present & named; placeholder props scaled to manifest footprints; data layers populated (encounter/interact/cost/cover/elev).
-4. Trigger skeleton A–M with stub cards; R15 sandbox verified on dummy math (no Godot: Python sim of §4.G numbers).
+3. Yard greybox: `build_tile_yard.py` paints `yard_map.json` layers; every `TR_` volume present & named; placeholder props at manifest footprints; per-tile fields populated (encounter/interact/cost/cover/elev).
+4. Trigger skeleton A–M with stub cards; R15 sandbox verified on dummy math (a Python simulation of the §4.G numbers in `tools/`, mirrored by `node web/tests/run.mjs`).
 5. P1 beats: F chain → G gallery → J sparring → M bell loop; beacons wired to `tutorial.json`.
-6. Combat wiring: queue UI, budgets, Roll Moment, pathing/LoS on the data layers, golden event stream.
+6. Combat wiring: queue UI, budgets, Roll Moment, pathing/line-of-sight on the map JSON, golden event stream.
 7. P2 stations: B/C/D/E (creation + signing) → H/I/K (ranged/hide/rest) → T11 departure stub.
-8. VO record & mix; audio MP3 twins; day-clock ramp; mist/weather pass.
+8. VO record & mix; audio pass (encode, wire the buses); day-clock ramp; mist/weather pass.
 9. Screenshot walk + device pass; art lint green; size budgets.
+
+**Build, gates & deploy:** the site is published from `web/` — `vercel.json` sets `outputDirectory`, so a push to `main` is production and every other branch gets a preview URL. Nothing is served that has not passed: `python3 tools/check_project.py` (paths, module graph, data, fonts, palette mirror, nine-patch kit, layout fits, art lint) · `python3 tools/check_strings.py` (this document's strings, byte for byte) · `node web/tests/run.mjs` (unit) · `node web/tests/smoke.mjs` (boots every page headless). All four run on every push in `.github/workflows/gates.yml`.
 
 **Greybox checklist:** every TR present & named · every prop placeholder at manifest footprint · rules layers aligned origin (0,0) = gate threshold · cover volumes authored (bales H2/H3, thickets) · hide volumes = thicket pockets · loft deck exactly `elev 2` (R11 threshold) · sand circle cells `cost 1` · wall ring solid+los_block with gate gap open.
 
 **QA suite (menu + yard):**
 
-1. **String parity:** every `STR_*`/`UI_*` in §5.11 + area strings matches shipped text byte-for-byte (screenshot walk + text dump).
+1. **String parity:** every `STR_*`/`UI_*` in §5.11 + area strings matches shipped text byte-for-byte — enforced, not eyeballed: `python3 tools/check_strings.py` parses this document and compares it with `web/data/strings.json`.
 2. Dummy attack math vs R1/R3 across mods 1–5 & Advantage; crit doubles dice; yield gauge resets 6 s.
 3. Cover pips +2/+5 at H match reticle truth; loft Advantage identical at 1× and 2× zoom (screenshot diff).
 4. Hide vs passive 12 both outcomes; surprise skips turn 1 in spar-lite; passive drops after 3 fails.
@@ -829,10 +832,10 @@ Completion ids persist in save v2 `tutorial.completed_beats` (GDD-06 §4.10); se
 11. Boundary sweep: no exit through walls; gate gap blocked per state; lane card never entered; beacons never target `ty ≤ 0`.
 12. Palette/art lint: colours ⊆ 40; dimensions multiples of 16 (chars 16×32); `assets/pixel/` ≤ 1.5 MB.
 13. Contrast lint: all overlay tint pairs ≥ 4.5:1.
-14. Perf: ≤ 32 draw calls worst combat; 60 fps; PCK ≤ 2.5 MB; web transfer ≤ 15 MB (GDD-06 §9.4).
+14. Perf: ≤ 32 batched blits worst combat; 60 fps; menu path ≤ 1 MB; whole transfer ≤ 15 MB (GDD-06 §4.10).
 15. VO matrix: every line in §9 fires exactly once per intended trigger; VO ducks bed −6 dB; subtitles default on.
 16. Golden combat: fixed-seed `sparring` 4-round event stream diffs clean (GDD-06 §11.2).
-17. Save v2: round-trip + migrate-from-localStorage fixture; `tutorial.completed_beats` persists across reload **and** across `/play/v*` deploy.
+17. Save v2: round-trip + a corrupt-document fixture; `tutorial.completed_beats` persists across a reload **and** across a redeploy (the storage key is versioned, not the URL).
 18. Keyboard-only completion of every P0 screen at `ui_scale` 1 and 2; Esc never traps focus.
 
 ---
@@ -845,16 +848,17 @@ Completion ids persist in save v2 `tutorial.completed_beats` (GDD-06 §4.10); se
 > This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode
 
 3. **All R1–R13/R15 rule text** shipped from SRD wording only (this document already compliant); background hook letters are project-written adventure text under the fan-work posture.
-4. **Fonts:** pixel fonts CC0/OFL with notice files committed.
-5. **Generated art:** `prompts.json` provenance retained; no third-party copyrighted references in prompts.
-6. **Retired 3D assets** keep Quaternius CC0 / Sky3D MIT credits in `THIRD_PARTY.md` history (archive Release pointer).
+4. **Fonts:** the 5×7 system face (MIT) and Silkscreen (OFL-1.1), notice files committed beside the atlases in `web/assets/fonts/LICENCES`.
+5. **Generated art:** provenance retained in `web/assets/pixel/art_manifest.json` (family, builder, source, hash); no third-party copyrighted reference is used as a prompt input.
+6. **No third-party 3D assets ship.** Nothing in the site links to, loads or derives from one.
 
 ---
 
 ## 15. CHANGELOG
 
+- **v1.1 (2026-09-23):** republished for the **static web build** (GitHub → Vercel). Every rect, string, timing, cue, rule text and QA item above is unchanged: only the realisation moved — ES modules instead of the earlier build's scripts, `web/data/*.json` instead of imported resources, `localStorage` for the save document, WebAudio for the buses, `data/`/`assets/` relative URLs for asset paths, and the gates (`tools/check_project.py`, `tools/check_strings.py`, `node web/tests/run.mjs`, `node web/tests/smoke.mjs`, `node web/tests/shoot.mjs`) in place of the old test runner. §5.6 options are schema-driven; §13 QA items 1, 13, 14 and 17 are now gate-enforced rather than manual, and QA item 1 is checked mechanically by re-parsing this document.
 - **v1.0 (2026-09-23):** initial issue. Pixelates GDD-02 (§5, complete menu at 480×270 with exact rects + string master + 16 tips) and GDD-03 (§6, all areas A–M in tile coordinates with full triggers/rules/VO/audio/VFX/QA); adds ship rings P0/P1/P2 reconciling GDD-06 §3.1's first-playable slice with the complete-prologue target; rules primer R1–R15 SRD-sourced with pixel presentation notes; R11 locked at 10 ft / Δ≥2 (refines GDD-06 §6.5); sparring stats reconciled to one partner (Marra AC 12 / HP 14 / Push) while keeping GDD-03's six-step teaching sequence; data schemas for `yard_map.json`, `encounters.json`, `bestiary.json`, `tutorial.json`.
 
 ---
 
-*End of GDD-07 v1.0 — menu + zone YRD fully specified for the pixel build.*
+*End of GDD-07 v1.1 — menu + zone YRD fully specified for the static web build.*

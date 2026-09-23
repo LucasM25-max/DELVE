@@ -1,0 +1,437 @@
+{
+  "schema": 2,
+  "description": "Options schema for the pixel shell (GDD-07 §5.6). The 3D rows of the retired GDD-02 set are deleted; every row here is reachable from the pixel Options screen. `control` selects the pixel control: list/toggle = segmented pills, slider = 10 pips, rebind = key capture, locked = read-only.",
+  "tabs": [
+    {
+      "id": "graphics",
+      "label": "Graphics",
+      "rows": [
+        {
+          "id": "resolution",
+          "label": "Resolution",
+          "control": "list",
+          "values": [
+            "Native",
+            "960×540",
+            "1440×810",
+            "1920×1080"
+          ],
+          "default": "Native",
+          "help": "The game always renders in whole pixels."
+        },
+        {
+          "id": "frame_rate_cap",
+          "label": "Frame rate cap",
+          "control": "list",
+          "values": [
+            "30",
+            "60",
+            "90",
+            "120",
+            "Unlocked"
+          ],
+          "default": "60",
+          "help": ""
+        },
+        {
+          "id": "quality_preset",
+          "label": "Quality preset",
+          "control": "list",
+          "values": [
+            "Low",
+            "Medium",
+            "High"
+          ],
+          "default": "High",
+          "help": "Affects mist and motes only."
+        }
+      ]
+    },
+    {
+      "id": "gameplay",
+      "label": "Gameplay",
+      "rows": [
+        {
+          "id": "show_hit_chances",
+          "label": "Show hit chances",
+          "control": "toggle",
+          "values": [
+            "Off",
+            "On"
+          ],
+          "default": "On",
+          "help": ""
+        },
+        {
+          "id": "rules_grid_overlay",
+          "label": "Rules grid overlay",
+          "control": "list",
+          "values": [
+            "Off",
+            "On-hover targeting",
+            "Always"
+          ],
+          "default": "Off",
+          "help": ""
+        },
+        {
+          "id": "enemy_turn_pace",
+          "label": "Enemy turn pace",
+          "control": "list",
+          "values": [
+            "Cinematic",
+            "Brisk",
+            "Instant"
+          ],
+          "default": "Cinematic",
+          "help": ""
+        },
+        {
+          "id": "reaction_prompts",
+          "label": "Reaction prompts",
+          "control": "list",
+          "values": [
+            "Ask always",
+            "Auto-take",
+            "Auto-pass"
+          ],
+          "default": "Ask always",
+          "help": ""
+        },
+        {
+          "id": "reaction_timer",
+          "label": "Reaction timer",
+          "control": "list",
+          "values": [
+            "Off",
+            "6 s",
+            "10 s"
+          ],
+          "default": "6 s",
+          "help": ""
+        },
+        {
+          "id": "auto_end_turn",
+          "label": "Auto-end turn",
+          "control": "toggle",
+          "values": [
+            "Off",
+            "On"
+          ],
+          "default": "Off",
+          "help": ""
+        },
+        {
+          "id": "difficulty",
+          "label": "Difficulty",
+          "control": "list",
+          "values": [
+            "Story",
+            "Balanced",
+            "Tactical"
+          ],
+          "default": "Balanced",
+          "help": "Story: forgiving foes, longer reaction timers. Balanced: the intended table. Tactical: sharper foes, alert states bite."
+        },
+        {
+          "id": "combat_pacing",
+          "label": "Combat pacing",
+          "control": "list",
+          "values": [
+            "Table Mode (turn-based)",
+            "Skirmish Mode (real-time, pausable)"
+          ],
+          "default": "Table Mode (turn-based)",
+          "tag": "SECONDARY",
+          "help": "Table Mode is the intended experience: full turns, full information. Skirmish Mode runs the same rules in flowing real time with pause."
+        },
+        {
+          "id": "fast_travel",
+          "label": "Fast travel",
+          "control": "locked",
+          "values": [
+            "Off"
+          ],
+          "default": "Off",
+          "help": "The road is part of the story. The map opens in later chapters."
+        }
+      ]
+    },
+    {
+      "id": "accessibility",
+      "label": "Accessibility",
+      "rows": [
+        {
+          "id": "subtitles",
+          "label": "Subtitles",
+          "control": "toggle",
+          "values": [
+            "Off",
+            "On"
+          ],
+          "default": "On",
+          "help": "Subtitles drive the VO captions."
+        },
+        {
+          "id": "subtitle_size",
+          "label": "Subtitle size",
+          "control": "list",
+          "values": [
+            "S",
+            "M",
+            "L"
+          ],
+          "default": "M",
+          "help": ""
+        },
+        {
+          "id": "speaker_names",
+          "label": "Speaker names in subtitles",
+          "control": "toggle",
+          "values": [
+            "Off",
+            "On"
+          ],
+          "default": "On",
+          "help": ""
+        },
+        {
+          "id": "colourblind_filter",
+          "label": "Colourblind filter",
+          "control": "list",
+          "values": [
+            "Off",
+            "Protanopia",
+            "Deuteranopia",
+            "Tritanopia"
+          ],
+          "default": "Off",
+          "help": "Three LUT variants of overlay tints only, never the art palette."
+        },
+        {
+          "id": "high_contrast_ui",
+          "label": "High-contrast UI",
+          "control": "toggle",
+          "values": [
+            "Off",
+            "On"
+          ],
+          "default": "Off",
+          "help": ""
+        },
+        {
+          "id": "ui_scale",
+          "label": "Reading magnification (ui_scale)",
+          "control": "list",
+          "values": [
+            "1×",
+            "2×"
+          ],
+          "default": "1×",
+          "help": ""
+        },
+        {
+          "id": "reduced_motion",
+          "label": "Reduced motion",
+          "control": "toggle",
+          "values": [
+            "Off",
+            "On"
+          ],
+          "default": "Off",
+          "help": "Freezes motes, skips dice tumble, shortens the boot sting."
+        },
+        {
+          "id": "difficult_terrain_outline",
+          "label": "Difficult-terrain outline",
+          "control": "list",
+          "values": [
+            "Off",
+            "Subtle",
+            "On"
+          ],
+          "default": "Subtle",
+          "help": ""
+        },
+        {
+          "id": "cover_outlines",
+          "label": "Cover outlines",
+          "control": "list",
+          "values": [
+            "Off",
+            "On-hover",
+            "Always"
+          ],
+          "default": "On-hover",
+          "help": ""
+        },
+        {
+          "id": "touch_controls",
+          "label": "Touch controls",
+          "control": "list",
+          "values": [
+            "Auto",
+            "Off"
+          ],
+          "default": "Auto",
+          "help": ""
+        }
+      ]
+    },
+    {
+      "id": "audio",
+      "label": "Audio",
+      "rows": [
+        {
+          "id": "volume_master",
+          "label": "Master",
+          "control": "slider",
+          "min": 0,
+          "max": 100,
+          "default": 90,
+          "help": ""
+        },
+        {
+          "id": "volume_music",
+          "label": "Music",
+          "control": "slider",
+          "min": 0,
+          "max": 100,
+          "default": 80,
+          "help": ""
+        },
+        {
+          "id": "volume_sfx",
+          "label": "SFX",
+          "control": "slider",
+          "min": 0,
+          "max": 100,
+          "default": 90,
+          "help": ""
+        },
+        {
+          "id": "volume_voice",
+          "label": "Voice",
+          "control": "slider",
+          "min": 0,
+          "max": 100,
+          "default": 100,
+          "help": ""
+        },
+        {
+          "id": "mute_when_unfocused",
+          "label": "Mute when unfocused",
+          "control": "toggle",
+          "values": [
+            "Off",
+            "On"
+          ],
+          "default": "On",
+          "help": ""
+        }
+      ]
+    },
+    {
+      "id": "controls",
+      "label": "Controls",
+      "rows": [
+        {
+          "id": "bind_move",
+          "label": "Move",
+          "control": "rebind",
+          "default": "WASD / arrows",
+          "help": "",
+          "action": "game_move"
+        },
+        {
+          "id": "bind_sprint",
+          "label": "Sprint",
+          "control": "rebind",
+          "default": "Shift",
+          "help": "",
+          "action": "game_sprint"
+        },
+        {
+          "id": "bind_interact",
+          "label": "Interact / confirm",
+          "control": "rebind",
+          "default": "F",
+          "help": "",
+          "action": "game_interact"
+        },
+        {
+          "id": "bind_end_turn",
+          "label": "End turn / confirm",
+          "control": "rebind",
+          "default": "Space",
+          "help": "",
+          "action": "game_end_turn"
+        },
+        {
+          "id": "bind_pause",
+          "label": "Pause / back",
+          "control": "rebind",
+          "default": "Esc",
+          "help": "",
+          "action": "game_pause"
+        },
+        {
+          "id": "bind_grid",
+          "label": "Grid overlay",
+          "control": "rebind",
+          "default": "G",
+          "help": "",
+          "action": "grid_overlay"
+        },
+        {
+          "id": "bind_folio",
+          "label": "Folio",
+          "control": "rebind",
+          "default": "Tab",
+          "help": "",
+          "action": "folio"
+        },
+        {
+          "id": "bind_journal",
+          "label": "Journal",
+          "control": "rebind",
+          "default": "J",
+          "help": "",
+          "action": "journal"
+        },
+        {
+          "id": "bind_codex",
+          "label": "Codex",
+          "control": "rebind",
+          "default": "C",
+          "help": "",
+          "action": "codex"
+        },
+        {
+          "id": "bind_hide",
+          "label": "Hide",
+          "control": "rebind",
+          "default": "H",
+          "help": "",
+          "action": "hide"
+        },
+        {
+          "id": "bind_zoom",
+          "label": "View-zoom",
+          "control": "rebind",
+          "default": "V",
+          "help": "",
+          "action": "zoom_view"
+        },
+        {
+          "id": "bind_pad_layout",
+          "label": "Pad layout A/B swap",
+          "control": "rebind",
+          "default": "A",
+          "help": "",
+          "action": "pad_layout"
+        }
+      ]
+    }
+  ]
+}

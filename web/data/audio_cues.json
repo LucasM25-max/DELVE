@@ -1,0 +1,611 @@
+{
+  "schema": 1,
+  "description": "Audio cue table (GDD-07 §5.10 menu cues + §8 zone/combat families + §9 VO script). Cues are played by id; a cue whose file has not landed yet is skipped with one log line. Run tools/fetch_audio.py to copy the existing shell tracks (mus_menu_theme.ogg, vo_grd_001..003.ogg) into assets/audio/.",
+  "cues": {
+    "MUS_MENU_THEME": {
+      "type": "music",
+      "file": "assets/audio/mus_menu_theme.ogg",
+      "note": "menu enter (loop 90 s) — keep from the shell"
+    },
+    "MUS_MENU_THEME_VAR": {
+      "type": "music",
+      "file": "assets/audio/mus_menu_theme_var.ogg",
+      "note": "CONTINUE hovered with saves"
+    },
+    "AMB_YRD_DAWN_MENU": {
+      "type": "ambience",
+      "file": "assets/audio/amb_yrd_dawn_menu.ogg",
+      "note": "menu bed"
+    },
+    "SFX_UI_MOVE": {
+      "type": "sfx",
+      "file": "assets/audio/sfx_ui_move.ogg",
+      "note": "item hover change"
+    },
+    "SFX_UI_CONFIRM": {
+      "type": "sfx",
+      "file": "assets/audio/sfx_ui_confirm.ogg",
+      "note": "selection (warm wood knock)"
+    },
+    "SFX_UI_BACK": {
+      "type": "sfx",
+      "file": "assets/audio/sfx_ui_back.ogg",
+      "note": "back (soft page flip)"
+    },
+    "SFX_UI_DENY": {
+      "type": "sfx",
+      "file": "assets/audio/sfx_ui_deny.ogg",
+      "note": "dimmed item pressed"
+    },
+    "SFX_UI_PAGE": {
+      "type": "sfx",
+      "file": "assets/audio/sfx_ui_page.ogg",
+      "note": "codex/options page turn"
+    },
+    "SFX_BOOT_STONE": {
+      "type": "sfx",
+      "file": "assets/audio/sfx_boot_stone.ogg",
+      "note": "sting 0.0-0.8 s: emblem outline draws"
+    },
+    "SFX_BOOT_EMBERS": {
+      "type": "sfx",
+      "file": "assets/audio/sfx_boot_embers.ogg",
+      "note": "sting 0.8-2.0 s: three steps light"
+    },
+    "SFX_BOOT_CHISEL": {
+      "type": "sfx",
+      "file": "assets/audio/sfx_boot_chisel.ogg",
+      "note": "sting 2.0-3.0 s: wordmark chisels (x5)"
+    },
+    "MUS_BOOT_STING": {
+      "type": "music",
+      "file": "assets/audio/mus_boot_sting.ogg",
+      "note": "sting 3.0-3.6 s: sublock fade + bronze sweep"
+    },
+    "SFX_LOAD_STAMP": {
+      "type": "sfx",
+      "file": "assets/audio/sfx_load_stamp.ogg",
+      "note": "loading complete"
+    },
+    "AMB_YRD_DAWN": {
+      "type": "ambience",
+      "file": "assets/audio/amb_yrd_dawn.ogg",
+      "note": "whole-zone bed"
+    },
+    "AMB_DOCK_LANE": {
+      "type": "ambience",
+      "file": "assets/audio/amb_dock_lane.ogg",
+      "note": "behind the gate card"
+    },
+    "MUS_YARD_DAWN": {
+      "type": "music",
+      "file": "assets/audio/mus_yard_dawn.ogg",
+      "note": "90 s explore loop"
+    },
+    "MUS_COMBAT_TRAINING": {
+      "type": "music",
+      "file": "assets/audio/mus_combat_training.ogg",
+      "note": "60 s loop"
+    },
+    "MUS_STING_SIGN": {
+      "type": "music",
+      "file": "assets/audio/mus_sting_sign.ogg",
+      "note": "contract signed"
+    },
+    "MUS_STING_SPAR_WIN": {
+      "type": "music",
+      "file": "assets/audio/mus_sting_spar_win.ogg",
+      "note": "spar won"
+    },
+    "A_ONE_GULL_CRY": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_gull_cry.ogg",
+      "note": "ambient gull"
+    },
+    "A_ONE_CITY_BELL": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_city_bell.ogg",
+      "note": "harbour bell"
+    },
+    "A_ONE_GATE_CREAK": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_gate_creak.ogg",
+      "note": "first gap crossing"
+    },
+    "A_ONE_PAGE_TURN": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_page_turn.ogg",
+      "note": ""
+    },
+    "A_ONE_QUILL": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_quill.ogg",
+      "note": ""
+    },
+    "A_ONE_QUILL_SCRATCH_LONG": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_quill_scratch_long.ogg",
+      "note": ""
+    },
+    "A_ONE_STAMP_THUNK": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_stamp_thunk.ogg",
+      "note": ""
+    },
+    "A_ONE_WAX_STAMP": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_wax_stamp.ogg",
+      "note": ""
+    },
+    "A_ONE_DICE_CUP_SHAKE": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_dice_cup_shake.ogg",
+      "note": ""
+    },
+    "A_ONE_DICE_ROLL_TABLE": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_dice_roll_table.ogg",
+      "note": ""
+    },
+    "A_ONE_PAPER_UNPIN": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_paper_unpin.ogg",
+      "note": ""
+    },
+    "A_ONE_PEDESTAL_TURN": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_pedestal_turn.ogg",
+      "note": ""
+    },
+    "A_ONE_HOLO_SHIMME": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_holo_shimme.ogg",
+      "note": ""
+    },
+    "A_ONE_RACK_RATTLE": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_rack_rattle.ogg",
+      "note": ""
+    },
+    "A_ONE_SWING_WHOOSH_1": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_swing_whoosh_1.ogg",
+      "note": ""
+    },
+    "A_ONE_SWING_WHOOSH_2": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_swing_whoosh_2.ogg",
+      "note": ""
+    },
+    "A_ONE_SWING_WHOOSH_3": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_swing_whoosh_3.ogg",
+      "note": ""
+    },
+    "A_ONE_MISS_WHIFF": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_miss_whiff.ogg",
+      "note": ""
+    },
+    "A_ONE_DUMMY_THOCK_L": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_dummy_thock_l.ogg",
+      "note": ""
+    },
+    "A_ONE_DUMMY_THOCK_H": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_dummy_thock_h.ogg",
+      "note": ""
+    },
+    "A_ONE_DUMMY_RAIL_SLIDE": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_dummy_rail_slide.ogg",
+      "note": ""
+    },
+    "A_ONE_DUMMY_TIP_CLATTER": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_dummy_tip_clatter.ogg",
+      "note": ""
+    },
+    "A_ONE_CRIT_BELL": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_crit_bell.ogg",
+      "note": ""
+    },
+    "A_ONE_BOW_DRAW": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_bow_draw.ogg",
+      "note": ""
+    },
+    "A_ONE_BOW_RELEASE": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_bow_release.ogg",
+      "note": ""
+    },
+    "A_ONE_ARROW_THUD": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_arrow_thud.ogg",
+      "note": ""
+    },
+    "A_ONE_ARROW_BALE_THUD": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_arrow_bale_thud.ogg",
+      "note": ""
+    },
+    "A_ONE_ARROW_RICOCHET": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_arrow_ricochet.ogg",
+      "note": ""
+    },
+    "A_ONE_LOFT_STAIR_CREAK": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_loft_stair_creak.ogg",
+      "note": ""
+    },
+    "A_ONE_BRUSH_RUSTLE_1": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_brush_rustle_1.ogg",
+      "note": ""
+    },
+    "A_ONE_BRUSH_RUSTLE_2": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_brush_rustle_2.ogg",
+      "note": ""
+    },
+    "A_ONE_HEARTBEAT_HIDE": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_heartbeat_hide.ogg",
+      "note": ""
+    },
+    "A_ONE_SPAR_CLASH_1": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_spar_clash_1.ogg",
+      "note": ""
+    },
+    "A_ONE_SPAR_CLASH_2": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_spar_clash_2.ogg",
+      "note": ""
+    },
+    "A_ONE_SPAR_CLASH_3": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_spar_clash_3.ogg",
+      "note": ""
+    },
+    "A_ONE_SPAR_CLASH_4": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_spar_clash_4.ogg",
+      "note": ""
+    },
+    "A_ONE_SPAR_CLASH_5": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_spar_clash_5.ogg",
+      "note": ""
+    },
+    "A_ONE_SPAR_CLASH_6": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_spar_clash_6.ogg",
+      "note": ""
+    },
+    "A_ONE_SPAR_YIELD_WHISTLE": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_spar_yield_whistle.ogg",
+      "note": ""
+    },
+    "A_ONE_SAND_SCUFF": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_sand_scuff.ogg",
+      "note": ""
+    },
+    "A_ONE_BENCH_SIT": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_bench_sit.ogg",
+      "note": ""
+    },
+    "A_ONE_BREAD_TEAR": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_bread_tear.ogg",
+      "note": ""
+    },
+    "A_ONE_CRATE_LID": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_crate_lid.ogg",
+      "note": ""
+    },
+    "A_ONE_PACK_STRAP": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_pack_strap.ogg",
+      "note": ""
+    },
+    "A_ONE_TOME_PAGE": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_tome_page.ogg",
+      "note": ""
+    },
+    "A_ONE_BELL_PRACTICE": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_bell_practice.ogg",
+      "note": ""
+    },
+    "A_ONE_DOOR_CREAK_TACK": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_door_creak_tack.ogg",
+      "note": ""
+    },
+    "A_ONE_MIRROR_SHINE": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_mirror_shine.ogg",
+      "note": ""
+    },
+    "A_ONE_FOOT_LIGHT": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_foot_light.ogg",
+      "note": ""
+    },
+    "A_ONE_FOOT_MEDIUM": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_foot_medium.ogg",
+      "note": ""
+    },
+    "A_ONE_FOOT_HEAVY": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_foot_heavy.ogg",
+      "note": ""
+    },
+    "A_ONE_BRIAR_SNAG": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_briar_snag.ogg",
+      "note": ""
+    },
+    "A_ONE_FIRE_WHOOSH": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_fire_whoosh.ogg",
+      "note": ""
+    },
+    "A_ONE_RADIANT_CHIME": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_radiant_chime.ogg",
+      "note": ""
+    },
+    "A_ONE_SMOKE_POOF": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_smoke_poof.ogg",
+      "note": ""
+    },
+    "A_ONE_WAGON_WHEEL_CREAK": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_wagon_wheel_creak.ogg",
+      "note": "P2 departure"
+    },
+    "A_ONE_OX_SNORT": {
+      "type": "sfx",
+      "file": "assets/audio/a_one_ox_snort.ogg",
+      "note": "P2"
+    },
+    "SFX_HIT": {
+      "type": "sfx",
+      "file": "assets/audio/sfx_hit.ogg",
+      "note": "combat layer"
+    },
+    "SFX_MISS": {
+      "type": "sfx",
+      "file": "assets/audio/sfx_miss.ogg",
+      "note": ""
+    },
+    "SFX_CRIT": {
+      "type": "sfx",
+      "file": "assets/audio/sfx_crit.ogg",
+      "note": ""
+    },
+    "SFX_DICE_ROLL": {
+      "type": "sfx",
+      "file": "assets/audio/sfx_dice_roll.ogg",
+      "note": ""
+    },
+    "A_LOOP_FLAG_SNAP": {
+      "type": "ambience",
+      "file": "assets/audio/a_loop_flag_snap.ogg",
+      "note": "gatehouse"
+    },
+    "A_LOOP_BRAZIER_CRACKLE": {
+      "type": "ambience",
+      "file": "assets/audio/a_loop_brazier_crackle.ogg",
+      "note": ""
+    },
+    "A_LOOP_CANOPY_FLAP": {
+      "type": "ambience",
+      "file": "assets/audio/a_loop_canopy_flap.ogg",
+      "note": ""
+    },
+    "A_LOOP_TACK_LEATHER_CREAK": {
+      "type": "ambience",
+      "file": "assets/audio/a_loop_tack_leather_creak.ogg",
+      "note": ""
+    },
+    "A_LOOP_BRUSH_BIRDS_NEAR": {
+      "type": "ambience",
+      "file": "assets/audio/a_loop_brush_birds_near.ogg",
+      "note": ""
+    },
+    "A_LOOP_NOOK_BIRDS": {
+      "type": "ambience",
+      "file": "assets/audio/a_loop_nook_birds.ogg",
+      "note": ""
+    },
+    "A_LOOP_CROWD_YARD_SMALL": {
+      "type": "ambience",
+      "file": "assets/audio/a_loop_crowd_yard_small.ogg",
+      "note": ""
+    },
+    "VO_GUN_001": {
+      "type": "voice",
+      "file": "assets/audio/vo_gun_001.ogg",
+      "note": "Gundren line 1 (GDD-07 §9)"
+    },
+    "VO_GUN_002": {
+      "type": "voice",
+      "file": "assets/audio/vo_gun_002.ogg",
+      "note": "Gundren line 2 (GDD-07 §9)"
+    },
+    "VO_GUN_003": {
+      "type": "voice",
+      "file": "assets/audio/vo_gun_003.ogg",
+      "note": "Gundren line 3 (GDD-07 §9)"
+    },
+    "VO_GUN_004": {
+      "type": "voice",
+      "file": "assets/audio/vo_gun_004.ogg",
+      "note": "Gundren line 4 (GDD-07 §9)"
+    },
+    "VO_GUN_005": {
+      "type": "voice",
+      "file": "assets/audio/vo_gun_005.ogg",
+      "note": "Gundren line 5 (GDD-07 §9)"
+    },
+    "VO_GUN_006": {
+      "type": "voice",
+      "file": "assets/audio/vo_gun_006.ogg",
+      "note": "Gundren line 6 (GDD-07 §9)"
+    },
+    "VO_GUN_007": {
+      "type": "voice",
+      "file": "assets/audio/vo_gun_007.ogg",
+      "note": "Gundren line 7 (GDD-07 §9)"
+    },
+    "VO_GUN_008": {
+      "type": "voice",
+      "file": "assets/audio/vo_gun_008.ogg",
+      "note": "Gundren line 8 (GDD-07 §9)"
+    },
+    "VO_GUN_009": {
+      "type": "voice",
+      "file": "assets/audio/vo_gun_009.ogg",
+      "note": "Gundren line 9 (GDD-07 §9)"
+    },
+    "VO_GUN_010": {
+      "type": "voice",
+      "file": "assets/audio/vo_gun_010.ogg",
+      "note": "Gundren line 10 (GDD-07 §9)"
+    },
+    "VO_GUN_011": {
+      "type": "voice",
+      "file": "assets/audio/vo_gun_011.ogg",
+      "note": "Gundren line 11 (GDD-07 §9)"
+    },
+    "VO_GUN_012": {
+      "type": "voice",
+      "file": "assets/audio/vo_gun_012.ogg",
+      "note": "Gundren line 12 (GDD-07 §9)"
+    },
+    "VO_GUN_013": {
+      "type": "voice",
+      "file": "assets/audio/vo_gun_013.ogg",
+      "note": "Gundren line 13 (GDD-07 §9)"
+    },
+    "VO_GUN_014": {
+      "type": "voice",
+      "file": "assets/audio/vo_gun_014.ogg",
+      "note": "Gundren line 14 (GDD-07 §9)"
+    },
+    "VO_GUN_015": {
+      "type": "voice",
+      "file": "assets/audio/vo_gun_015.ogg",
+      "note": "Gundren line 15 (GDD-07 §9)"
+    },
+    "VO_GUN_016": {
+      "type": "voice",
+      "file": "assets/audio/vo_gun_016.ogg",
+      "note": "Gundren line 16 (GDD-07 §9)"
+    },
+    "VO_GUN_017": {
+      "type": "voice",
+      "file": "assets/audio/vo_gun_017.ogg",
+      "note": "Gundren line 17 (GDD-07 §9)"
+    },
+    "VO_GUN_018": {
+      "type": "voice",
+      "file": "assets/audio/vo_gun_018.ogg",
+      "note": "Gundren line 18 (GDD-07 §9)"
+    },
+    "VO_GUN_005b": {
+      "type": "voice",
+      "file": "assets/audio/vo_gun_005b.ogg",
+      "note": "Gundren nudge"
+    },
+    "VO_CLK_001": {
+      "type": "voice",
+      "file": "assets/audio/vo_clk_001.ogg",
+      "note": "Clerk Odile Vess"
+    },
+    "VO_CLK_002": {
+      "type": "voice",
+      "file": "assets/audio/vo_clk_002.ogg",
+      "note": "Clerk Odile Vess"
+    },
+    "VO_CLK_003": {
+      "type": "voice",
+      "file": "assets/audio/vo_clk_003.ogg",
+      "note": "Clerk Odile Vess"
+    },
+    "VO_CLK_004": {
+      "type": "voice",
+      "file": "assets/audio/vo_clk_004.ogg",
+      "note": "Clerk Odile Vess"
+    },
+    "VO_SGT_001": {
+      "type": "voice",
+      "file": "assets/audio/vo_sgt_001.ogg",
+      "note": "Sergeant Brant"
+    },
+    "VO_SGT_002": {
+      "type": "voice",
+      "file": "assets/audio/vo_sgt_002.ogg",
+      "note": "Sergeant Brant"
+    },
+    "VO_SGT_003": {
+      "type": "voice",
+      "file": "assets/audio/vo_sgt_003.ogg",
+      "note": "Sergeant Brant"
+    },
+    "VO_SGT_004": {
+      "type": "voice",
+      "file": "assets/audio/vo_sgt_004.ogg",
+      "note": "Sergeant Brant"
+    },
+    "VO_TRN_001": {
+      "type": "voice",
+      "file": "assets/audio/vo_trn_001.ogg",
+      "note": "Trainees"
+    },
+    "VO_TRN_002": {
+      "type": "voice",
+      "file": "assets/audio/vo_trn_002.ogg",
+      "note": "Trainees"
+    },
+    "VO_TRN_003": {
+      "type": "voice",
+      "file": "assets/audio/vo_trn_003.ogg",
+      "note": "Trainees"
+    },
+    "VO_TRN_004": {
+      "type": "voice",
+      "file": "assets/audio/vo_trn_004.ogg",
+      "note": "Trainees"
+    },
+    "VO_GRD_001": {
+      "type": "voice",
+      "file": "assets/audio/vo_grd_001.ogg",
+      "note": "Corwin (keepers: vo_grd_001.ogg already in the repo)"
+    },
+    "VO_GRD_002": {
+      "type": "voice",
+      "file": "assets/audio/vo_grd_002.ogg",
+      "note": "Corwin (keepers: vo_grd_002.ogg already in the repo)"
+    },
+    "VO_GRD_003": {
+      "type": "voice",
+      "file": "assets/audio/vo_grd_003.ogg",
+      "note": "Corwin (keepers: vo_grd_003.ogg already in the repo)"
+    }
+  }
+}

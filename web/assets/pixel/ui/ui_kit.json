@@ -1,0 +1,139 @@
+{
+  "schema": 1,
+  "comment": "Nine-patch sources for the DELVE pixel UI kit (GDD-07 §7.4). `margin` is the number of pixels kept 1:1 on each side when stretched.",
+  "styles": {
+    "panel_parchment": {
+      "file": "panel_parchment.png",
+      "size": [
+        48,
+        48
+      ],
+      "margin": 8,
+      "use": "contract, ledger, tips, rule cards, stub cards"
+    },
+    "panel_oak": {
+      "file": "panel_oak.png",
+      "size": [
+        48,
+        48
+      ],
+      "margin": 6,
+      "use": "options, class cards"
+    },
+    "panel_ink": {
+      "file": "panel_ink.png",
+      "size": [
+        48,
+        48
+      ],
+      "margin": 4,
+      "use": "legal, pause, error"
+    },
+    "button": {
+      "file": "button_{state}.png",
+      "size": [
+        16,
+        16
+      ],
+      "margin": 4,
+      "states": [
+        "normal",
+        "hover",
+        "pressed",
+        "disabled"
+      ],
+      "use": "all confirm/back buttons in cards"
+    },
+    "button_blood": {
+      "file": "button_blood_{state}.png",
+      "size": [
+        16,
+        16
+      ],
+      "margin": 4,
+      "states": [
+        "normal",
+        "hover",
+        "pressed",
+        "disabled"
+      ],
+      "use": "destructive confirms: ledger DELETE and the BREAK button (§5.5 blood #8E2F26)"
+    },
+    "pill": {
+      "file": "pill_{state}.png",
+      "size": [
+        16,
+        16
+      ],
+      "margin": 4,
+      "states": [
+        "normal",
+        "selected",
+        "hover"
+      ],
+      "use": "segmented pill groups (h 16, gap 4); selected = bronze fill + ink text (§5.5)"
+    },
+    "tab": {
+      "file": "tab_{state}.png",
+      "size": [
+        16,
+        16
+      ],
+      "margin": 4,
+      "states": [
+        "normal",
+        "selected",
+        "hover"
+      ],
+      "use": "options tab rail (tabs x3, §7.4)"
+    },
+    "scrollbar": {
+      "file": "scrollbar_{part}.png",
+      "size": [
+        4,
+        16
+      ],
+      "margin": 2,
+      "states": [
+        "thumb",
+        "track"
+      ],
+      "use": "options/tab scrolling"
+    },
+    "tooltip": {
+      "file": "tooltip_box.png",
+      "size": [
+        16,
+        16
+      ],
+      "margin": 4,
+      "use": "hover tooltips (menu CONTINUE, SECONDARY pill)"
+    }
+  },
+  "sprites": {
+    "wax_seal": {
+      "file": "wax_seal.png",
+      "size": [
+        24,
+        24
+      ],
+      "use": "save stamps, cards"
+    },
+    "item_cursor": {
+      "file": "item_cursor.png",
+      "size": [
+        10,
+        10
+      ],
+      "use": "menu/list selection"
+    },
+    "portrait_frame": {
+      "file": "portrait_frame.png",
+      "size": [
+        24,
+        24
+      ],
+      "use": "initiative queue and journal portrait frames"
+    }
+  }
+}

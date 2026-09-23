@@ -53,7 +53,7 @@ Required attribution block (must appear in our credits and legal page):
 # PART 1 — VISUALS: 3D OR 2D, AND WHAT STYLE
 
 > **SUPERSEDED BY `06_BROWSER_PIXEL_CONVERSION_PLAN.md` (GDD-06, 2026-09-23) — this entire Part 1 (§1.1–1.6).**
-> The project pivots to a **2D pixel-art browser game** (480×270 viewport, Godot 4.7.2 Web export).
+> The project pivots to a **2D pixel-art browser game** (480×270 canvas, static web build — see GDD-06).
 > §1.1–1.3 ("3D beats 2D", the anti-isometric argument), §1.4's 3D character/environment craft,
 > §1.5's two-camera rig and §1.6's technology table are historical. **The five pillars beneath this
 > banner remain in force** — GDD-06 §2.5 explicitly retains them and re-expresses them in 2D, and the

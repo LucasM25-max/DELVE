@@ -1,0 +1,309 @@
+{
+  "schema": 1,
+  "description": "Timings and layout numbers for the shell, straight from GDD-07 §5.2 / §5.4. Every value is milliseconds or whole pixels — the shell never uses fractional positions.",
+  "boot": {
+    "legal_blink_ms": 800,
+    "sting": {
+      "total_ms": 4000,
+      "skippable_after_ms": 1500,
+      "emblem_draw_ms": 800,
+      "steps_light_ms": [
+        800,
+        1200,
+        1600
+      ],
+      "wordmark_chisel_ms": [
+        2000,
+        2200,
+        2400,
+        2600,
+        2800
+      ],
+      "sublock_fade_ms": 3000,
+      "bronze_sweep_ms": [
+        3000,
+        3600
+      ],
+      "hold_ms": 3600,
+      "crossfade_ms": 600,
+      "reduced_motion_min_ms": 1000,
+      "reduced_motion_hold_ms": 1200
+    },
+    "menu_fade_in_ms": 600
+  },
+  "menu": {
+    "column_x": 29,
+    "lockup_rect": [
+      29,
+      22,
+      96,
+      24
+    ],
+    "item_rect": [
+      29,
+      92,
+      140,
+      18
+    ],
+    "item_pitch": 21,
+    "item_count": 5,
+    "item_gap": 3,
+    "underline_offset_y": 14,
+    "underline_height": 2,
+    "underline_draw_ms": 180,
+    "emblem_flicker_ms": 200,
+    "disabled_dim": 0.4,
+    "disclaimer_alpha": 0.6,
+    "disclaimer_rect": [
+      10,
+      254,
+      348,
+      8
+    ],
+    "version_stamp_rect": [
+      140,
+      262,
+      330,
+      8
+    ],
+    "_footer_note": "GDD-07 §5.4 puts both footer lines on one row at y 259. At the shipped 5 px face the abridged disclaimer measures 360 px and the version stamp 252 px (612 px of 480), so one row would overprint. The two strings are stacked instead - disclaimer top-left, stamp bottom-right - both verbatim and both inside the canvas. The spec's original numbers are kept in spec_rects for reference.",
+    "spec_rects": {
+      "disclaimer": [
+        10,
+        259,
+        300,
+        8
+      ],
+      "version_stamp_right_x": 470,
+      "version_stamp_y": 259
+    }
+  },
+  "screens": {
+    "fade_ms": 600,
+    "stub_card_rect": [
+      100,
+      66,
+      280,
+      130
+    ],
+    "new_contract_card": {
+      "rect": [
+        80,
+        60,
+        320,
+        150
+      ],
+      "seal_rect": [
+        88,
+        68,
+        24,
+        24
+      ],
+      "begin_rect": [
+        96,
+        172,
+        148,
+        18
+      ],
+      "back_rect": [
+        252,
+        172,
+        148,
+        18
+      ],
+      "title_rect": [
+        120,
+        72,
+        272,
+        12
+      ],
+      "body_rect": [
+        96,
+        100,
+        288,
+        60
+      ]
+    },
+    "first_run": {
+      "panel": [
+        40,
+        16,
+        400,
+        238
+      ],
+      "title_y": 24,
+      "content_x": 48,
+      "content_w": 384,
+      "group_ys": [
+        56,
+        104,
+        152
+      ],
+      "label_to_pills": 8,
+      "help_line_spacing": -3,
+      "right_column_x": 240,
+      "back_rect": [
+        56,
+        224,
+        148,
+        18
+      ],
+      "go_rect": [
+        276,
+        224,
+        148,
+        18
+      ],
+      "help_offset_y": 24,
+      "help_height": 24,
+      "comfort_help_rect": [
+        48,
+        178,
+        184,
+        24
+      ],
+      "comfort_right_help_rect": [
+        240,
+        178,
+        184,
+        24
+      ],
+      "_note": "Group pitch is 48 px: label 8 + pills 16 + up to three 8 px help lines = 48 (§5.5 fixes y 56/104/152, so the groups must stack exactly on that pitch). The 8 px body face has an 11 px line height, so help blocks pass line_spacing -3 to land on the 8 px stack. Content runs 48..432 — the panel's inner width — which keeps the Difficulty help to two lines and the longer Combat pacing help to three."
+    },
+    "ledger": {
+      "panel": [
+        60,
+        24,
+        360,
+        222
+      ],
+      "title_y": 32,
+      "row_rect": [
+        68,
+        48,
+        344,
+        24
+      ],
+      "row_pitch": 24,
+      "row_count": 8,
+      "stamp_x": 8,
+      "name_x": 40,
+      "delete_x": 296,
+      "card_rect": [
+        80,
+        76,
+        320,
+        118
+      ],
+      "break_rect": [
+        96,
+        152,
+        140,
+        18
+      ],
+      "keep_rect": [
+        244,
+        152,
+        140,
+        18
+      ],
+      "scorched_card_rect": [
+        80,
+        84,
+        320,
+        102
+      ],
+      "retry_rect": [
+        96,
+        152,
+        140,
+        18
+      ],
+      "skip_rect": [
+        244,
+        152,
+        140,
+        18
+      ],
+      "back_rect": [
+        60,
+        244,
+        80,
+        18
+      ],
+      "hint_rect": [
+        148,
+        250,
+        344,
+        8
+      ],
+      "_note": "8 rows of 24 px sit at y 48+24i inside the panel (60,24,360,222), so the last row ends at y 240. The keyboard hint therefore sits beside BACK on the white field below the panel (148,250) rather than inside it."
+    },
+    "options": {
+      "tab_rail": [
+        8,
+        16,
+        72,
+        238
+      ],
+      "tab_rect": [
+        12,
+        20,
+        64,
+        24
+      ],
+      "tab_pitch": 28,
+      "rows_panel": [
+        88,
+        16,
+        384,
+        238
+      ],
+      "row_height": 20,
+      "first_row_y": 24,
+      "visible_rows": 10,
+      "label_x": 8,
+      "control_right": 364,
+      "help_rect": [
+        176,
+        244,
+        288,
+        8
+      ],
+      "back_rect": [
+        88,
+        244,
+        80,
+        18
+      ],
+      "scrollbar_rect": [
+        468,
+        24,
+        4,
+        216
+      ],
+      "row_rect": [
+        96,
+        40,
+        372,
+        20
+      ],
+      "row_pitch": 20,
+      "help_line_height": 8,
+      "_note_help": "The spec fixes no help line for this page. The schema's help text is drawn in the 5 px chrome face (the same face as the menu footer and the ledger hint) beside BACK at y 244, wrapped to 288 px: the longest strings (§5.6 difficulty and combat pacing) take three 8 px chrome lines, ending at y 268 inside the canvas. First Run, which the spec does size at 8 px, uses the body face."
+    }
+  },
+  "loading": {
+    "minimum_dwell_ms": 1200,
+    "tip_cycle_ms": 5000,
+    "tip_crossfade_ms": 400,
+    "slow_timeout_ms": 45000,
+    "complete_hold_ms": 500,
+    "fade_to_yard_ms": 600,
+    "progress_weights": {
+      "bundles": 0.7,
+      "scene": 0.2,
+      "data": 0.1
+    }
+  }
+}

@@ -1,0 +1,100 @@
+# Gates — everything that must pass before a deploy is trustworthy.
+#
+# This repository *is* the deployment: Vercel publishes `web/` straight from the
+# repository, so there is no build step to fail loudly. These jobs are that
+# failure surface:
+#
+#   check_project.py  paths, module graph, data counts, fonts, palette mirror,
+#                     nine-patch kit, the §5.5/§5.6 layouts and the art lint;
+#   check_strings.py  the shipped copy against GDD-07, byte for byte;
+#   run.mjs           the ported unit suite (Node, no dependencies);
+#   smoke.mjs         the whole shell booted against a DOM stub — every page;
+#   shoot.mjs         the same pages rasterised through a pixel-true canvas, so
+#                     the run also leaves pictures of what the deploy will show,
+#                     and the tinted text measured against each face's ink box.
+#
+# A second job records the boot sequence as a GIF (`web/tests/reel.mjs`) and keeps
+# it with the screenshots — the stills say the pages are right, the reel says the
+# timings are. It is separate so a capture problem never reads as a gate failure.
+#
+# A red run here means a red deploy later; Vercel only ever serves what is green.
+
+name: Gates
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Project gates (paths, data, fonts, palette, layouts, art lint)
+        run: python3 tools/check_project.py
+
+      - name: String parity with GDD-07
+        run: python3 tools/check_strings.py
+
+      - name: Unit suite
+        run: node web/tests/run.mjs
+
+      - name: Shell smoke test
+        run: node web/tests/smoke.mjs
+
+      - name: Rasterise every page (headless screenshots)
+        run: node web/tests/shoot.mjs
+
+      - name: Keep the screenshots for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: shell-pages
+          path: web/preview/*.png
+          if-no-files-found: error
+
+  reel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # ImageMagick assembles the frames. The runner carries it already; this
+      # only tops it up if a future image drops it, because the artifact below
+      # is what the reviewers watch and an empty one is not a useful signal.
+      - name: ImageMagick (for the GIF)
+        run: |
+          if ! command -v convert >/dev/null; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick
+          fi
+          convert --version | head -1
+
+      - name: Record the boot sequence
+        run: node web/tests/reel.mjs
+
+      - name: Keep the reel for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: boot-reel
+          path: web/preview/reel.gif
+          if-no-files-found: error

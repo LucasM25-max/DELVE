@@ -1,86 +1,104 @@
-# DELVE — Web Shell (Main Menu, Boot Sequence, First Run)
+# DELVE
 
-> **Native Godot edition:** see [`godot/GETTING_STARTED.md`](godot/GETTING_STARTED.md)
-> for the importable Godot 4.7.2 project, play instructions and browser export guide.
-> The original web preview below is preserved; the Godot version lives independently in `godot/`.
-> Rebuild its ZIP with `python3 godot/tools/package_project.py`.
+A Dungeons & Dragons adventure — *Phandelver and Below: The Shattered Obelisk*.
+An unofficial, non-commercial fan project; **never for sale**.
 
-Production-ready web build of the **DELVE** game shell: boot/attribution screen, animated
-logo sting, main menu over the Neverwinter training-yard dawn scene, the PLAY →
-**First Run contract page** flow, and the signed-contract end card.
+**The game in this repository is a static website.** HTML, ES modules, JSON and
+PNG, served by Vercel from the `web/` directory. There is no engine, no build
+step, no Blender and no Godot: clone it, serve `web/`, and it runs.
 
-Implements [`02_DELVE_SHELL_SPEC.md`](../SHATTERED_OBELISK_GAME/02_DELVE_SHELL_SPEC.md)
-(GDD-02) §1.1–1.5, §2.1–2.4, §2.8 and the §4 string master.
-
-**Deliberately not in this build** (per product decision): the options tree, the codex
-contents, the credits scroll and the loading screen. Those menu items appear in the menu
-(as the spec's layout requires) and open a sealed-stub card; the loading screen's entry
-point is replaced by the signed-contract end card.
-
-## Run locally
-
-Any static server works — no build step, no dependencies:
-
-```bash
-python3 -m http.server 3000        # then open http://localhost:3000
-# or: npx serve .
+```
+web/          the game  — 480×270 pixel canvas, ES modules, no dependencies
+tools/        the asset builders and the gates (Python 3, stdlib only)
+docs          00…07 — the design and build specifications
+.github       CI: the gates run on every push
+vercel.json   outputDirectory: "web"
 ```
 
-## Deploy to Vercel
+---
 
-1. Push this folder to a GitHub repository (it is the repo root: `index.html` at top level).
-2. Vercel → **Add New… → Project** → import the repo.
-3. Framework Preset: **Other** (static). Build command: *(leave empty)*. Output directory: *(leave empty / `.`)*.
-4. Deploy. `vercel.json` already sets clean URLs and immutable caching for `/assets`.
+## Play it locally
 
-## Deploy to GitHub Pages
+```bash
+git clone https://github.com/LucasM25-max/DELVE && cd DELVE
+python3 -m http.server 8080 --directory web
+# open http://localhost:8080
+```
 
-Push to a repo, enable Pages on the branch root — the site is fully static.
-(Fonts load from Google Fonts; offline environments fall back to system serifs gracefully.)
+`file://` will not work — ES modules and `fetch` need an HTTP origin.
 
-## Controls
+## What is built
 
-| Input | Action |
-|---|---|
-| Any key / click (attribution screen) | continue (also unlocks audio) |
-| Any key / click (after 1.5 s of the sting) | skip logo sting |
-| ↑ / ↓ or W / S, mouse hover, d-pad/stick | move menu selection |
-| Enter / Space / click / A button | activate |
-| B button / Esc | back out of cards (Esc does nothing on the menu, per spec) |
+The **prologue shell** (GDD-07 §5):
 
-## What is synthesized vs generated
+- **Boot** — the legal/attribution page (any input continues *and* unlocks audio,
+  which browsers require a gesture for), then the 4.0 s logo sting, skippable
+  after 1.5 s and shortened under reduced motion.
+- **Main menu** — the §5.4 lockup, five items on a 21 px pitch, hover underline,
+  `CONTINUE` dimmed to 40 % with no contract, footer disclaimer and version stamp.
+- **Play** — the `Begin a new contract?` overlay when a contract exists, otherwise
+  the First Run contract page (difficulty, combat pacing, subtitles, camera
+  comfort) which writes a real slot into the eight-slot ledger.
+- **Continue** — the contract ledger: emblem stamps that light with progress, per
+  slot `DELETE` behind a blood-red confirm card, and the scorched-save card for a
+  save that will not parse.
+- **Options** — five schema-driven tabs (Graphics, Gameplay, Accessibility, Audio,
+  Controls) with segmented pills, ten-pip sliders, key rebinding and a scrolling
+  Controls page.
+- **Codex / Credits** — placeholder cards; the pages themselves are the next work.
 
-- **Logo:** generated metallic artwork (`assets/img/logo_wordmark.png`,
-  `assets/img/logo_emblem.png`), black-background keyed to true transparency and
-  trimmed by script; raw generations kept as `raw_*.png`. Used in the sting, menu
-  lockup, legal screen, First Run header and favicon.
-- **Audio:** ships with 100 % runtime Web Audio synthesis fallbacks (`js/audio.js`) so
-  the shell is never silent — but **real generated files win automatically**: drop
-  files into `assets/audio/` using the exact filenames and prompts in
-  [`AUDIO_PROMPTS.md`](AUDIO_PROMPTS.md) (`.ogg` → `.mp3` → `.wav` preference) and
-  reload. Zero licensing risk either way.
-- **Images:** `assets/img/yard_dawn_panorama.png` (menu background, generated matte
-  painting) and `assets/img/parchment.jpg` (card/sheet grain). The DELVE wordmark, the
-  delve-stair emblem and the wax contract seal are hand-built inline SVG per GDD-02 §1.2–1.3
-  (crisp at every size, animatable for the sting).
-- **Motion:** the §2.2 camera drift is a 90-second keyframed pan/zoom over the matte with
-  mist, gull and handheld-noise layers; `Reduced motion` (and the OS preference) freezes it.
+Two documented deviations shape the flow: the menu ground is plain **white**, and
+controls that would leave the menu for the unbuilt Loading screen and yard return
+to the menu with their spec text intact. Every deviation and its justification
+lives in [`web/docs/PIXEL_MENU_BUILD_NOTES.md`](web/docs/PIXEL_MENU_BUILD_NOTES.md).
 
-## Test hooks (for screenshots / CI)
+## Deploy
 
-`?s=legal|sting|menu|new|firstrun|end|stub2|stub3|stub4` jump to a state ·
-`?save=1` seeds a signed contract · `?still=1` freezes background motion ·
-`?t=<ms>` holds the sting timeline at a moment.
+Vercel publishes [`web/`](web/README.md) as a static site — `vercel.json` sets
+`outputDirectory`, so there is nothing else to configure. Connect the repository
+once and every push gets a preview; `main` gets production.
 
-## Saved data
+Nothing reaches the public URL that has not passed the gates first:
 
-A signed contract persists in `localStorage` (`delve.contract.v1`) so CONTINUE's
-dim/lit logic and the menu-theme variant behave per spec across sessions.
+```bash
+python3 tools/check_project.py     # paths, module graph, data, fonts, palette, layouts, art lint
+python3 tools/check_strings.py     # shipped copy against GDD-07, byte for byte
+node web/tests/run.mjs             # unit suite (no dependencies)
+node web/tests/smoke.mjs           # boots every page headless
+node web/tests/shoot.mjs           # rasterises every page to web/preview/*.png
+```
 
-## Attribution
+They all run in CI on every push (`.github/workflows/gates.yml`), which also
+attaches the rendered pages to the run as a `shell-pages` artifact, so a commit
+always comes with a picture of what the deploy will show. A second job records
+the boot sequence — legal page, sting, menu, options, contract page — as
+`web/preview/reel.gif` (`node web/tests/reel.mjs`, the `boot-reel` artifact):
+the stills say the pages are right, the reel says the timings are.
 
-An unofficial, non-commercial fan project. Dungeons & Dragons, *Phandelver and Below: The
-Shattered Obelisk* and all Wizards of the Coast characters and locations are trademarks of
-Wizards of the Coast LLC. Used here without permission; no challenge to any trademark or
-copyright. This game will never be sold. Typefaces: Cinzel, Alegreya, IM Fell English (SIL
-OFL).
+## Documents
+
+| # | Document | Status |
+|---|---|---|
+| 00 | Art direction & mechanics plan | active |
+| 01 | Chapter 1 tutorial & tactical combat | active |
+| 02 | Shell spec | active (converted to pixels by 07) |
+| 03 | Neverwinter yard level spec | active (converted to pixels by 07) |
+| 04 | Godot + Blender production plan | **retired** — kept for history only |
+| 05 | How to play (engine build) | **retired** — kept for history only |
+| **06** | **Browser pixel conversion plan** | **active — the plan this build follows** |
+| **07** | **Pixel prologue build spec (menu + yard)** | **active — binding content spec** |
+
+Documents 04 and 05 describe the retired engine pipeline. Nothing in this
+repository builds, imports or ships them; the current build is documents 06 and
+07 alone.
+
+## Rights
+
+Dungeons & Dragons, *Phandelver and Below: The Shattered Obelisk* and all
+Wizards of the Coast characters and locations are trademarks of Wizards of the
+Coast LLC, used here without permission and with no challenge to any trademark or
+copyright. Rules text is sourced from the System Reference Document 5.2.1
+(CC-BY-4.0); the attribution block ships on the game's legal screen, in the
+credits and in [`07_PIXEL_PROLOGUE_YARD_AND_MENU_BUILD_SPEC.md`](07_PIXEL_PROLOGUE_YARD_AND_MENU_BUILD_SPEC.md) §14.2.
+Typefaces are the 5×7 system face (MIT) and Silkscreen (OFL-1.1); the licences
+sit beside the fonts in `web/assets/fonts/LICENCES`.

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>DELVE — pixel prologue</title>
+  <meta name="description" content="DELVE: a 480×270 pixel-art prologue. Static web build — HTML, ES modules and a locked 40-colour palette. No engine.">
+  <meta name="theme-color" content="#0A0C10">
+  <link rel="stylesheet" href="css/shell.css">
+  <link rel="icon" href="assets/pixel/ui/icon.png" type="image/png">
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <main id="stage">
+    <!-- 480×270, scaled by whole numbers only: a game pixel is always a square
+         of screen pixels. All drawing happens in js/ui/. -->
+    <canvas id="screen" width="480" height="270" aria-label="DELVE game screen"></canvas>
+  </main>
+  <p id="boot-error" hidden></p>
+  <noscript>DELVE needs JavaScript: the whole game is HTML, ES modules and JSON.</noscript>
+</body>
+</html>

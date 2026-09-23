@@ -1,765 +1,547 @@
-# DELVE — GDD-06 · BROWSER PIXEL CONVERSION PLAN
+# DELVE — GDD-06 · WEB BUILD PLAN (BROWSER PIXEL CONVERSION)
 
-**From: Godot 4.7.2 3D menu shell + 3D blockout yard → To: 2D pixel-art browser game (Godot 4.7.2, Web export)**
+## A static site: GitHub repository → Vercel → a 480×270 pixel game in the browser. No engine, no build step.
 
 | Field | Value |
 |---|---|
 | Document | `06_BROWSER_PIXEL_CONVERSION_PLAN.md` (GDD-06) |
-| Version | 1.0 |
-| Date | 2026-09-23 |
-| Status | **Proposed — awaiting approval of §16 open questions** |
-| Author | Arena.ai agent session (`arena/01a0cd23-delve`) |
-| Supersedes (in part) | GDD-00 Part 1 (§1.1–1.6 art direction & technology), GDD-04 (Godot+Blender 3D production plan) |
-| Extends / honours | GDD-01 (combat & turn model), GDD-02 (shell spec), GDD-03 (yard level spec) |
-| Target engine | Godot 4.7.2 Standard · GDScript · **Compatibility renderer** · single-threaded Web export |
-| Scope of the build this plan produces | The **shell** (boot → menu → contract → options/codex/credits → loading) **plus one genuinely playable top-down pixel yard** with turn-based grid combat |
+| Version | 2.2 (2026-09-23) — HTML + ES modules + JSON + PNG/OGG |
+| Status | **ACTIVE** — the plan this build follows |
+| Author | Arena.ai agent session (`arena/01a0cedd-delve`) |
+| Ships as | `web/` in this repository, published by Vercel from `vercel.json` (`outputDirectory: "web"`) |
+| Binding content spec | GDD-07 (pixel prologue build spec) — where the two differ, **GDD-07 wins** |
+| Retired | Documents 04 and 05 (the earlier engine-and-3D production plans). Nothing in this repository builds, imports or ships them |
+| Gates | `tools/check_project.py` · `tools/check_strings.py` · `web/tests/run.mjs` · `web/tests/smoke.mjs` · `web/tests/shoot.mjs`, all run on every push |
 
 ---
 
 ## 0. HOW TO READ THIS DOCUMENT
 
-Every claim about the current codebase in §2 was taken from the repository at commit `17c5fbc` on 2026-09-23
-(file counts, line counts, node types, asset sizes). Every engine-level claim in §4, §9 and §11 was checked
-against current Godot documentation/community practice rather than memory; where a setting name or tag could
-not be verified from here, it is flagged **[VERIFY]** and given a backlog task.
+**What this is.** The plan for a *static web game*: a repository that Vercel publishes
+straight from source, with no server, no compile step and no third-party runtime. It is
+written so that a reader who has never seen the project can go from clone to running game
+in one page, and from running game to a deployed change in two.
 
-Conventions used throughout:
+**What this is not.** It is not a second content spec. Every rect, string, timing, rule
+text, audio cue and VO line lives in **GDD-07** and in the data files under `web/data/`.
+Where a number appears in both, GDD-07 governs.
 
-- **[NEW]** — a file, scene or system that does not exist yet and must be created.
-- **[CONVERT]** — an existing file that survives but changes (scene type, layout, asset paths).
-- **[KEEP]** — an existing file that ships unchanged.
-- **[RETIRE]** — an existing asset/system that leaves the build (and where it goes instead).
-- **T-xx** — a task identifier, collected in §13.
-- **M0–M8** — milestone identifiers, defined in §12.
+**Conventions.**
 
-The single most important structural fact this plan is built on: **the conversion is roughly 25 % new game
-code and 75 % re-skin of code that already exists.** The shell is 1 482 lines of Godot `Control` code that is
-engine-agnostic in principle — it needs a new palette, new fonts, a new layout grid and new art, not a rewrite.
-The genuinely new subsystems are the tile world, the rules grid and the turn engine (§6).
+- **Rectangles** are `(x, y, w, h)` in pixels on the 480×270 canvas, origin top-left.
+- **Tiles** are 16 px; 1 tile = 5 ft = 1.524 m (GDD-07 §3.1).
+- **Money** is time: millisecond budgets, byte budgets, and the five gates.
+- IDs keep their meaning from GDD-07: `T_` tiles · `PROP_`/`M_YRD_` props · `A_` audio ·
+  `VO_` voice · `VFX_` effects · `TR_` triggers · `UI_`/`STR_` strings · `C1–C6` creation
+  stations · `T0–T11` beats · `R1–R15` rules · `P0/P1/P2` ship rings · `M0–M8` milestones.
 
 ---
 
 ## 1. EXECUTIVE SUMMARY
 
-### 1.1 Locked decisions (from the 2026-09-23 clarification round)
+### 1.1 Locked decisions
 
-| # | Question | Decision |
+| # | Decision | Consequence |
 |---|---|---|
-| D1 | Build target | **Stay in Godot.** Rebuild as a 2D pixel game with a low-res viewport and a Web export. The engine, GDScript, scene structure, save system and shell state machine are kept. |
-| D2 | Scope of the first playable | **Port what exists now**: the full shell + **one playable pixel yard** (not the full 13-area prologue, not Chapter 1). |
-| D3 | Camera & combat | **Top-down, turn-based on a grid.** Free exploration; on encounter, a 5-ft grid appears and combat runs on initiative with actions/bonus actions/reactions/movement. This is GDD-01's "Table Mode", rendered top-down. |
-| D4 | Art | **AI-generated pixel art, curated in-session to a locked palette** through a deterministic downscale/quantise/clean/pack toolchain (§5). |
-| D5 | IP route | **Keep the fan-project names** (Neverwinter, Phandalin, Corwin, Gundren…). Non-commercial, never sold, disclaimer retained on the legal screen and in the credits. §15 lists the obligations that *survive* this choice. |
-| D6 | Deliverable of this round | **This document.** No code is written in this round. |
+| D1 | The game is a **static site** — HTML, ES modules, JSON, PNG, OGG | Nothing to compile, nothing to host beyond files; the repository *is* the build |
+| D2 | **GitHub → Vercel**, `web/` as the output directory | Every push gets a preview URL; `main` is production |
+| D3 | **No engine, no 3D, no asset conformance suite** | All behaviour is JavaScript in `web/js/**`, all art is generated by `tools/*.py` |
+| D4 | **480×270, integer scale, locked 32 + 8 palette** | Same pixel contract as the spec: whole pixels, one ramp, no resampling |
+| D5 | **Data-driven UI** | No screen hard-codes a rect, label or delay; layout changes are data changes |
+| D6 | **Plain white menu ground** (requested) | The §5.3 painted backdrop is deferred; footer text is ink, and the swap is one method |
+| D7 | **Controls that would leave the menu return to the menu** (requested) | Their spec text is unchanged; the unbuilt destinations are the deviation, not the words |
+| D8 | **Five gates decide a deploy** | Project integrity, string parity, unit checks, headless boot of every page, and a rasterised picture of every page |
 
 ### 1.2 What changes, in one page
 
-| Layer | Today | After |
-|---|---|---|
-| Renderer target | 3D (`CharacterBody3D`, `Camera3D`, glTF characters, `Sky3D`, `Terrain3D` adopted) | 2D (`TileMapLayer`, `CharacterBody2D`, `Camera2D`, `Sprite2D`/`Polygon2D` rigs, no plugins) |
-| Viewport | 1600×900, `stretch/mode = canvas_items`, `aspect = expand` | **480×270**, `stretch/mode = viewport`, `aspect = keep`, `scale_mode = integer`, nearest filtering |
-| Art | 41 MB of glTF characters + 32 MB of PBR textures + a matte painting | ≈1–3 MB of atlases: 16×16 tiles, 16×24 character rigs, nine-patch UI, pixel FX |
-| World | 44 m × 44 m 3D blockout (`test_yard.tscn`, 15 `M_YRD_*.glb` props, heightfield ground) | **29 × 29 tile** top-down yard (1 tile = 5 ft = 1.524 m → 464 × 464 px), built from the same GDD-03 area plan |
-| Player | `CharacterBody3D`, WASD + mouse-look, pointer lock, first/third-person toggle, 43-clip animation library | `CharacterBody2D`, 8-way movement, no pointer lock, dialogue/camera-facing, 9 hand-authored animation states |
-| Combat | none (an empty sparring sandbox) | **Turn-based grid combat**: initiative queue, movement budget, action/bonus/reaction, attack rolls, cover, line of sight, elevation, AoE templates, weapon masteries, conditions, enemy AI |
-| Shell | 1 482 lines of `Control` code absolutely positioned on a 1600×900 grid (69 hard-coded `Rect2` calls) | Same state machine, re-laid-out on a 480×270 grid with a pixel nine-patch UI kit; same JSON content (`shell_content.json`, `options_schema.json`) |
-| Audio | 1.2 MB Ogg music loop + 3 Ogg VO lines, Web-Audio-flavoured startup gating | Same sources, **transcoded to MP3 for the web build** (Safari/iOS compatibility, §8) |
-| Plugins | `Sky3D` (12 MB, GDScript) + `Terrain3D` (GDExtension, *experimental on web*) | **Both retired.** Sky becomes a palette-keyed gradient + parallax card; terrain becomes tiles |
-| Export | Manual: install Godot + templates locally, then Editor → Export | **CI-exported** on tag via a pinned Godot 4.7.2 container, deployed as a versioned static bundle |
-| Repo | 337 MB working tree, a 69 MB ZIP tracked in Git, 80 MB of now-dead 3D assets tracked | ≈35 MB conservative tree, binaries in Releases, project folder renamed out of the `.godot` trap (§10.1) |
-| First-load download | ~40 MB+ (WASM + PCK carrying 3D assets) | **≈10–14 MB** (≈8–11 MB WASM + ≤2 MB PCK + shell) |
+The content specification did not move: the shell's screens, rects, strings, timings,
+options schema, palette, fonts and rules texts are exactly as GDD-07 writes them. What
+moved is **how they are realised**:
+
+```
+BEFORE (engine project)                    NOW (static web build)
+─────────────────────────                  ────────────────────────────────
+project file + platform config      →      index.html + vercel.json
+scene files per screen              →      js/screens/*.js classes
+engine scripts (~2.5 k lines)       →      ES modules (~3 k lines), one concern each
+engine resource paths              →      relative URLs from web/ (data/…, assets/…)
+engine shader for text tinting      →      canvas composite + per-string cache
+engine build's input map + singletons →    core/input.js + core/state.js
+engine save file in a user data dir →      one JSON document in localStorage
+engine audio buses                  →      WebAudio gain nodes
+headless engine test runner         →      node web/tests/{run,smoke,shoot}.mjs
+engine export + desktop binary      →      git push → Vercel deploy
+```
+
+The three things that **never** change, and that every decision below protects: the
+**pixel grid**, the **locked palette**, and the **strings**.
 
 ### 1.3 The three numbers that define this project
 
-1. **480 × 270** — base render resolution. 16:9, integer-scales exactly to 1920×1080 (×4), 960×540 (×2) and
-   3840×2160 (×8). On 2560×1440 it renders ×5 (2400×1350) with 80 px pillars — acceptable, and the alternative
-   (320×180) is too cramped for the 15 long-form codex entries we already ship.
-2. **16 px** — tile size, and simultaneously the **rules scale**: 1 tile = 1 five-foot square = 1.524 m.
-   The whole 5e grid therefore becomes literally countable on screen, which is this project's entire
-   presentational thesis (GDD-00 pillar 1: "rules you can see are rules players trust").
-3. **32 + 8 colours** — the locked palette: 32 "surface" colours (dawn Neverwinter, warm, lovable) and 8
-   "below" colours (obelisk teal, psychic violet, bone). The *below* ramp is a **runtime LUT remap**, so the
-   same tiles can be shown "infected" without a single new texture — GDD-00's "warmth above, wrongness below"
-   pillar implemented as a shader rather than as an art budget.
+1. **480 × 270.** The base canvas (GDD-07 §0). CSS scales it by whole numbers only, so one
+   game pixel is always a square of screen pixels. Every layout number in GDD-07 is in this
+   space.
+2. **16 px = 1 tile = 5 ft.** The rules grid and the art grid are the same grid. Combat
+   overlays tint cells; exploration moves in pixels; the yard is 29 × 29 cells.
+3. **32 + 8 colours.** One surface ramp of 32, one "below" ramp of 8, and a 32-entry remap
+   LUT. No committed PNG may contain a colour outside the 40; the gate enforces it.
 
 ### 1.4 What "shipped" means
 
-The M8 release is done when, from a cold browser cache on a mid-range laptop:
+A change is shipped when **all five** hold:
 
-1. The build loads in under ~8 s on a 10 Mbps link, with no console errors, in Chrome, Firefox, Edge and
-   Safari (desktop), and in landscape on a modern phone.
-2. A new player can: read the attribution screen → skip the logo sting → use every menu item → sign a
-   contract → land in the yard → walk the yard → trigger the dummy-line encounter → fight a complete
-   turn-based combat with movement, an attack, a bonus action and an enemy turn → win or yield → ring the
-   practice bell to reset.
-3. A returning player's contract ledger, options and tutorial progress persist across a reload and across a
-   deploy of the next version at a stable URL.
-4. All of it runs from a ≤15 MB payload at a locked 60 fps at 1080p, and the shipped tree contains no 3D-only
-   asset, no plugin, no binary ≥ 5 MB outside Releases.
+1. it is committed to this repository and pushed;
+2. `tools/check_project.py` reports `project check clean`;
+3. `tools/check_strings.py` reports `string parity clean`;
+4. `node web/tests/run.mjs`, `node web/tests/smoke.mjs` and `node web/tests/shoot.mjs` pass;
+5. Vercel's preview URL for the push renders the result, and the page loads with an empty
+   console.
+
+Running locally is not shipped; "it works on my machine" is not shipped; a green gate with
+no deploy is not shipped.
 
 ---
 
 ## 2. CURRENT-STATE AUDIT
 
-### 2.1 Three artifacts live in this repository
+### 2.1 What is in the repository
 
-| Artifact | Path | What it is | Verdict |
-|---|---|---|---|
-| Legacy web shell | `/index.html`, `/js/` (857 lines), `/css/` (838 lines), `/assets/img`, `/assets/audio` | The original zero-build vanilla-JS DELVE menu shell, deployed at the repo root (Vercel). Generated logo art, Web-Audio synthesis fallbacks, `localStorage` contract save (`delve.contract.v1`). | **[KEEP]** as the public landing page; it is *reference material* for the pixel shell's screen order and copy. Never becomes the game. |
-| Godot project | `/.godot/` (**this is the project root, not the engine cache**) | Godot 4.7.2 Standard, Compatibility renderer, v0.3.0-godot. Native port of the shell + a 3D movement blockout with a CC0 humanoid. 392 tracked files, ~2 409 lines of GDScript. | **[CONVERT]** — this is what the pixel build grows from. |
-| Design corpus | `/00_…`–`/05_…md` (≈216 KB), `AUDIO_*.md`, `/README.md` | GDD-00 art direction/mechanics, GDD-01 chapter 1 + combat, GDD-02 shell spec, GDD-03 yard spec, GDD-04 3D production plan, GDD-05 how-to-play. | **[KEEP]** with supersede banners (§10.4). |
-
-### 2.2 Godot project inventory — file by file
-
-| File | Lines / size | Role today | Disposition |
-|---|---|---|---|
-| `project.godot` | 48 lines | Autoloads `GameState`, `Sound`; 1600×900; `canvas_items`; Compatibility; Sky3D plugin enabled | **[CONVERT]** → §4.2 exact diff |
-| `scenes/ui/shell.tscn` | 9 lines | Root `Control` with `shell.gd`; *UI is built in code* | **[CONVERT]** → pixel root `Control` at 480×270 |
-| `scenes/world/test_yard.tscn` | generated by `tools/scene/build_test_yard.py` (534 lines) | 3D blockout: heightfield ground, 15 GLB props, NPC, player, WorldEnvironment | **[RETIRE]** the scene; **[KEEP]** the builder idea (becomes the tile-map builder, T-24) |
-| `scenes/actors/player.tscn` / `npc_corwin.tscn` | 32 / 33 lines | `CharacterBody3D` + Quaternius hero + `SpringArm3D`; NPC with `AudioStreamPlayer3D` VO | **[CONVERT]** → `CharacterBody2D` + 2D rig + `AudioStreamPlayer2D` |
-| `scripts/ui/shell.gd` | 832 | Screen state machine: `legal→sting→menu→{new,ledger,options,codex,credits,contract}→loading→yard`; threaded `ResourceLoader`; motes; ledger; credits scroll | **[CONVERT]** — logic survives; 63 of the 69 hard-coded `Rect2` rects live here |
-| `scripts/ui/shell_ui.gd` | 303 | Palette constants, font loading, `StyleBoxFlat` factories, button/label/pill factories, procedural motes | **[CONVERT]** → pixel UI kit (`ui_pixel.gd`) + nine-patch textures; palette constants become the locked palette resource |
-| `scripts/ui/options_page.gd` | 282 | Schema-driven settings UI + key rebinding from `options_schema.json` (6 categories, 50 rows) | **[KEEP]** logic → **[CONVERT]** presentation |
-| `scripts/ui/backdrop.gd` | 110 | Panorama drift, mist/gull layers, reduced-motion support | **[CONVERT]** → 3-layer pixel parallax + palette-keyed dawn ramp |
-| `scripts/ui/load_route.gd` | 30 | "Ink route" loading road animation | **[CONVERT]** → pixel route, or retire if the yard loads inside one frame (T-35) |
-| `scripts/core/game_state.gd` | 149 | Settings, validation, input bindings, 8-slot contract ledger, atomic JSON writes to `user://delve_v1.json` | **[KEEP]** ~90 %; add schema v2 + migration (§4.10) |
-| `scripts/core/sound.gd` | 52 | Bundled OGG playback, user-gesture startup, volume/focus/ducking | **[KEEP]**; add MP3 source set for web (§8) |
-| `scripts/world/player.gd` | 101 | `CharacterBody3D`: camera-relative movement, sprint/jump, 8 locomotion states from the 43-clip UAL library, first-person toggle | **[RETIRE]** → new `player_2d.gd` (movement, facing, animation state machine, grid snap) |
-| `scripts/world/npc_corwin.gd` | 231 | Idle lean/scan poses, `say()` VO playback, TR_A_LANE hook, `AudioStreamPlayer3D` | **[CONVERT]** → `npc_2d.gd`, same dialogue data |
-| `scripts/world/test_yard.gd` | 319 | Pause overlay, pointer lock, focus-loss detection, Sky3D time/weather wiring, HUD, return to menu | **[CONVERT]** → `yard.gd`: no pointer lock at all (a genuine simplification), pause menu, HUD, day-time, weather overlays |
-| `data/options_schema.json` | 6 categories / 50 rows | Settings schema with live/future flags | **[KEEP]**; prune 3D-only rows, add pixel-relevant ones (§6.12) |
-| `data/shell_content.json` | 15 `rules`, 2 `lore`, 16 `tips`, 7 default groups | Codex text, loading tips, defaults | **[KEEP]** subject to §15 text-provenance review |
-| `assets/audio/*.ogg` | 1.30 MB (1 music loop + 3 VO) | Menu theme + Corwin VO | **[KEEP]** + transcode to MP3 |
-| `assets/fonts/*.ttf` | 2.4 MB (Cinzel ×5, Alegreya ×5, IM Fell ×2 + OFL) | Vector display/body fonts | **[CONVERT]** → pixel bitmap fonts; keep the OFL notices, retire the TTFs from the export filter |
-| `assets/images/*` | 4.6 MB (`yard_dawn_panorama.jpg`, `parchment.*`, `logo_*`, `sword_coast_map.jpg`) | Menu matte, paper grain, logo | **[CONVERT]** — logo/paper become pixel assets; the matte is retired |
-| `assets/characters/**` | **41 MB** (Quaternius bodies + 7.3 MB UAL glb + PBR/roughness/normal maps) | 3D hero + NPC + animations | **[RETIRE]** → archive (§10.2) |
-| `assets/textures/**` | **32 MB** (cobble/dirt albedo-normal-roughness) | 3D ground materials | **[RETIRE]** → archive |
-| `assets/models/*.glb` + `manifest.json` | 748 KB, 15 props (barrel, gatehouse, gate doors, ground, guard box, lantern post, notice board, portcullis, wall pieces) with vertex/triangle/bounds metadata | 3D yard kit | **[RETIRE]** as 3D, but **its prop list is the authoritative shopping list for the 2D prop kit** (§5.6) |
-| `addons/sky_3d/**` | 12 MB | Sky/time-of-day, wired into the yard HUD | **[RETIRE]** — replaced by a palette ramp + parallax card |
-| `addons/terrain_3d` (referenced in docs; not committed) | — | Adopted, never wired; **experimental on web** | **[RETIRE]** — removes the single largest portable-build risk in the current plan |
-| `tests/smoke_test.gd` + `.tscn` | 298 lines, 67 `check()` calls (docs claim 80 — drift, T-44) | Headless regression scene: screens, options, save/reload, ledger cap, loading, 3D controller | **[CONVERT]** → pixel test scene, plus new grid/combat coverage |
-| `tests/shot_walk.gd`, `yard_shot.gd`, `qa_yard.gd` | 66 / 71 / ~40 | Screenshot walk of every screen | **[CONVERT]** → pixel screenshot walk (combat UI included) |
-| `tools/export_web.py`, `serve_web.py`, `package_project.py` | 28 / 30 / 27 | Local export, static server, ZIP packaging | **[KEEP]**; export moves to CI, `package_project.py` learns to exclude retired assets |
-| `tools/scene/build_test_yard.py` | 534 | Generates the 3D blockout | **[CONVERT]** → `tools/scene/build_tile_yard.py` (emits a `.tscn` + tile data from the GDD-03 plan) |
-
-### 2.3 The 3D surface area is smaller than it looks
-
-A node-type census across all GDScript (`scripts/**`):
-
-| Node type | References | Where |
+| Path | Contents | State |
 |---|---|---|
-| `Control` | 72 | Shell / options / HUD **only** |
-| `Button` / `Label` / `TextureRect` / `VBox` / `HBox` / `Panel` / `ScrollContainer` / `RichTextLabel` | 16 / 15 / 13 / 10 / 6 / 8 / 6 / 3 | Shell UI **only** |
-| `Node3D` | 6 | `player.gd`, `test_yard.gd`, `npc_corwin.gd` |
-| `CharacterBody3D` / `SpringArm3D` / `Camera3D` / `CollisionShape3D` | 2 / 3 / 2 / 1 | The player controller |
-| `MeshInstance3D` / `ArrayMesh` | 2 / 2 | Ground collision rebuild in the yard |
-| `AudioStreamPlayer3D` | 1 | Corwin's VO |
+| `web/` | the game: `index.html`, `css/`, `data/`, `js/`, `assets/`, `tests/`, `docs/`, `preview/` | **the product** |
+| `tools/` | Python asset builders and the gates (`build_palette`, `build_fonts`, `build_brand`, `build_ui_kit`, `check_project`, `check_strings`, `preview_screen`, `fetch_audio`) | active, stdlib-only |
+| `docs 00–07` | design and build specifications | 00–03 and 06–07 active; 04–05 retired |
+| `.github/workflows/` | the gate run on every push | active |
+| `vercel.json` | static publish config for `web/` | active |
+| *gone* | the 3D blockout tree and the earlier root-level browser shell, both retired in this pass; recoverable from Git history at or before `4c8021a` | deleted |
 
-**Conclusion:** the *entire* 3D surface to rewrite is three scripts and three scenes (~650 lines), all of it
-already written in a way that separates concerns (`Visuals` node holds the model, collision is separate,
-settings drive camera behaviour). The 2D rebuild is therefore a **rewrite of the world layer and a re-skin of
-the shell**, not a port of a 3D game.
+There is no engine project, no 3D asset tree, no packaging step and no binary in the
+repository. A clone is ~15 MB, most of it fonts, art and one music bed.
 
-### 2.4 Repository hygiene debt discovered during this audit
+### 2.2 The runtime in plain terms
 
-| # | Finding | Risk | Fix |
-|---|---|---|---|
-| H1 | **The Godot project lives at `.godot/`** — the same name Godot uses for its own import cache. Godot's cache therefore nests at `.godot/.godot/`, and every doc (GDD-05, `GETTING_STARTED.md`) tells contributors the folder is `godot/`. | Contributor confusion; tooling that ignores `**/.godot/**` will silently skip the whole project; CI path assumptions break | Rename to **`godot/`** (T-01). `res://` paths are unaffected; only docs/CI/config references change |
-| H2 | `.gitignore` says `godot/.godot/` and `godot/exports/` — neither path matches the current layout (the real ignores come from a nested `.godot/.gitignore`) | A future export to `.godot/exports/` is ignored only by luck of that nested file | Consolidate into one root `.gitignore` after the rename |
-| H3 | **`DELVE_Godot_4.7.2.zip` (69 MB) is tracked in Git** — the project's own rules say binary artifacts belong in Releases | Clone time, GH limits, `git gc` pain | Move to a GitHub Release asset; keep `package_project.py`; add `*.zip` to `.gitignore` |
-| H4 | **73 MB of 3D-only assets are tracked and would ship in the PCK** (41 MB characters + 32 MB textures) | Direct hit on the browser download budget — the whole point of the pivot | Archive to a Release + a `3d-legacy` tag; delete from the working tree (§10.2) |
-| H5 | `Sky3D` (12 MB) is committed; `Terrain3D` is adopted in docs although **its web export is experimental upstream** | Terrain3D would have blocked the browser build had it been wired | Retire both; document the reversal |
-| H6 | Codex entries carry provenance labels like *"Core mechanic · PHB 2024, ch. 1"* — **PHB** text is not CC-licensed, unlike SRD 5.2.1 | The one legal exposure that survives the "keep fan names" decision | Re-source every codex entry from SRD 5.2.1 and ship the CC-BY attribution block (§15, T-47) |
-| H7 | `smoke_test.gd` has 67 `check()` calls; docs advertise "80 checks" | Docs drift → false confidence | Reconcile in T-44; make the count printed by the test itself the single source of truth |
-| H8 | The root web shell and the Godot game would both want to publish at `/` | Two products fighting over one origin, and over one `localStorage` namespace | Define the topology in §9.3: root = landing page, game at a versioned path |
+`web/index.html` is 30 lines: a `<canvas width="480" height="270">`, a stylesheet link and
+`<script type="module" src="js/main.js">`. `main.js` boots `Shell`, which loads the JSON
+data, the three bitmap faces and the art, wires the screens, and starts a
+`requestAnimationFrame` loop. There is no framework, no bundler and no `node_modules`: the
+Node suites use only the standard library, and the browser uses only the platform.
 
-### 2.5 Docs vs implementation gap (what the papers promise that the build does not have)
+Consequences worth stating out loud:
 
-| GDD | Promises | Built today | Reality for the pixel build |
-|---|---|---|---|
-| 01 | Chapter 1, 6-party statblocks, tactical combat, dialogue trees | nothing | **Out of scope** (D2). Combat *systems* land in M5–M6; *content* does not. |
-| 02 | 5 menu items, first-run contract page, options (50 rows), codex (3 tabs), credits, loading screen, exact strings | ≈95 % of it | **In scope** — this is the shell we port |
-| 03 | 13 areas (A–M), 10 tutorial beats (T1–T10), 44 m × 44 m yard, full model/texture/audio/VO lists | one 3D sandbox with a gate, some props and one NPC | **Partially in scope**: the *map* is built from GDD-03's plan, and beats T1/T3/T4/T8 are implemented (§3.1) |
-| 04 | Blender→glTF 3D pipeline, headless generation, milestone plan | 15 blockout props | **Superseded** by §5 of this document |
-| 00 | UE5 + 3D "lit miniature", technology table, five pillars | — | Pillars **retained** (readability, palette scripting, diegetic dice, silhouette-first); engine/3D specifics superseded |
+- **No dependency risk.** Nothing can break because a package moved; the only versioned
+  things are the data files under Git.
+- **No build step to lie about.** What is tested is what is served, byte for byte.
+- **Cold start is the first paint.** The whole game is ~13 MB of assets today, of which
+  ~12 MB is the unused-in-menu art additions later zones will need; the menu path loads
+  ~500 KB.
+
+### 2.3 Where the sharp edges are
+
+Found while building this pass, and handled:
+
+1. **Module loading needs a server.** `file://` blocks ES modules and `fetch`. Documented
+   in `web/README.md`; the live preview and Vercel both serve over HTTP.
+2. **Audio needs a gesture.** Browsers will not start an audio graph before the player
+   interacts. The legal screen's "any button" is the gesture gate (`Sound.unlock()`), and
+   anything requested earlier is queued.
+3. **Storage can refuse.** Safari private mode and a full quota both throw on write.
+   `SaveStore.flush()` reports and keeps the in-memory state; the player loses durability,
+   not the session.
+4. **Font atlases must be whole-pixel.** Bitmap faces are drawn 1:1 from a `.fnt`
+   descriptor; measuring text with the browser would produce fractional widths and break
+   the grid, so measurement is the sum of glyph advances (the same arithmetic the Python
+   gate uses).
+5. **Nine-patches need tiling, not stretching.** A 48×48 panel with an 8 px margin is
+   drawn as corner-with-repeat, exactly as the offline previewer does it, so both agree.
+6. **A bitmap atlas needs its own metrics.** Nothing in the platform reads a `.fnt`, so the
+   descriptor is parsed in `bmfont.js` and the atlas PNG is fetched by name; `data/fonts.json`
+   is the only mapping from role to face, and the gate measures with the same descriptor the
+   game draws with.
 
 ---
 
 ## 3. TARGET PRODUCT DEFINITION
 
-### 3.1 The slice — exactly what ships, and what is deferred
+### 3.1 The slice — what ships, and what is deferred
 
-**In scope (this build):**
-
-| Item | Source | Notes |
+| Ring | Contains | Status |
 |---|---|---|
-| Full shell | GDD-02 §1–§4 | Legal screen, logo sting, menu, PLAY/first-run contract, ledger, options, codex, credits, loading screen — all real, all in-engine |
-| Yard exploration | GDD-03 areas A, F, G, J, M (+ dressing from B/C/D/I) | Top-down walk of the yard built from GDD-03 §3's coordinate plan |
-| Tutorial beats | T1 (movement), T3 (basic attack), T4 (bonus action & masteries), T8 (full turn-based loop) | The four beats that make the yard a *game*; beacon system supports the rest later |
-| NPCs | Corwin (guard), 2 gate guards (dressed, non-talking), Gundren (voice-over only), 3 training dummies, 1 sparring partner | All pixel rigs; dialogue data from `npc_corwin.gd` |
-| Combat | Initiative, movement, attack/damage, cover, LoS, reactions (opportunity attacks), weapon masteries (2), conditions (Prone), enemy AI | Table Mode, turn-based, grid on |
-| HUD/UI | Exploration HUD, tactical HUD, dice Roll Moment, pause menu, tutorial toasts | Pixel nine-patch kit |
-| Persistence | Contract ledger (8 slots), options, tutorial progress, codex unlocks | Save v2 schema |
+| **P0a — boot** | legal page (ink, parchment, 0.8 s pulse, gesture gate) → 4.0 s logo sting, skippable at 1.5 s, reduced-motion variant | **shipped** |
+| **P0b — menu** | §5.4 lockup, five items on a 21 px pitch, hover underline, `CONTINUE` dimmed 40 %, footer disclaimer + version stamp | **shipped** |
+| **P0c — PLAY** | `Begin a new contract?` overlay when a ledger entry exists; otherwise the First Run contract page with real slot creation | **shipped** |
+| **P0d — CONTINUE** | eight-slot ledger, emblem progress stamps, `DELETE` behind a blood confirm card, scorched-save card | **shipped** |
+| **P0e — OPTIONS** | five schema-driven tabs, 39 rows, pills / toggles / 10-pip sliders / rebinds, scrollbar on Controls | **shipped** |
+| **P0f — CODEX / CREDITS** | placeholder cards; the real pages are the next content work | **stubbed, documented** |
+| **P0g — LOADING** | §5.9 route card, tips, seal; timings and 16 tips already in `data/` | **deferred** |
+| **P1 — first-playable yard** | areas A, F, G, J, M interactive; beats T0, T1, T3, T4, T8 | **next** |
+| **P2 — entire prologue** | all 13 areas, beats T0–T11, in-world creation, encounters, departure | **specified, unscheduled** |
 
-**Deliberately out of scope (deferred, named so they are not missed):**
-
-- Character-creation stations C1–C6 (species/class/background/appearance/name tables) — the contract page
-  remains the only "creation" surface, as today.
-- Tutorial beats T2 (first-person toggle — no first-person in 2D; replaced by a "zoom in" camera cue), T5
-  (in-world signing — remains at the menu contract page), T6 (archery lane: ranged combat arrives in a
-  fast-follow, its AoE/cover foundations *do* ship), T7 (hide/surprise/advantage — deferred), T9 (rest &
-  hit dice — deferred), T10 (pack/folio/codex lectern UI — codex ships in the shell).
-- Areas H (archery), K (rest nook), L (lectern) as *interactive* stations; they ship as dressed geometry.
-- R1 dock lane beyond the gate and the R2 city vista ship only as a painted backdrop card.
-- Skirmish (real-time) mode, Chapter 1, companions, saves in the yard position, cloud saves, mobile
-  touch as a *first-class* target (it must not *break*, §4.9).
-
-### 3.2 Player journey (frame-by-frame)
+### 3.2 Player journey (frame by frame)
 
 ```
-[COLD LOAD]  index.html → engine boot → canvas focus → audio unlock on first gesture
-   ↓
-LEGAL        attribution + fan disclaimer (any key/click continues, unlocks audio)
-   ↓
-STING        4.0 s logo sting, skippable after 1.5 s
-   ↓
-MENU         yard-at-dawn pixel backdrop (3 parallax layers + drifting motes)
-   ├ PLAY ──(no save)──► CONTRACT page (difficulty / pacing / subtitles / camera comfort)
-   │                      └ SIGN & DESCEND ► LOADING (ink route, min dwell) ► YARD
-   ├ PLAY ──(save exists)─► "Begin a new contract?" card ► same path
-   ├ CONTINUE ► ledger (up to 8 contracts, confirm-delete) ► LOADING ► YARD
-   ├ OPTIONS / CODEX / CREDITS ► pixel re-skins of the existing screens
-   └ ESC does nothing (per GDD-02)
-   ↓
-YARD (EXPLORE MODE)   8-way walk, beacons guide T1; interactables bark hints;
-                      pause overlay (Esc) with RESUME / OPTIONS / RETURN TO MENU
-   ↓ step onto a marked encounter tile (dummy line or sparring circle) and press F
-ENCOUNTER TRANSITION  0.6 s: participants snap to cells, grid fades in, initiative rolls
-   ↓
-COMBAT (TABLE MODE)   turn queue at top; budget pips; click-to-move within 6-cell budget;
-                      attack/bonus-action bar; enemy AI turns with telegraphs; Roll Moment on every d20
-   ↓ win / yield (sparring rule: nobody dies in the yard — yield at 1 HP)
-RESULT                loot-free summary card ("Training complete") ► back to EXPLORE
-   ↓ ring the practice bell (M) ► resets dummies, re-arms encounters, replays any completed beat
+load ─► LEGAL ──any input──► STING (4.0 s) ──► MENU
+                                                 │
+   ┌─────────────────────────────────────────────┼───────────────────────────────┐
+   │                                             │                               │
+ PLAY ─► no contract ─► FIRST RUN ─► ledger       CONTINUE ─► LEDGER ─► (menu)    OPTIONS
+   │        └─► SIGN & DESCEND writes slot N ─► menu                             │
+   └─► contract exists ─► overlay card ─► BEGIN NEW ─► FIRST RUN                 CODEX/CREDITS
+                                                                                (stub cards)
 ```
 
-### 3.3 Content manifest (what must be produced, counted)
+The two arrows that **would** say `→ LOADING → YARD` in GDD-07 §5.5 end at `menu` in this
+build (D7). Every other step, string, sound and stored value is as specified; the deviation
+is two function bodies.
 
-| Category | Count | Detail |
+### 3.3 Content manifest (what must exist, counted)
+
+| Asset | Count today | Where |
 |---|---|---|
-| Tileset sources | 5 | packed dirt, forecourt cobble, yard verge/grass, plank (dock), wall stone |
-| Autotile variants | 5 × up to 47 | generated programmatically from corner/edge kits (§5.4) |
-| Props | 22 | from the existing `M_YRD_*` kit: barrel ×2, gatehouse, gate doors ×2, portcullis, guard box, lantern post ×2, notice board, wall pieces ×4, crate, table, canopy, dummy ×3, target butt, pedestal ×3, lectern, bell, rack, fence, torch sconce |
-| Character rigs | 6 | player, Corwin, gate guard, sparring partner, dummy (static), Gundren (portrait/VO only) |
-| Character animations | 9 states × 6 rigs where applicable | idle, walk ×4 dirs, attack, hurt, down, interact |
-| UI nine-patches | 3 | parchment panel, oak/bronze panel, dark ink panel + button states ×3 + tab ×2 + seal + emblem |
-| FX sprites | 8 | hit spark, crit flash, dust puff, beacon wisp, mist layer, rain, torch flicker, dice tumble (6 frames + result states) |
-| Backdrops | 2 | menu yard-dawn (3 parallax layers), R2 city vista card |
-| Audio files | 4 keep + ≈14 new | see §8 |
-| Data files | 2 keep + 3 new | `shell_content.json`, `options_schema.json` kept; new `yard_map.json`, `encounters.json`, `bestiary.json` |
+| Spec strings (§5.11) | 34 verbatim | `web/data/strings.json` → `spec` |
+| Build strings (this build's additions) | 37 (55 are compared by the gate: 34 spec + the 16 tips, sublock, disclaimers and SRD block) | `web/data/strings.json` → `build` |
+| Loading tips (§5.9) | 16 verbatim | `web/data/shell_content.json` |
+| Options rows (§5.6) | 39 over 5 tabs | `web/data/options_schema.json` |
+| Audio cues | 121 declared, 4 with files | `web/data/audio_cues.json` |
+| Bitmap faces | 3 (5 px chrome, 8 px prose, 10 px display) | `web/assets/fonts/` |
+| Palette deliverables | surface 32 · below 8 · LUT 32 | `web/assets/pixel/palette/` |
+| UI nine-patch styles | 9 styles, 22 PNGs | `web/assets/pixel/ui/` |
+| Modules | 23 ES modules (2 entry, 8 core, 5 UI, 8 screens) | `web/js/**` |
+| Gates | 5 commands (2 Python, 3 Node), plus the non-gating boot-reel capture | `tools/`, `web/tests/` |
 
 ---
 
 ## 4. TECHNICAL ARCHITECTURE
 
-### 4.1 Engine pinning
+### 4.1 The platform is the runtime
 
-- **Godot 4.7.2 Standard (GDScript)** — identical to the shipped project; no .NET, no Forward+. The CI
-  container is pinned to the matching export-template tag (observed available: `4.7.2-stable` on the
-  `abarichello/godot-ci` image — **[VERIFY]** the exact tag at T-40).
-- Renderer stays **`gl_compatibility`** (WebGL2): mandatory for browser targets, already configured.
-- No GDExtension plugins at runtime (kills the Terrain3D web-export risk permanently).
-
-### 4.2 `project.godot` — the exact pixel block (T-02)
-
-Replace/add in the current file:
-
-```ini
-[application]
-config/version="0.4.0-pixel"
-
-[display]
-window/size/viewport_width=480
-window/size/viewport_height=270
-window/size/window_width_override=1920
-window/size/window_height_override=1080
-window/stretch/mode="viewport"
-window/stretch/aspect="keep"
-window/stretch/scale_mode="integer"
-
-[gui]
-theme/default_font_antialiasing=0
-theme/default_font_subpixel_positioning=0
-theme/default_font_hinting=0
-
-[input]
-; see §4.9 — game_view/game_jump removed; grid_* and interact added (T-11;
-; until then actions are registered at runtime by game_state.gd)
-
-[rendering]
-renderer/rendering_method="gl_compatibility"
-renderer/rendering_method.mobile="gl_compatibility"
-textures/canvas_textures/default_texture_filter=0
-2d/snap/snap_2d_transforms_to_pixel=true
-2d/snap/snap_2d_vertices_to_pixel=true
-; ink-1 clear colour
-environment/defaults/default_clear_color=Color(0.039, 0.051, 0.063, 1)
-
-[editor_plugins]
-; Sky3D removed
-enabled=PackedStringArray()
-```
-
-Rationale, point by point: `viewport` stretch renders the *whole frame* (including text) at 480×270 and
-integer-upscales it — the honest pixel look; `scale_mode=integer` prevents fractional pixel sizes; nearest
-filtering globally; the two `snap_2d` flags kill sub-pixel shimmer (camera smoothing must also stay off, or
-use pixel-snapped smoothing); the `[gui]` block makes bitmap fonts rasterise without antialiasing/hinting
-mush. **[VERIFIED — T-02, 2026-09-23]** every key above exists under that exact name in Godot 4.7.2
-(checked against the 4.7 `ProjectSettings` class reference and `TextServer` enums): **no renames were
-needed**, and each `=0` value maps onto the intended enum member — `FONT_ANTIALIASING_NONE`, `HINTING_NONE`,
-`SUBPIXEL_POSITIONING_DISABLED`, texture filter Nearest. Annotations are carried as full-line `;` comments
-in the shipped file (ConfigFile documents full-line comment lines); the executable import pass is the CI
-gate per §11.1. Full record in Appendix A.
-
-### 4.3 Directory layout (new tree under `godot/`)
-
-```
-godot/
-├ project.godot, export_presets.cfg, icon.png
-├ data/            options_schema.json · shell_content.json
-│                  yard_map.json [NEW] · encounters.json [NEW] · bestiary.json [NEW]
-├ scenes/
-│  ├ ui/shell.tscn                     [CONVERT]
-│  ├ world/yard.tscn                   [NEW] (TileMapLayers + actors + camera + HUD)
-│  ├ world/encounter.tscn              [NEW] (combat controller, grid overlay, queue UI)
-│  └ actors/{player,npc_corwin,guard,dummy,sparring_partner}.tscn  [NEW/CONVERT]
-├ scripts/
-│  ├ core/{game_state,sound,dice,rng_streams}.gd      [KEEP/KEEP/NEW/NEW]
-│  ├ ui/{shell,ui_pixel,options_page,backdrop_pixel,load_route}.gd
-│  ├ world/{yard,player_2d,npc_2d,interactable,beacon,day_clock,weather}.gd
-│  └ combat/{turn_engine,combatant,rules_grid,pathing,los,aoe,conditions,masteries,enemy_ai,ui_tactical}.gd
-├ assets/
-│  ├ pixel/                            [NEW — all generated art lands here]
-│  │  ├ tiles/ props/ chars/ ui/ fx/ backdrops/ dice/
-│  │  └ palette/{palette_surface.png, palette_below.png, palette_lut.json}
-│  ├ fonts/{pixel_body_8.fnt+png, pixel_ui_5.fnt+png, *OFL/CC0 notices}
-│  └ audio/{*.mp3 (web) + *.ogg (desktop keep)}
-├ addons/                              [RETIRE sky_3d]
-├ tests/ tools/ docs/ licenses/        [as today, extended per §11]
-```
-
-Everything under `assets/pixel/` is **machine-verifiable** (§5.7): an atlas manifest JSON lists every
-expected PNG with size, palette-group and source prompt id; a CI lint fails on drift.
-
-### 4.4 Autoloads
-
-| Autoload | Script | Why |
+| Need | Used | Why |
 |---|---|---|
-| `GameState` | `core/game_state.gd` | unchanged role; gains save v2 + localStorage migration hook |
-| `Sound` | `core/sound.gd` | unchanged; source set switches by platform |
-| `Dice` **[NEW]** | `core/dice.gd` | seeded d20 engine (§6.4); single authority for every roll in the game |
-| `Streams` **[NEW]** | `core/rng_streams.gd` | named, independently-seeded RNG streams (`world`, `combat`, `ai`, `fx`) so combat determinism is never polluted by particle effects |
+| Drawing | Canvas 2D, `imageSmoothingEnabled = false` | Integer-snapped blits; no shaders to compile, no GPU API to feature-detect |
+| Text | Bitmap faces (`.fnt` + PNG), 1:1 blits | Whole-pixel advances, identical in the gate, the previewer and the browser |
+| Timing | `requestAnimationFrame` with a clamped delta | One clock; every timeline reads milliseconds from JSON |
+| Input | `keydown`/`keyup`, pointer events, Gamepad polling | Keyboard, mouse, touch and pad through one action map |
+| Audio | WebAudio `AudioBufferSourceNode` + four gain buses | Sample-accurate, offline-friendly, no codec beyond the files themselves |
+| Storage | `localStorage`, one JSON document | Survives reloads on every target browser; no server, no account |
+| Transport | `fetch` for JSON/PNG/OGG | Same-origin, cacheable, inspector-visible |
 
-### 4.5 Scene graph — the three runtime scenes
+Nothing above is polyfilled, and nothing above requires a dependency.
 
-```
-yard.tscn
-└ Yard (Node2D, script yard.gd)
-   ├ GroundLayer   (TileMapLayer — painted surfaces, z 0)
-   ├ ObjectLayer   (TileMapLayer — walls/fences, occlusion + collision, z 1)
-   ├ Props         (Node2D, y-sorted)   22 prop scenes
-   ├ Actors        (Node2D, y-sorted)   player + NPCs + dummies (CharacterBody2D rigs)
-   ├ FX            (CanvasLayer)        mist, weather, torch flicker, beacon wisps
-   ├ Camera2D                          pixel-snapped, clamped to 464×464 world bounds, zoom 1×
-   ├ GridOverlay   (CanvasLayer, hidden until encounter)  cell highlight + LoS mask + AoE preview
-   ├ HUD           (CanvasLayer)        exploration HUD / pause overlay
-   └ EncounterController (script combat scene owner)
-
-encounter.tscn (instantiated into yard on trigger)
-└ Encounter (Node)
-   ├ TurnEngine     (node, script turn_engine.gd — state machine, queue, budgets)
-   ├ RulesGrid      (ref into yard's tile data: cost / solid / cover / elevation / los layers)
-   ├ Pathing        (AStarGrid2D wrapper)
-   ├ Combatants[]   (wrappers referencing actor rigs)
-   ├ EnemyAI
-   └ TacticalUI (CanvasLayer: queue strip, action bar, budget pips, tooltips)
-```
-
-The player scene becomes:
+### 4.2 Module graph
 
 ```
-player.tscn → CharacterBody2D
- ├ SpriteRig (Node2D; children are Sprite2D/polygon parts, animation via AnimationPlayer)
- ├ Hitbox / InteractArea (Area2D, radius 1.2 tiles)
- └ AudioStreamPlayer2D (grunts/footsteps)
+index.html
+ └─ js/main.js                     boot, error surface, frame start
+     ├─ js/shell.js                canvas · whole-number scaling · screen swap · clock · input routing
+     │   ├─ js/core/data.js        all JSON loaded once; string lookup with {n} formatting
+     │   ├─ js/core/state.js       the screen state machine + live settings
+     │   ├─ js/core/save.js        the ledger, settings and tutorial flags in localStorage
+     │   ├─ js/core/input.js       action map, key labels, saved rebinds
+     │   ├─ js/core/sound.js       cue table, buses, gesture gate, focus mute
+     │   ├─ js/core/palette.js     32 + 8 ramp, the LUT remap, rgba()/mix() helpers
+     │   ├─ js/core/brand.js       emblem/wordmark geometry, stamp selection
+     │   ├─ js/core/dice.js        d20, dice expressions, named RNG streams
+     │   ├─ js/ui/render.js        the only module that touches the canvas
+     │   ├─ js/ui/bmfont.js        the `.fnt` parser (shared with the gate's arithmetic)
+     │   ├─ js/ui/font.js          PixelFont: measure, wrap, draw, tint cache
+     │   ├─ js/ui/kit.js           panels, labels, sprites, scrollbar, nine-patch cache
+     │   ├─ js/ui/widgets.js       Button · ListRow · PillGroup · Slider · Rebind · Tooltip · Card
+     │   └─ js/screens/*.js        legal · sting · menu · stub · first_run · ledger · options
+     └─ js/screens/screen.js       the ShellScreen base every page extends
 ```
 
-### 4.6 The Grid — one data source, three consumers
+The gate walks this graph statically: `index.html` must name a module entry point, and every
+relative `import` inside `web/js/**` must resolve to a file that exists.
 
-The yard's `TileMapLayer` custom-data layers are the single source of truth; nothing else stores geometry:
+### 4.3 Data contracts
 
-| Layer key | Type | Meaning | Consumers |
+| File | Contract |
+|---|---|
+| `data/strings.json` | `spec` = the §5.11 master, byte-for-byte; `build` = this build's strings. `t(id, args)` resolves `spec` first, then `build`, and returns the id (with a console warning) if neither exists — never an empty string |
+| `data/shell_timings.json` | every millisecond and every rect the shell uses, plus `_note` fields that record each deviation from the spec's numbers and the spec's originals for comparison |
+| `data/options_schema.json` | 5 tabs, 39 rows; `control` ∈ `list`/`toggle`/`slider`/`rebind`/`locked` selects the widget; the page renders whatever the schema says |
+| `data/shell_content.json` | the 16 loading tips, the credits blocks, the legal block keys, the tutorial beat list |
+| `data/brand.json` | emblem size, three step rects, stamp variants, wordmark cells — written by `tools/build_brand.py` |
+| `data/fonts.json` | which face plays which role (`ui`, `body`, `display`) |
+| `data/audio_cues.json` | 121 cues by id with type and file; unknown ids are silent, missing files log once |
+
+**Rule:** if a screen needs a number, the number belongs in one of these files. A literal
+rect inside a screen is a bug the reviewer should reject.
+
+### 4.4 Rendering rules (non-negotiable)
+
+1. **Whole pixels.** Every rect is integer; the painter rounds before drawing.
+2. **Whole-number scale.** `resize()` picks `floor(min(w/480, h/270))`, minimum 1, and sets
+   the CSS size from it. No fractional scale, ever.
+3. **No smoothing.** `imageSmoothingEnabled = false` is set on every context, including the
+   offscreen surfaces used for text tinting.
+4. **Nine-patches tile.** Corners 1:1, edges one-axis, centre repeated — never stretched.
+5. **Palette-locked.** Art may only use the 40; the gate lints every committed PNG.
+6. **Text is bitmap.** No `fillText`, no web fonts, no `measureText` — advances only.
+7. **Draw order is explicit.** Screens draw in the order they list widgets; modal cards draw
+   last and take input first.
+
+### 4.5 Fonts & text
+
+Three faces, all converted to AngelCode `.fnt` + atlas PNG by `tools/build_fonts.py`:
+
+| Role | Face | Size | Used by |
 |---|---|---|---|
-| `solid` | bool | blocks movement | pathing, physics, LoS |
-| `cost` | float | movement cost multiplier (1 normal, 2 difficult terrain) | pathing |
-| `cover` | int 0/2/5 | none / half / three-quarters cover granted to a creature behind this cell (against an attack through it) | combat maths |
-| `elev` | int | elevation step in 5-ft units | combat maths, sprite y-offset |
-| `los_block` | bool | blocks line of sight (walls, solid props) | LoS raycast |
-| `encounter` | string | encounter id triggered when stepped on (`dummy_line`, `sparring`) | yard script |
-| `interact` | string | interactable id | interactables |
+| `ui` | 5×7 system face (MIT) | 5 px glyphs, 8 px line | menu items are the display face; chrome, hints, pills, footer |
+| `body` | Silkscreen (OFL-1.1) | 8 px glyphs, 11 px line | prose: disclaimers, help lines, card bodies |
+| `display` | the 5×7 table at 2× | 10 px glyphs | headings and menu items |
 
-Combat never mutates these layers; transient state (who occupies which cell, active AoEs) lives in the
-`TurnEngine` as dictionaries keyed by `Vector2i` cell coords — cheap, serialisable, testable.
+Spec deviation, recorded in the build notes: GDD-07 §4.8/§5.1 name *Pixel Operator* and
+*m5x7*, which are not vendored here; the substitutes are nearest-in-class and their licences
+ship beside the atlases. Wrapping is measured with the same advance table the Python gate
+uses, so a layout that passes the gate cannot overflow at runtime.
 
-### 4.7 Rendering & camera rules (non-negotiable)
+### 4.6 The grid — one data source, three consumers
 
-1. All zoom values are **integers** (world 1×; dialogue/cut-in 2×). Half-zooms are forbidden — they create
-   half-sized pixels.
-2. `Camera2D.position_smoothing_enabled = false`; movement "feel" comes from tile-snapped positions and
-   2-frame walk cycles, not from float interpolation.
-3. Y-sort is on for `Props` and `Actors`; sprite origins at the feet.
-4. Characters are drawn in a 16 × 32 frame (16 × 24 body) on 16-px cells; tall props may overdraw up to 48 px.
-5. World-space text (damage numbers, "HIT!") uses the 5×7 pixel font at integer scale and is culled at bounds.
-6. One `CanvasItemMaterial` + LUT shader per *zone* (not per sprite) applies the surface→below palette remap
-   when a scene demands it — never per-frame material swaps.
+`data/options_schema.json` proves the pattern: **one** description of the rows, consumed by
+(a) the page that renders them, (b) the gate that measures their help lines against the
+panel, and (c) the offline previewer that draws them to PNG. The yard takes the same
+approach in GDD-07 §12: one map JSON with per-tile `solid`, `cost`, `cover`, `elev`,
+`los_block`, `encounter`, `interact`, consumed by the renderer, the walkability check and
+the combat overlay.
 
-### 4.8 Fonts & text (T-21)
+### 4.7 Persistence
 
-| Use | Font | Size | Source/licence |
-|---|---|---|---|
-| UI chrome, HUD labels, buttons | `m5x7`-class 5×7 pixel font | 5 px | CC0 (verify licence file ships) |
-| Body text: codex, options help, contract, dialogue | `Pixel Operator`-class 8 px pixel font | 8 px | CC0 (verify) |
-| "Reading magnification" (accessibility) | same, at 2× via `ui_scale = 2` (§6.12) | 10/16 px | — |
+One document, key `delve_v2`, schema 2:
 
-Imported as BMFont (`.fnt` + PNG atlas), which Godot 4 loads as a bitmap `FontFile`; no runtime TTF
-rasterisation in-game. The Cinzel/Alegreya/IM Fell TTFs remain in the repo for the *landing page* and are
-excluded from the export filter. Codex text at 8 px / 480 px wide = ~58 chars per line — validated against the
-longest existing SRD entry (T-21 acceptance test).
+```json
+{ "schema": 2,
+  "slots": [ {"name":"New contract","class":"Unassigned","level":1,"chapter":"Prologue",
+              "signed_at":"2026-09-23T09:12:44.101Z","beats":[]}, null, … 8 in total ],
+  "tutorial": {"completed_beats": []}, "codex_unlocks": [], "combat_stats": {},
+  "settings": {"difficulty":"Balanced","volume_master":90} }
+```
 
-### 4.9 Input model
+- **Eight slots**, exactly as §5.5 draws them; a taken slot refuses a second contract rather
+  than overwriting one.
+- **Corrupt is a first-class path**: a document that will not parse sets the corrupt flag and
+  the ledger shows the §5.5 scorched card with `RETRY` / `CONTINUE WITHOUT SAVING`.
+- **Write failures are survivable**: the in-memory state stays, the console gets one line.
+- **Settings** resolve as schema default → save → live change, and the save wins on reload.
 
-| Binding (default) | Action | Notes |
+### 4.8 Input model
+
+Named actions, not key codes: `menu_up`, `menu_down`, `menu_accept`, `menu_back`, `ui_left`,
+`ui_right` for the shell, plus the twelve §5.6 yard rows (`game_move`, `game_sprint`,
+`game_interact`, `game_end_turn`, `game_pause`, `grid_overlay`, `folio`, `journal`, `codex`,
+`hide`, `zoom_view`, `pad_layout`). Rebinding captures the next physical key, stores its code
+and re-applies it at boot through `InputActions.applyOverrides()`. Gamepad axes and buttons
+are polled each frame and translated into the same actions, so a pad, a keyboard and a
+pointer all drive `activate()` on the same widget.
+
+### 4.9 Audio
+
+Four gain buses (Master / Music / SFX / Voice), ten-pip sliders in 0–100 mapping to a
+squared taper, and one cue table. `play(id)` on an unknown cue is a silent no-op;
+`playLoop(id)` enforces one bed per bus; `unlock()` is the browser gesture gate; muting on
+window blur is the §5.6 default. Music and ambience are the only looping cues.
+
+### 4.10 Performance budget
+
+| Budget | Target | Measured |
 |---|---|---|
-| WASD / arrows / d-pad | move (explore) | 8-way, normalised |
-| F / A button | interact · confirm target | context label in HUD |
-| Space | end turn (combat) · confirm | reused per existing schema |
-| Esc | pause / back | never captured; no pointer lock anywhere in this build |
-| G | toggle grid overlay (explore) | "on-hover/always" per options |
-| 1/2/3 | select party slot (future) | reserved |
-| Tab | folio/codex quick-open | per existing schema |
+| Frame | ≤ 16.7 ms of draw work at 1080p integer scale | not yet profiled in a real browser — see §13 risks |
+| Menu cold load | ≤ 1.0 MB over the wire | ~500 KB (fonts 40 KB, art 12 KB, data ~90 KB, code ~120 KB) |
+| Whole repository | ≤ 15 MB transfer for the full game | ~15 MB including the 1.2 MB music bed |
+| Draw calls | ≤ 32 worst combat (GDD-07 §1) | canvas blits, not GPU calls: the yard will count tile batches |
+| Startup | interactive in ≤ 1.5 s on a mid-range laptop | one data fetch batch, three font atlases, 22 PNGs |
 
-- Mouse in combat: hover cell = highlight; click = move/attack target; right-click = cancel selection.
-- **Touch:** not designed for, but must not break: taps map to clicks, a minimal screen-edge d-pad appears on
-  coarse pointers (CSS `pointer: coarse` in the HTML shell sets a flag the engine reads). T-46.
-- Removed vs today: `game_view` (no first person), `game_jump` (no jumping; ladders/ledges are later),
-  mouse-capture actions.
+The menu draws ~60 blits per frame. There is no per-frame allocation in the draw path:
+widget objects are built once per page entry and reused.
 
-### 4.10 Persistence & migration
+### 4.11 Browser support
 
-- File: `user://delve_v2.json` (atomic tmp+rename, debounced — same mechanics as v1).
-- Schema v2 = v1 fields **plus** `tutorial: {completed_beats: ["T1","T3","T4","T8"], seen_toasts: []}`,
-  `codex_unlocks: []`, `combat_stats: {}`, `schema: 2`.
-- Web bridge (T-38): on boot, when `OS.has_feature("web")`, read `localStorage["delve.contract.v1"]` and
-  `["delve.options.v1"]` via `JavaScriptBridge.eval()`, convert, write once to v2, then flag
-  `delve.migrated.v2 = true`. One-way, idempotent, logged.
-- Also on web: call `navigator.storage.persist()` on first successful save (eviction hardening, T-38).
-- Version path stability (§9.3) means the origin never changes under a signed save; a deploy at a *new* path
-  ships with a redirect from the old path so saves follow.
-
-### 4.11 Performance budget (measured in CI, §11)
-
-| Metric | Budget | How |
+| Browser | Status | Notes |
 |---|---|---|
-| Draw calls (yard, worst combat) | ≤ 32 | atlas everything; `Performance.get_monitor(MONITOR_RENDER_TOTAL_DRAW_CALLS_IN_FRAME)` asserted in a test |
-| Triangles/objects | trivial (2D) | — |
-| PCK size | ≤ 2.5 MB | export-filter excludes; CI asserts file size |
-| Total transfer | ≤ 15 MB | CI asserts `index.wasm + index.pck + shell` after host compression |
-| Frame time | ≤ 8 ms p95 on CI runner headless-render proxy; 60 fps target desktop | screenshot-walk timing harness |
-| First playable | ≤ 8 s on 10 Mbps simulated | Playwright network-throttle test |
+| Chrome / Edge (recent) | target | reference implementation |
+| Firefox (recent) | target | `image-rendering: crisp-edges` path |
+| Safari 17+ (macOS, iOS) | target | strictest on autoplay and storage; both handled |
+| Anything without ES modules | not supported | the page is a module graph by design |
 
 ---
 
-## 5. ART PIPELINE — AI-GENERATED PIXEL ART, DETERMINISTICALLY CURATED
+## 5. ART PIPELINE — DETERMINISTIC BUILDERS, LOCKED PALETTE
 
-### 5.1 Honest constraints (why the pipeline looks the way it does)
+### 5.1 Honest constraints
 
-Image models are excellent at *painting* and bad at the four things pixel art actually requires:
-
-1. **Exact low resolution** — generations come out 1024² with soft edges and gradients;
-2. **Locked palettes** — every generation invents its own colours;
-3. **Tileability** — generated "tilesets" almost never wrap seamlessly;
-4. **Cross-asset consistency** — two prompts produce two different games.
-
-Therefore the model is used as a *painter of sources*, and everything pixel-specific is done by a
-deterministic Python toolchain (Pillow + NumPy in a project venv — verified working in this environment):
+Image models paint well and respect pixel-art rules badly: they invent palettes, refuse to
+tile, and drift between two prompts. So the model is only ever a **painter of sources**; the
+pixel-specific work is done by deterministic Python in `tools/`, and the shipped art is
+whatever those builders emit:
 
 ```
-GENERATE ──► DOWNSCALE ──► QUANTISE ──► CLEAN ──► PACK
- (image       (box/Lanczos    (nearest       (despeckle,    (atlas,
-  model)       to 16/32 px)    in OKLab to     1-px outline,  .import,
-                               palette)        silhouette     manifest)
-                                               QA)
+BUILD ──► QUANTISE ──► LINT ──► PACK
+(builder   (nearest      (every pixel  (atlas + ui_kit.json +
+ emits      palette       inside the     art_manifest.json)
+ pixels)    entry)        locked 40)
 ```
 
-Every stage after GENERATE is a pure function of (source image, palette, parameters), which means: re-runs
-are reproducible, CI can lint the output, and a human can approve a *locked* atlas that never drifts.
+Every byte of art in `web/assets/pixel/` today is produced this way, which is why the art
+lint can be exact: there is no hand-edited file to drift.
 
-### 5.2 Stage detail
+### 5.2 Builders
 
-**GENERATE.** One generation per *asset family* (never per tile): e.g. "stone wall running, dawn light,
-flat limited palette, hard edges, no gradient" at 1024×1024; "training dummy, front 3/4 view" isolated on a
-flat background. Keep every raw generation as `raw_<id>.png` beside a `prompts.json` entry (id, family,
-prompt, seed, date, approval status) — provenance for the credits and for regeneration.
-
-**DOWNSCALE.** Box-filter to the target grid (16×16 tiles from 256×256 crops; 16×24 characters from
-256×384). Box filtering collapses soft gradients into hard steps *before* quantisation, which is what makes
-the result read as pixel art instead of a blurry photo.
-
-**QUANTISE.** Map every pixel to the nearest palette entry in OKLab (perceptual) space, **no dithering** for
-sprites/props/tiles (dithering at 16 px reads as noise), ordered 4×4 Bayer dither allowed *only* for sky and
-mist gradients. Output: indexed PNG.
-
-**CLEAN.** Automated passes, each with a threshold in `art_pipeline.json`:
-- despeckle (remove isolated pixels and 1-px holes),
-- contrast boost within ramp (push mid-greys to their ramp ends so shapes stay readable at 1×),
-- **silhouette test** (GDD-00 pillar 1): downsample to 8 px, threshold alpha, assert the outline is a single
-  connected blob for characters/props; failures go to a `needs_redraw/` folder, not into the atlas,
-- 1-px dark outline pass on characters only (readability on busy floors).
-
-**PACK.** Compose family atlases (one PNG per family + one `atlas_manifest.json`), generate Godot `.import`
-sidecars (or let the CI import pass write them, T-40), slice autotiles (§5.4), and write `assets/pixel/`.
-The packer is the only writer into `assets/pixel/`; hand-edited files there fail the CI lint.
+| Builder | Emits | Notes |
+|---|---|---|
+| `tools/build_palette.py` | `palette_surface.png` (32×1), `palette_below.png` (8×1), `palette_lut.json` | the ramps and the surface→below remap; `web/js/core/palette.js` mirrors it and the gate compares the two |
+| `tools/build_fonts.py` | three `.fnt` + PNG atlases | from sources in `tools/sources/`, one glyph table per face |
+| `tools/build_brand.py` | emblem, three step/stamp variants, wordmark strip, lockups, `brand.json` | geometry is data, so the sting, menu, ledger stamps and loading seal agree |
+| `tools/build_ui_kit.py` | 9 nine-patch styles, 22 PNGs, `ui_kit.json` | margins are declared, not guessed |
+| `tools/preview_screen.py` | `web/preview/*.png` | renders pages offline from the same data, fonts and nine-patches |
 
 ### 5.3 The locked palette
 
-**Surface ramp — 32 colours** (existing shell colours are embedded and marked ★):
+**Surface ramp — 32 colours:**
 
 | Group | 0 (dark) | 1 | 2 | 3 | 4 (light) |
 |---|---|---|---|---|---|
-| Ink/shadow | `#0A0C10` | `#101418`★ | `#1A2126`★ | `#263038` | — |
+| Ink/shadow | `#0A0C10` | `#101418` | `#1A2126` | `#263038` | — |
 | Stone | `#2C3238` | `#474F55` | `#6C757B` | `#9AA3A8` | — |
-| Parchment | `#B9A67F` | `#D6C6A3` | `#E9DFC8`★ | `#F6EFDD`★ | — |
-| Bronze/gold | `#5E3D19`★ | `#8A5A26` | `#B0793A`★ | `#D9A463`★ | `#F0CD8E` |
+| Parchment | `#B9A67F` | `#D6C6A3` | `#E9DFC8` | `#F6EFDD` | — |
+| Bronze/gold | `#5E3D19` | `#8A5A26` | `#B0793A` | `#D9A463` | `#F0CD8E` |
 | Oak/wood | `#3F2410` | `#5A3418` | `#7A4B2A` | `#A06A3C` | — |
-| Blood/rust | `#5C1C17` | `#8E2F26`★ | `#B4553F` | — | — |
+| Blood/rust | `#5C1C17` | `#8E2F26` | `#B4553F` | — | — |
 | Moss/verge | `#3C4823` | `#5B6B34` | `#7F8F4A` | — | — |
 | Skin | `#8A5636` | `#C08356` | `#E8B58C` | — | — |
 | Dawn sky | `#E0A06A` | `#F2C98A` | — | — | — |
 
-**Below ramp — 8 colours** (the infection): teal `#16343A → #1C4F52 → #2F8F7A`, mint accent `#74E0B4`★
-(existing OBELISK/MINT), violet `#2E2140 → #4B2E6B → #8A4FD0`, bone `#C9C2A8`.
+**Below ramp — 8 colours:** teal `#16343A → #1C4F52 → #2F8F7A`, mint `#74E0B4`, violet
+`#2E2140 → #4B2E6B → #8A4FD0`, bone `#C9C2A8`.
 
-**The LUT.** `palette_lut.json` maps each surface index → below index ramp-for-ramp (stone↔teal, ink↔violet,
-parchment↔bone, bronze↔mint). The remap shader samples a 32×1 `NEAREST` texture: `below.rgb =
-texture(lut, vec2((surface_index+0.5)/32.0, 0.5))`. One uniform (`infection`, 0–1) blends per-zone. This
-delivers GDD-00's "the art direction itself is the horror story" for zero extra textures, and is unit-tested
-by asserting pixel-exact output on a reference tile (§11).
+**The LUT.** `palette_lut.json` maps each surface index to a below index ramp-for-ramp
+(stone↔teal, ink↔violet, parchment↔bone, bronze↔mint; the remaining families key by
+luminance and are marked as such). The runtime applies it as a **per-pixel remap on an
+offscreen surface** — the same maths a 32×1 lookup texture would do, with no texture unit
+required:
 
-Palette deliverables: `palette_surface.png` (32×1), `palette_below.png` (8×1), `palette_lut.json`, plus the
-CI lint (§5.7) that rejects any committed PNG containing a colour outside the 40.
+```js
+below.rgb = BELOW[ REMAP[ surfaceIndex(surface.rgb) ] ]
+```
 
-### 5.4 Tilesets & autotiling (the cheap trick that makes 5 tilesets feel like 50)
+One number (0–1) blends the two ramps, so a zone's infection is a single scalar. The palette
+mirror is asserted twice: `check_project.py` compares `palette.js` against the builder, and
+`web/tests/run.mjs` compares it against `palette_lut.json`.
 
-For each ground family we author **five source tiles** — centre, N/S/E/W edges, four corners — then generate
-the full **47-tile blob set** programmatically by compositing edge/corner strips over the centre (standard
-Wang-blob construction; fully deterministic). Godot 4's TileSet **terrain sets in "match corners and sides"
-mode** consume exactly this 47-bitmask layout, so autotiling in-editor becomes paint-and-done.
+### 5.4 Tiles & autotiling
 
-Walls/fences use the same idea in 16×32 (wall face + cap). Water/mist edges animate with 2-frame swaps.
-Every autotile variant is written into the atlas by the packer, so art cost stays at 5 tiles per family
-regardless of map complexity. The yard's 29×29 ground is painted from GDD-03 §3's plan (cobble forecourt,
-packed dirt lanes, verge borders, plank dock sliver at the gate).
+Five source tiles per ground family (centre, N/S/E/W edges, four corners) generate the full
+47-tile blob set programmatically by compositing strips over the centre. The renderer indexes
+the set by the 8-neighbour bitmask of each cell, so painting a 29×29 yard is a bitmask lookup
+per tile rather than 841 authored images. Walls use the same construction at 16×32; water and
+mist edges are two-frame swaps. Every variant is emitted by the packer, so art cost stays at
+five tiles per family.
 
 ### 5.5 Characters — cutout rigs, not sprite sheets
 
-Sprite-sheet generation cannot keep limbs consistent across frames. Instead each character is a **cutout
-rig**: 6–9 flat pixel parts (head, torso, arm L/R, leg L/R, weapon, cloak) generated once per family, then
-animated by transform tracks in an `AnimationPlayer` (rotation/offset per part). Frames are therefore
-consistent *by construction*.
+Each character is 6–9 flat pixel parts composed at runtime, animated by transform tracks in
+JavaScript (rotation and offset per part, integer-rounded per frame) — frames are consistent
+by construction rather than by redrawing.
 
-- Nine authored states: `idle` (2-f), `walk_{N,S,E,W}` (4-f each; N/S mirrored from one drawing, E/W from one),
-  `attack` (3-f + FX), `hurt` (1-f flash), `down` (1-f), `interact` (2-f).
-- Two export modes, chosen per rig: **live rig** (fewer files, tiny runtime cost — fine for ≤ 8 on-screen
-  actors) or **baked atlas** (a headless bake script renders the rig to a spritesheet for the FX-heavy dummy
-  resets). Default: live rig.
-- The existing Quaternius bodies/UAL animations **[RETIRE]**; their *motion intent* (speed thresholds in
-  `player.gd`) is preserved as 2D timings: walk 4.5 → 3 tiles/s, sprint 7.5 → 5 tiles/s at 16 px/tile.
+- States: `idle` (2 f), `walk_{N,S,E,W}` (4 f each; N/S mirrored, E/W mirrored), `attack`
+  (3 f + FX), `hurt` (1 f), `down` (1 f), `interact` (2 f).
+- Speeds: walk 3 tiles/s, sprint 5 tiles/s, acceleration 12 tiles/s² (GDD-07 §7.3).
+- A **baked atlas** is available for FX-heavy resets (the dummy line) where the parts never
+  change: the packer can render the rig to a sheet, and the renderer treats it as one sprite.
 
-### 5.6 Props, UI, FX, dice
+### 5.6 The palette lint (gate-enforced)
 
-- **Props:** the 15-name `M_YRD_*` kit + §3.3 additions, each generated isolated → cleaned → foot-anchored at
-  16-px grid multiples (a barrel is 16×16, the gatehouse is 64×48). Occlusion flags from the same JSON that
-  feeds TileMap `los_block`.
-- **UI nine-patches:** three panel styles generated as 48×48 sources with margins declared in
-  `ui_kit.json` (parchment: 8 px corners; oak/bronze: 6; ink: 4) + buttons (normal/hover/pressed/disabled),
-  tabs, wax seal, delve emblem (pixel redraw of the existing SVG lockup), scrollbar thumb/track.
-- **FX:** hit spark (3-f), crit flash (2-f), dust puff, beacon wisp (4-f loop), mist band (2-f), rain (2-f
-  tile), torch flicker (3-f). All palette-locked; FX may use the below ramp freely.
-- **Dice:** the d20 is a generated 6-frame tumble + 4 result states (fail/success/crit/fumble) in bronze and
-  mint variants. It is the same visual object in the world (contract table) and in the UI — GDD-00 pillar 5,
-  kept literally.
+`tools/check_project.py` reads every committed PNG under `web/assets/pixel/` and fails if any
+pixel falls outside the 40 colours, if a nine-patch style's declared size does not match the
+file, or if the art exceeds its byte budget (1.5 MB). Current total: **12 KB** of shell art.
 
-### 5.7 Naming, manifest, and the palette lint (CI-enforced)
+### 5.7 Art production order
 
-```
-assets/pixel/tiles/T_YRD_COBBLE.png        — one PNG per family atlas
-assets/pixel/chars/C_PLAYER.png + .rig.json
-atlas_manifest.json: [{path, family, grid, palette_group, source_prompt_id, sha256}…]
-```
+1. Palette + UI kit — unblocks the shell. **done**
+2. Ground families + wall kit — unblocks the yard greybox.
+3. Player rig + Corwin rig — unblocks movement and dialogue.
+4. Props pass 1: gate, walls, dummies, bell, lanterns.
+5. Combat FX + dice states.
+6. Backdrops: menu dawn parallax + the R2 vista card.
+7. Props pass 2, weather and mist.
 
-CI lint (`tools/pixelart/lint_artifacts.py`, no Godot required):
-1. every PNG under `assets/pixel/` ∈ manifest (and vice versa);
-2. every PNG's unique colours ⊆ palette (exact RGB match on indexed PNGs);
-3. tile atlases are multiples of 16; character frames are multiples of 16×32;
-4. no PNG larger than 256 KB; total `assets/pixel/` ≤ 1.5 MB;
-5. `.rig.json` parts reference existing atlas regions.
-
-### 5.8 Art production order
-
-1. Palette + UI kit (unblocks shell work, M2).
-2. Ground families + wall kit (unblocks the yard greybox in tiles, M4).
-3. Player rig + Corwin rig (unblocks movement and dialogue, M4).
-4. Props pass 1: gate, walls, dummies, bell, lanterns (dressing, M4).
-5. Combat FX + dice (M5).
-6. Backdrops: menu dawn parallax + R2 vista card (polish, M7).
-7. Props pass 2 + weather/mist (polish, M7–M8).
-
-Each item exits only when its lint passes and a screenshot lands in the M-gate evidence folder.
+Each item exits only when the lint passes and a preview sheet lands in `web/preview/`.
 
 ---
 
 ## 6. GAME SYSTEMS
 
-### 6.1 Yard exploration (`yard.gd`, `player_2d.gd`)
+### 6.1 Yard exploration (`js/screens/yard.js` + `js/world/`)
 
-- Movement: 8-way `CharacterBody2D`, walk 3 tiles/s, sprint 5 tiles/s (Shift), accel/decel 12 tiles/s²;
-  positions snap to whole pixels, not tiles (tile snapping is combat-only).
-- Collision from `ObjectLayer` physics polygons + per-prop `StaticBody2D` (authored with the tile builder).
-- Facing: 4-way sprite swap on dominant axis; `interact` raycast 1.2 tiles forward picks the nearest
-  `interact`-tagged cell → HUD context chip ("F — Ring the bell").
-- Beacons (`beacon.gd`): wisp FX + floating chevron at the next tutorial station; shown only when the
-  previous beat is complete/skipped; each carries its toast copy.
-- Day clock (`day_clock.gd`): game-time 06:40→08:20 across ~18 min real time (matches GDD-03 §1); drives a
-  5-stop dawn colour ramp applied to a fullscreen `CanvasModulate` + the backdrop card. Weather: clear with
-  light mist until 07:30, then clear — two overlay states, no gameplay effect (per the zone's sandbox rules).
-- Pause: Esc → `get_tree().paused` overlay (RESUME / OPTIONS / RETURN TO MENU). **No pointer lock anywhere** —
-  the most fragile browser behaviour in the current build is deleted outright.
+Top-down, integer zoom 1× (2× only for dialogue and the shield mirror). Movement is in
+pixels with a 16 px collision grid; the tile data comes from one map JSON. Interaction is a
+facing-adjacent probe against the `interact` field.
 
-### 6.2 Encounter → combat transition
+### 6.2 Encounter → combat
 
-1. Player steps on an `encounter` cell and presses F (or an NPC triggers it on proximity for the sparring
-   circle when T8 is armed).
-2. `EncounterController.load(id)` reads `encounters.json` → participant list, start cells, rules overrides.
-3. 0.6 s transition: exploration input frozen; each participant tweens (pixel-snapped, 4 steps) to its start
-   cell; `GridOverlay` fades in; initiative rolls; queue builds; Tactical UI slides in; music crossfades.
-4. Yard rules overrides apply automatically (from GDD-03 §1): **no death** — any combatant reduced to 0 HP
-   yields at 1 HP ("The spar ends…"); dummies reset 6 s after their last hit; no alert states.
+Crossing an `encounter` tile boundary raises the encounter; the overlay switches the same
+scene into turn mode with the grid tinted from the same data. No scene reload: combat is a
+mode of the yard, which is why the transition can be instant and interruptible.
 
-### 6.3 Turn engine (`turn_engine.gd`)
+### 6.3 Turn engine
 
-State machine: `AWAITING_START → ROLLING_INITIATIVE → TURN(active) → RESOLVING → TURN(next)… → ENDED`.
+Initiative order from a d20 + Dexterity, one action, one bonus action, movement in 5 ft
+steps, reactions refreshing at the start of the owner's turn (R8). Every state change is
+emitted so the HUD, the journal and the Roll Moment all read one truth.
 
-- **Initiative:** `1d20 + DEX mod`, ties broken by DEX then player-side priority; queue rendered as a
-  horizontal pixel strip (portraits + HP pips); current actor highlighted.
-- **Turn economy** (per GDD-01 §4.3): Movement budget = `speed / 5` cells (30 ft → 6); one Action; one
-  Bonus Action; one Reaction (refreshes at start of the actor's next turn); one free object interaction.
-- Budgets render as pips; unspent movement converts to nothing (no banking). End Turn: Space/button, with the
-  `autoend` option honoured.
-- **Enemy turn pace** option (Cinematic/Brisk/Instant) scales AI animation and dwell times — data-driven,
-  tested at all three settings.
-- Everything the engine does is expressed as **events** (`turn_started`, `moved`, `attack_resolved`, …) on an
-  event bus; the UI and the golden test (§11.2) are two subscribers of the same stream.
+### 6.4 Dice & the Roll Moment (R14)
 
-### 6.4 Dice & the Roll Moment (`dice.gd`)
-
-- `Dice.roll("1d20+5", advantage=false, stream="combat") -> Roll {parts, total, natural, crit, fumble}`.
-- All rolls draw from `Streams.combat`, seeded per-encounter from the save's `rng_seed`; **no roll in combat
-  ever touches the world/fx streams**, which is what makes the golden test deterministic.
-- Crit rules (nat 20 hit / nat 1 miss) per SRD; advantage/disadvantage = roll twice, keep best/worst.
-- **Roll Moment (GDD-01 §2.2.1):** every player-facing d20 plays the 6-frame dice tumble, holds 0.4 s on the
-  result, stamps `HIT/MISS/CRIT!` in the 5×7 font, then resolves. Skippable under the Brisk/Instant pace;
-  never longer than 1.5 s total.
+`Dice` is the only source of randomness in the game. `d20Check(modifier, target, mode, stream,
+label)` returns both dice, the kept die, the total, the verdict and the verbatim maths line
+(`14 + 5 = 19 vs 15`) that the Roll Moment prints. Named streams (`world`, `combat`, `ai`,
+`fx`) keep cosmetic randomness out of rules outcomes, and each stream reseeds from one root
+seed so a contract replays its rolls.
 
 ### 6.5 Combat maths (SRD 5.2.1, shown not told)
 
-| Rule | Implementation | On-screen truth |
-|---|---|---|
-| Attack roll | `1d20 + STR/DEX mod + proficiency` vs target AC | to-hit preview on hover: `1d20+5 vs AC 13` |
-| Advantage/Disadvantage | second die, keep best/worst | two-die Roll Moment variant |
-| Cover | ray from attacker through target cell reads `cover` layer of intervening cells: half +2 AC, ¾ +5 AC | cover arc glyphs on target cell |
-| Line of sight | supercover Bresenham over `los_block`; melee adjacent always sees | dimmed cells = unseen |
-| Elevation | `elev` delta ≥ 1 grants high-ground advantage flag on ranged attacks | ↑/↓ chevrons |
-| Difficult terrain | `cost = 2` cells spend 2 budget | hatched cells |
-| Opportunity attack | leaving an enemy's 8-neighbourhood without Disengage triggers a Reaction prompt (auto-resolves under `react: Auto-*` settings) | red arc flash on the vacated cell |
-| AoE | templates computed in cell space: sphere (Euclidean radius), cube (Chebyshev), cone (45° fan), line; preview before commit | coloured template + affected count |
-| Damage | weapon dice + mod; crit doubles dice | floating numbers, blood ramp flash |
-| Conditions | `Prone` (attacks vs prone: advantage melee/disadvantage ranged; standing costs half movement) | icon on portrait + cell glyph |
-| Non-lethal | yard override: yield at 1 HP | "YIELDED" card instead of death |
+Cover (+2 / +5), advantage and disadvantage, criticals on a natural 20, fumbles on a 1,
+ability modifiers `floor((score − 10) / 2)`, passive scores `10 + modifiers`, difficult
+terrain at double cost, height advantage as a tagged house rule (R11). All of it is
+implemented in `core/dice.js` and surfaced in the UI as text, not as hidden arithmetic.
 
-### 6.6 Weapon masteries shipped (two, per scope)
+### 6.6 Weapon masteries
 
-- **Push** (melee, on hit): target pushed 1 cell directly away if the destination cell is free and
-  non-solid; else no push. Teaches positioning in the dummy line.
-- **Topple** (melee, on hit, DC 8 + prof + STR/DEX save): applies `Prone`. Teaches conditions + saves in the
-  sparring circle.
-  Both are data rows in `bestiary.json → masteries`, rendered as chips on the attack button; the other 2024
-  masteries arrive with Chapter 1.
+Two ship in the prologue: **Push** (10 ft) and **Topple** (Prone), with **Vex** documented
+for the next pass. Mastery effects run through the same turn engine calls as any other
+action.
 
-### 6.7 Enemy AI (`enemy_ai.gd`)
+### 6.7 Enemy AI
 
-Utility-scored, deterministic (uses `Streams.ai`): score = target priority (lowest HP, closest, player-first)
-× threat (can I hit? cover?) − risk (am I exposed? prone?). Behaviour set for the slice: **advance** (path to
-adjacency via `Pathing`, respecting difficult terrain), **attack** (best weapon by expected damage incl.
-advantage flags), **brace** (take half cover when available and wounded), **yield check** (yard rule). Every
-AI decision is logged as an event for the golden test. Telegraphs: a 0.4 s cell flash + intent icon above the
-acting enemy before its move resolves (GDD-01 §2.4 "readable enemies").
+One behaviour per enemy archetype, chosen from a small table over the grid data: dummy
+(never acts), sparring partner (closes, attacks, yields at 1 HP), goblin (R15 sandbox rules
+in the yard). Target choice and path picks read the `ai` stream so replays match.
 
-### 6.8 The two encounters (content)
+### 6.8 The two encounters
 
-**Dummy line (Area G, id `dummy_line`, teaches T3/T4):** 3 static dummies, AC 11, HP 10, no turns. Scripted
-coach barks (text, Gundren-voiced where VO exists): first attack, then bonus action, then a mastery. Dummies
-reset after 6 s idle. Win = all three dropped once. Impossible to lose.
+`dummy_line` (AC 10, infinite gauge, resets after 6 s idle) teaches R1–R3; `sparring`
+(AC 12, HP 14) teaches the full Table Mode loop. Both are data, not code: an encounter is a
+list of combatants, tiles and a completion trigger.
 
-**Sparring circle (Area J, id `sparring`, teaches T8):** 1 sparring partner (AC 12, HP 14, longsword + shield,
-uses Push) + Corwin refereeing from the edge. Full loop: surprise-free, initiative, ≥ 3 rounds expected,
-opportunity attacks wired, Topple available to the player. Win = partner yielded; lose = you yield — both end
-on the same friendly card ("Good spar."). This encounter is the **acceptance test of the whole combat system.**
+### 6.9 Tutorial beacons
 
-### 6.9 Tutorial beacon system
-
-`beacon.gd` + `tutorial.json` (beat id → station cell, toast lines, completion predicate, skippable flag).
-Completion predicates: T1 "reach the far marker", T3 "land one hit", T4 "use a bonus action", T8 "finish a
-spar". Completed beats persist in save v2; the practice bell (M) resets encounter state and re-arms any beat
-for replay. Beacons never point south of the gate (GDD-03 §2 boundary rule).
+Beat list T0–T11 with beacon wisps (4-frame loop, bronze → mint) anchored to a tile and a
+radius. Completion writes `tutorial.completed_beats`, which is exactly what the ledger's
+emblem stamps read — one number drives the yard and the menu.
 
 ### 6.10 Dialogue, VO, codex
 
-- Dialogue = single-cue barks (no branching in this slice): portrait chip (pixel, 48×48) + name + 8 px body
-  text, typewriter at 30 cps, skippable. Drives `vo_grd_001..003` and new Corwin lines via `AudioStreamPlayer2D`.
-- Codex (shell) keeps its three tabs; **Rules tab text re-sourced to SRD 5.2.1** (T-47); Bestiary gains the
-  two encounter statblocks after first meeting (gives the bestiary its first real entries — cheap win).
+Dialogue is typed text at 30 cps, skippable, with subtitles on by default; VO cues are played
+by id from the same table as every other sound. The codex ships its Rules entries pre-loaded
+and unlocks Lore and Bestiary entries in play.
 
-### 6.11 UI/HUD spec
+### 6.11 UI / HUD
 
-- **Exploration HUD:** bottom-left context chip (interact label), bottom-right minimap-free (yard fits ~2
-  screens; no minimap), top-left time-of-day glyph + weather word, top-right PAUSE button. Tutorial toasts
-  centre-top, parchment nine-patch, 4 s or on-advance.
-- **Tactical HUD:** top queue strip (24 px portraits + HP pips + turn arrow); bottom action bar (ATTACK /
-  BONUS / END TURN + budget pips); right-side tooltip panel (to-hit preview, cover, conditions); grid overlay
-  tints: move = mint, attack = blood, AoE = bronze, enemy threat = violet.
-- All text ≥ 5 px, contrast ≥ 4.5:1 within the palette (lint-checked pairs, T-22).
+Nine-patch panels only, 5 px chrome, 8 px prose, 10 px headings; contrast ≥ 4.5:1 on its own
+panel. Folio `Tab`, codex `C`, journal `J`.
 
-### 6.12 Options & accessibility (reconciling the 50-row schema)
+### 6.12 Options & accessibility
 
-- **Live rows kept:** reduced motion (freezes motes/backdrop drift + skips dice tumble), high-contrast UI,
-  subtitles + size, colourblind filter (3 LUT variants of the *overlay tints only* — the art palette never
-  changes), frame cap, master/music/sfx/voice volumes, mute-on-focus-loss, grid overlay mode, hit-chance
-  display, reaction prompts, enemy turn pace, difficulty, rebinds.
-- **New rows:** `ui_scale` (1×/2×, §4.8), `touch_controls` (Auto/Off), `combat_text_size` (ties to reading
-  magnification).
-- **Stored-only rows (†):** 3D-camera rows (FOV, boom, snap turn, head bob) are **deleted from the schema**
-  rather than carried as dead weight — one fewer class of player confusion; the schema version bumps to
-  record the removal.
+All 39 rows of §5.6 are live, persisted and read back at boot. `Reduced motion` shortens the
+sting and freezes motes; `ui_scale` and the colour-blind overlay LUTs are stored and will act
+once the yard draws (they have nothing to magnify yet).
 
 ---
 
@@ -767,442 +549,299 @@ for replay. Beacons never point south of the gate (GDD-03 §2 boundary rule).
 
 ### 7.1 The layout conversion rule
 
-The shell is absolutely positioned on a 1600×900 design grid (69 `Rect2` literals: 63 in `shell.gd`, 2 in
-`options_page.gd`, 4 elsewhere). The pixel grid is 480×270 — exactly ÷ 10/3. Conversion rule:
+Every screen in the retired engine build converted one-to-one: the same rects, the same
+strings, the same timings, the same order of operations. This build keeps that rule in the
+opposite direction — the shell is now the *reference* implementation, and the spec's numbers
+are asserted by the gate:
 
-1. **First pass (automated):** `tools/pixelart/convert_layout.py` parses every `Rect2(x, y, w, h)` from the
-   UI scripts, emits a `layout_480.json` of ÷3.333-snapped-to-integer candidates and a diff preview. This is a
-   *starting point*, not the answer — many 1600-space elements are smaller than one pixel at 480-space.
-2. **Second pass (by hand, per screen):** re-author each screen on a 12×24 px margin grid using the nine-patch
-   kit, keeping the GDD-02 §2.3 safe-area percentages (logo anchor 6 %, 8 %; column 6 %, 34 %; item height
-   6.5 % ≈ 18 px; disclaimer bottom-left; version stamp bottom-right).
-3. Acceptance: every screen renders unclipped at `ui_scale` 1 and 2, keyboard-only navigable, captured in the
-   screenshot walk.
+- a rect that the spec fixes is read from `data/shell_timings.json`, never re-typed;
+- a string the spec fixes is read from `data/strings.json` → `spec`, byte-for-byte;
+- a timing the spec fixes is a millisecond value in `shell_timings.json`;
+- a deviation is recorded in the data file's `_note` field **and** in the build notes, with
+  the spec's original number kept beside it.
 
 ### 7.2 Screen table
 
-| Screen | Source (today) | Pixel target | Work |
+| Screen | Module | Spec | Status |
 |---|---|---|---|
-| Legal/attribution | `build_legal()` 138–173 | 8 px body text on ink, emblem top, "press any key" pulse; fan disclaimer + SRD CC-BY block (§15) | small |
-| Logo sting | `build_sting()` 179–229 | pixel emblem + wordmark on ink, 4-f flicker steps, 4.0 s / skip 1.5 s, `MUS_BOOT_STING` | small |
-| Menu | `build_menu()` 230–293 | backdrop = 3-layer pixel parallax + motes; 5 items in 5×7 display-scale font; hover = bronze underline draw + pip; CONTINUE dim 40 % + tooltip string | **medium** |
-| PLAY overlay ("Begin a new contract?") | `build_new()` 365–380 | parchment card + wax seal sprite | small |
-| First Run contract page | `build_contract()` 381–485 | three pill groups (difficulty / pacing / subtitles+comfort) as nine-patch panels; `SIGN & DESCEND` + `BACK` | medium |
-| Ledger | `build_ledger()` 495–527 | 8-slot parchment list, confirm-delete card | small |
-| Options | `options_page.gd` (282) | same schema-driven code, pixel controls (sliders = segmented pips; lists = pill buttons); rebind flow unchanged; 3D rows deleted (§6.12) | medium |
-| Codex | `build_codex()` 537–580 | 3-tab rail + folio page-turn (2-f), SRD-re-sourced Rules text, bestiary gets 2 entries | medium |
-| Credits | `build_credits()` 581–649 | vertical scroll 15 px/s (480-space equiv of 60 px/s @1600), hold ×3, end card emblem with three steps lit | small |
-| Loading | `build_loading()` 659–715 | ink-route pixel road + tip cycle; **min-dwell retained** even when the yard loads in one frame — the spec's pacing is part of the identity | small |
+| Legal / attribution | `js/screens/legal.js` | §5.2 step 1 | shipped |
+| Logo sting | `js/screens/sting.js` | §5.2 step 2 | shipped |
+| Menu | `js/screens/menu.js` | §5.4, §5.5 overlay | shipped |
+| First Run contract | `js/screens/first_run.js` | §5.5 | shipped |
+| Ledger | `js/screens/ledger.js` | §5.5 | shipped |
+| Options | `js/screens/options.js` | §5.6 | shipped |
+| Placeholder card | `js/screens/stub.js` | §5.7/§5.8 stand-in | shipped |
+| Loading | — | §5.9 | deferred (data ready) |
+| Yard / pause | — | §6 | next |
 
-### 7.3 The pixel UI kit (`ui_pixel.gd` replaces `shell_ui.gd`)
+### 7.3 The pixel UI kit (`js/ui/kit.js`)
 
-Same factory surface (`label/button/pill_button/panel/rule/scroll_column/image/centered_text`) so call sites
-change minimally; internals switch from `StyleBoxFlat` to `StyleBoxTexture` nine-patches + bitmap fonts.
-Palette constants move to a preloaded `palette.tres` (typed `Dictionary`) so tests can assert on them.
-Motes survive as 8 drifting 1-px bronze/mint dots (cheap, existing code adapts in ~10 lines).
+Replaces the shell's old widget layer with primitives that know nothing about screens:
+`ground`, `white`, `dim`, `rect`, `frame`, `image`, `sprite`, `patch`, `panel`, `scrollbar`,
+`label`, `labelRight`, `measure`, `wrap`. Widgets (`Button`, `ListRow`, `PillGroup`,
+`Slider`, `Rebind`, `LockedLabel`, `Tooltip`, `Card`) sit on top and own their own focus
+and hover state. A screen composes widgets and draws them in order; that is the whole API.
 
-### 7.4 Loading screen in an instant-loading world
+### 7.4 Loading in an instant-loading world
 
-The yard PCK-resident scene loads in < 100 ms. Keep the loading screen **only** as a staged transition
-(minimum dwell 1.2 s, tip rotation, route animation) — identical behaviour to today's `load_route.gd`, which
-already enforces a minimum dwell. If telemetry later shows players skip it, the dwell becomes an option.
+The yard will be ~1 MB of tiles and art — fast enough that a loading screen is a pacing
+decision, not a technical one. §5.9 keeps it anyway: 1.2 s minimum dwell, progress from real
+weights (bundles 70 %, scene 20 %, data 10 %), never regressing, with the route inking
+itself across the map card. The honest failure state (`The road is washed out.`) and the
+45 s slow notice are already specified; the data is in `shell_timings.json → loading`.
 
 ---
 
 ## 8. AUDIO PLAN
 
-### 8.1 Format reality (verified 2026-09)
+### 8.1 Format reality
 
-Ogg Vorbis is still **not playable in Safari on iOS before 18.4** (March 2025) and only partial on desktop
-Safari ≤ 18.3; MP3 is universal. Godot's web build decodes through the browser, so the shipped format decides
-who hears the game. Decision: **every shipped track gets an MP3 twin**; the web export filter ships MP3 only,
-desktop keeps OGG.
+- **OGG is what exists** (the menu theme and three VO lines) and OGG decodes in every target
+  browser except older Safari builds; MP3 is the safer web default where the audio pass can
+  produce it.
+- **The spec's ≤ 150 KB per cue** is achievable for one-shots; a 90 s music bed cannot
+  honestly fit it. The committed theme is 1.2 MB — the file the spec names as a keeper — and
+  it is served with a long cache header because it never changes.
+- **Nothing is committed that does not play.** The four keeper cues are in
+  `web/assets/audio/`; the rest land cue by cue, and `check_project.py` reports the count
+  (currently 4/121).
 
 ### 8.2 Pipeline
 
-1. `tools/audio/transcode.py` (ffmpeg via `ffmpeg-static` npm binary — no system dependency): OGG → MP3
-   (192 kbps VBR for music, 128 for VO), loudness-normalised to −16 LUFS, length-checked against source.
-2. `Sound.gd` selects by extension preference per platform (`mp3` on web, `ogg` elsewhere) — ~10 lines.
-3. New cues (synthesised first, replaced by generated files when approved — same pattern as the web shell's
-   `AUDIO_PROMPTS.md`): `MUS_YARD_DAWN` (90 s loop), `MUS_COMBAT_TRAINING` (60 s loop), `SFX_UI_MOVE/CONFIRM/
-   BACK/DENY/PAGE`, `AMB_YRD_DAWN` (gulls + harbour), `SFX_STEP_*` (dirt/cobble/plank, 3 each), `SFX_HIT/
-   MISS/CRIT`, `SFX_DICE_ROLL`, `SFX_BELL`. 14 files, all ≤ 150 KB each.
-4. Mix buses unchanged (Master/Music/SFX/Voice) + ducking on VO kept from `sound.gd`.
+```
+source ──► normalise to −16 LUFS ──► trim silence ──► encode (OGG/MP3) ──► assets/audio/
+                                                                             │
+                            data/audio_cues.json names the file ────────────┘
+```
 
-### 8.3 Budget
+`tools/fetch_audio.py` copies the keepers in from wherever they live; dropping a correctly
+named file into `assets/audio/` is all a new cue needs — no code change, no manifest edit.
 
-All audio ≤ 1.2 MB total in the PCK (4 existing tracks ≈ 600 KB MP3 + 14 small cues).
+### 8.3 Budgets
+
+| Family | Cues | Target |
+|---|---|---|
+| Boot + UI | 11 | ≤ 150 KB each, ≤ 600 KB total |
+| Menu music + ambience | 3 | one 90 s bed, ≤ 2 MB |
+| Zone + combat | 60 | ≤ 120 KB each |
+| VO (§9) | 47 | ≤ 90 KB each, ≤ 4 MB total |
 
 ---
 
-## 9. WEB EXPORT & DEPLOYMENT
+## 9. DEPLOY & RELEASE PIPELINE
 
-### 9.1 Export preset changes (`export_presets.cfg`)
+### 9.1 The path from commit to player
 
-| Key | Current | New | Why |
+```
+ working copy ──► git push ──► GitHub (this repository)
+                                  │
+                                  ├─ GitHub Actions: the five gates
+                                  └─ Vercel: build the preview URL for the branch
+                                             main ──► production URL
+```
+
+`vercel.json` is the whole configuration:
+
+```json
+{
+  "outputDirectory": "web",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "headers": [
+    { "source": "/assets/pixel/(.*)", "headers": [{ "key": "Cache-Control",
+      "value": "public, max-age=604800, immutable" }] },
+    { "source": "/assets/fonts/(.*)", "headers": [{ "key": "Cache-Control",
+      "value": "public, max-age=604800, immutable" }] },
+    { "source": "/data/(.*)", "headers": [{ "key": "Cache-Control",
+      "value": "public, max-age=300, must-revalidate" }] },
+    { "source": "/js/(.*)", "headers": [{ "key": "Cache-Control",
+      "value": "public, max-age=300, must-revalidate" }] }
+  ]
+}
+```
+
+Art and fonts are immutable for a week (their names are stable, their bytes are not
+expected to move under a deploy); data and code revalidate in five minutes so a copy fix
+reaches players without a cache purge.
+
+### 9.2 Preview discipline
+
+- A **preview deploy per push** is the review environment: the reviewer sees the actual
+  change, at the actual scale, on the actual host.
+- **`main` is production.** Merging is a release; there is no separate release branch and no
+  staging environment to drift.
+- **Binaries never live in Git.** Large or generated artefacts (packaged bundles, preview
+  sheets) go to GitHub Releases or stay local; the repository holds sources and the shipped
+  site.
+
+### 9.3 Rollback
+
+Vercel keeps every deployment. A bad production deploy is rolled back in the dashboard to
+the previous build; because the site is static and the save is client-side, a rollback has
+no migration to run and no data to reconcile.
+
+---
+
+## 10. CI & QA
+
+### 10.1 The five gates
+
+| Gate | Command | Verifies |
+|---|---|---|
+| Project integrity | `python3 tools/check_project.py` | every `data/`/`assets/`/`js/`/`css/` path the code names exists; `index.html` loads the module entry; every relative import resolves; `vercel.json` sets `outputDirectory: "web"`; every JSON parses and carries the spec's counts, rects and timings; font atlases are internally consistent and cover every shipped glyph; `palette.js` mirrors the builder; nine-patch metadata matches the PNGs; §5.5/§5.6 layouts fit their panels when measured with the real fonts; every committed PNG is inside the palette |
+| String parity | `python3 tools/check_strings.py` | §5.11 (34 strings), §5.9 (16 tips), §5.1 (sublock, disclaimer, abridged line) and §14.2 (SRD attribution) match GDD-07 byte for byte |
+| Unit suite | `node web/tests/run.mjs` | palette, data, string master, ledger, dice, streams, state machine, input map, text wrapping, every spec rect, widgets, brand geometry, boot timeline — 514 checks, no dependencies |
+| Shell smoke | `node web/tests/smoke.mjs` | boots the whole shell against a DOM stub and drives every page with keyboard and pointer input, asserting each page builds, draws and never throws |
+| Page images | `node web/tests/shoot.mjs` | rasterises the same pages through a pixel-true canvas (real `drawImage`, alpha and composite modes) and writes `web/preview/shell-*.png` — the pictures CI attaches to the run. It then measures a tinted run on each face and fails if the ink box is short, which is how a clipped-glyph bug in the tint path was caught |
+| Boot reel (not a gate) | `node web/tests/reel.mjs` | drives the booted shell through the boot sequence with scripted input, one PNG per frame, and assembles `web/preview/reel.gif` with ImageMagick (2×, falling back to 1× when the ImageMagick cache is capped). CI records it in the separate `reel` job and keeps the GIF as the `boot-reel` artifact |
+
+All five run on every push (`.github/workflows/gates.yml`), and the rasterised page images
+are kept as a build artifact so a reviewer sees what the deploy will show.
+
+### 10.2 Manual QA checklist (per release)
+
+1. Boot: legal page pulses at 0.8 s; any key advances; the sting runs 4 s and is skippable
+   after 1.5 s; the menu fades in.
+2. Menu: five items, correct strings, hover underline, `CONTINUE` dimmed with no contract and
+   its tooltip on hover.
+3. Play: contract page → `SIGN & DESCEND` → the ledger shows the new contract; a second PLAY
+   opens the overlay card naming the existing contract.
+4. Ledger: `DELETE` asks first; `KEEP` changes nothing; a broken save opens the scorched card.
+5. Options: every tab, every control; rebind captures a key and survives a reload.
+6. Reload: settings and the ledger persist; `CONTINUE` lights up.
+7. Audio: the theme starts after the first input; the sliders change it; muting on blur works.
+8. Scale: 1920×1080, 1280×720 and a phone in portrait all show whole pixels, no blur.
+
+### 10.3 Evidence
+
+`web/preview/*.png` (git-ignored, regenerated by `tools/preview_screen.py`) hold the layout
+stills used for review and `web/preview/reel.gif` (regenerated by `node web/tests/reel.mjs`)
+holds the boot sequence as a moving picture; the CI log holds the gate output; the PR
+description links the Vercel preview.
+
+---
+
+## 11. MILESTONES
+
+| Milestone | Deliverable | Status |
+|---|---|---|
+| **M0** Repository hygiene | one product in the tree; tooling and gates point at `web/` | **done** |
+| **M1** Platform | palette, fonts, brand, UI kit builders; `index.html` + shell module graph | **done** |
+| **M2** Boot + menu | legal → sting → menu, §5.4 to the letter | **done** |
+| **M3** Play / Continue / Options | contract page, overlay card, ledger, schema page | **done** |
+| **M4** Yard greybox | tile renderer, collision, movement, camera, one dressed area | next |
+| **M5** Interactive P1 | areas A/F/G/J/M, beats T0/T1/T3/T4/T8, two encounters | |
+| **M6** Combat depth | turn engine, Roll Moment, masteries, AI, conditions | |
+| **M7** Polish | painted backdrop, FX, audio pass, accessibility pass | |
+| **M8** P2 prologue | all 13 areas, in-world creation, departure montage | |
+
+---
+
+## 12. TASK BACKLOG
+
+| ID | Task | Milestone | Status |
 |---|---|---|---|
-| `export_path` | `exports/web/index.html` | `exports/web/index.html` (keep) | CI picks it up unchanged |
-| `variant/thread_support` | `false` | `false` (keep) | single-threaded = **no COOP/COEP headers needed**, widest host compatibility (Godot ≥ 4.3 default) |
-| `variant/extensions_support` | `false` | `false` (keep) | no GDExtension in the pixel build |
-| `exclude_filter` | tests/tools/md/font licences | **+ `assets/characters/**,assets/textures/**,assets/models/**,addons/**,assets/fonts/*.ttf,assets/audio/*.ogg`** | retired assets must not ride into the PCK |
-| `include_filter` | `data/*.json` | + `data/*.json` (keep) | content files |
-| `html/custom_html_shell` | empty | `tools/web/delve_shell.html` | §9.2 |
-| `html/canvas_resize_policy` | 2 (Adaptive) | keep 2 | engine letterboxes internally at integer scale |
-| `progressive_web_app/enabled` | false | evaluate at M7 (nice-to-have offline cache) | optional, T-45 |
-
-### 9.2 Custom HTML shell (`tools/web/delve_shell.html`)
-
-Responsibilities, in order:
-1. Boot splash (pure CSS, pixel emblem, ink background) that is replaced by the canvas on engine init —
-   the user sees DELVE, not a blank page, inside 1 s.
-2. `image-rendering: pixelated` on the canvas (belt-and-braces under Adaptive resize); CSS letterbox colour
-   = ink-1 to match the clear colour.
-3. Input hygiene: `touch-action: none`, `overscroll-behavior: none`, prevent context menu on long-press,
-   keyboard focus on the canvas at first gesture; coarse-pointer detection → engine flag (§4.9).
-4. Audio unlock: any first gesture resumes the `AudioContext` (existing shell.js pattern, ported).
-5. Version stamp injected by CI (`window.DELVE_BUILD`) shown in the boot splash and readable by Playwright.
-6. No analytics, no third-party requests, no fonts fetched at runtime (all bundled) — an offline-capable page.
-
-### 9.3 Hosting topology (resolves hygiene finding H8)
-
-```
-https://<site>/                 landing page (today's root shell, lightly edited: PLAY button → /play/,
-                                legal + credits retained; becomes the fan-project front door)
-https://<site>/play/            redirect → /play/v0.4.0/
-https://<site>/play/v0.4.0/     immutable game deploy (index.html, index.wasm, index.pck, icons, licences)
-https://<site>/play/v0.4.1/     next deploy; /play/ redirect updated atomically
-```
-
-- **Vercel** (existing account/config): extend `vercel.json` — immutable `Cache-Control` for
-  `/play/v*/index.{wasm,pck}`; `no-store` for the `/play/` redirect and `index.html`; `.wasm` MIME is
-  automatic on Vercel. No COOP/COEP headers required (single-threaded build).
-- **itch.io** second front (fan-game audience): zip of the versioned folder with `index.html` at the root,
-  uploaded by CI (`butler push` if a key is provided; manual until then).
-- **GitHub Pages** as fallback mirror of the same folder (T-43).
-- Save-data consequence: the game always lives at a *stable origin*; version changes path but not origin, so
-  IndexedDB saves persist across deploys. §4.10 handles the one-time localStorage migration.
-
-### 9.4 Budgets enforced at deploy time
-
-| Check | Limit | Fails the deploy if |
-|---|---|---|
-| `index.wasm` size | ≤ 12 MB raw (≈ 8–9 MB gzipped) | exceeded — investigate export flags |
-| `index.pck` size | ≤ 2.5 MB | retired assets leaked into the filter |
-| total files | ≤ 12 | forgotten debug junk |
-| Playwright load test | playable canvas + zero console errors within 15 s on throttled 10 Mbps | any failure |
+| T-01 | Move the build to `web/`; retire the engine project | M0 | done |
+| T-02 | Rewrite the gates for a static site (paths, module graph, `vercel.json`) | M0 | done |
+| T-03 | Palette builder + mirror check | M1 | done |
+| T-04 | Bitmap font builder + `.fnt` parser shared with the gate | M1 | done |
+| T-05 | Brand builder + `brand.json` geometry | M1 | done |
+| T-06 | Nine-patch kit builder + `ui_kit.json` | M1 | done |
+| T-07 | Canvas painter, font engine, kit, widgets | M1 | done |
+| T-08 | Screen state machine + boot sequence | M2 | done |
+| T-09 | Menu, footer, tooltip, overlay card | M2 | done |
+| T-10 | First Run contract page + slot creation | M3 | done |
+| T-11 | Ledger with stamps, DELETE confirm, scorched card | M3 | done |
+| T-12 | Options page from the schema; rebinds; scrollbar | M3 | done |
+| T-13 | Node unit suite ported from the retired runner | M3 | done |
+| T-14 | Headless smoke test of every page | M3 | done |
+| T-15 | CI workflow + Vercel config | M3 | done |
+| T-16 | Docs 06/07 rewritten for the web build | M3 | done |
+| T-20 | Below-LUT remap on an offscreen surface, tested | M4 | todo |
+| T-21 | Yard map JSON + tile blob renderer | M4 | todo |
+| T-22 | Player rig, movement, camera | M4 | todo |
+| T-23 | Loading screen (§5.9) | M4 | todo |
+| T-30 | Turn engine + Roll Moment UI | M6 | todo |
+| T-31 | Masteries, conditions, cover, height rule | M6 | todo |
+| T-40 | Audio pass: encode cues, wire buses, ducking | M7 | todo |
+| T-41 | Accessibility pass: ui_scale, colour-blind LUTs, captions | M7 | todo |
+| T-47 | Codex entry sourcing discipline (SRD-per-entry) | M7 | todo |
 
 ---
 
-## 10. REPOSITORY, RELEASES & CI
+## 13. RISKS & MITIGATIONS
 
-### 10.1 Hygiene tasks (M0, before any pixel work)
-
-| T | Task | Notes |
-|---|---|---|
-| T-01 | `git mv .godot godot` + fix root `.gitignore` (`godot/.godot/`, `godot/exports/`, `*.zip`, `deliverables/`, `__pycache__/`) + update doc paths + Vercel ignore nothing at root | one commit; nothing inside uses absolute paths |
-| T-02 | apply the §4.2 `project.godot` block; disable Sky3D plugin | CI import pass proves it parses |
-| T-03 | move `DELVE_Godot_4.7.2.zip` out of Git into a GitHub Release (`v0.3.0-godot-3d`) | `git rm --cached`; file stays downloadable |
-
-### 10.2 3D asset retirement (M0/M1)
-
-1. Tag the current tree `archive/3d-v0.3.0`; build + attach `DELVE_3D_ASSETS_v0.3.0.zip` (characters +
-   textures + models + sky_3d, ≈ 86 MB) to a Release — provenance preserved, clones stay light.
-2. `git rm -r` those paths from the working tree; drop them from the export include set.
-3. Replace `assets/models/manifest.json` with a **2D prop manifest** that keeps the same prop names and
-   footprints (the names are now the contract between §3.3 and the art pipeline).
-4. Working-tree target: ≤ 40 MB total; clone < 60 s on broadband.
-
-### 10.3 CI (GitHub Actions — new because the sandbox has no Godot binary)
-
-`/.github/workflows/delve.yml`, all jobs inside the pinned `godot-ci` container (4.7.2-stable tag
-**[VERIFY]** at T-40):
-
-| Job | Steps | Gate |
-|---|---|---|
-| `lint` (no Godot) | palette/artifact lint (§5.7), JSON schema validation for `data/*.json`, GDScript static checks via `--check-only` headless parse | always |
-| `import` | `godot --headless --path godot --import`; commits regenerated `.import`/uid files back on a bot branch when they drift | main |
-| `smoke` | `godot --headless res://tests/smoke_pixel.tscn -- --test-mode` → expects `SMOKE_ALL_GREEN` + prints its own check count | main |
-| `golden-combat` | scripted encounter with fixed seed → JSON of every event → diff vs committed golden file | main |
-| `shots` | `xvfb-run godot …shot_walk.tscn --shots=artifacts/` (incl. combat UI states) → uploaded artifacts | main |
-| `export-web` | `godot --headless --export-release "Web" exports/web/index.html` + size checks (§9.4) | tags `v*` |
-| `browser-smoke` | Playwright (Chromium): serve `exports/web/` locally, load, assert canvas + build stamp + no console errors, screenshot | tags `v*` |
-| `deploy` | push versioned folder to Vercel prod path + update `/play/` redirect + (optional) `butler` itch push | tags `v*` |
-
-PRs run `lint + import + smoke`; tags run everything. This mirrors the project's *existing* verification
-doctrine (GDD-04 §6, GETTING_STARTED §7.3) but moves it where it can actually run.
-
-### 10.4 Doc reconciliation (M0)
-
-- Add supersede banners to GDD-00 Part 1 and GDD-04 pointing at this document.
-- GDD-05 rewritten: "Way 1 — play in your browser" becomes the live `/play/` URL; the editor route unchanged.
-- This document (GDD-06) is the single owner of pixel-tech decisions; future changes land here first.
-
----
-
-## 11. VERIFICATION & QA DOCTRINE
-
-### 11.1 Execution topology (who runs what)
-
-This planning environment has **no Godot binary and no browser**, but has Node 22, Python 3.11 (venv with
-Pillow 12.3 + NumPy 2.4 verified), and network access. Therefore:
-
-| Work | Runs where |
-|---|---|
-| All Godot execution (import, smoke, shots, export) | **CI container** (or a developer machine with Godot 4.7.2 + templates) |
-| Art pipeline, palette lint, layout converter, JSON validation, golden-file tooling | **agent sandbox** (Python/Node) |
-| Browser verification | **CI Playwright job**; manual matrix left to humans |
-
-Nothing in this plan requires the agent to *run* Godot; everything it authors must be checkable by CI.
-
-### 11.2 Test layers
-
-1. **Unit (GDScript, headless):** `dice.gd` roll distributions & crit rules; pathing distances (assert
-   `AStarGrid2D` returns Chebyshev-correct 5e distances on a reference grid — this also validates the
-   heuristic choice, §13 T-27); LoS rays; AoE templates (known cell sets); cover/elevation modifiers;
-   conditions; initiative tie-breaks.
-2. **Golden combat test:** fixed-seed scripted encounter (player + partner, 4 rounds) emits the full event
-   stream as JSON; committed golden file diffed in CI. Any engine/rules regression is caught without a human.
-3. **Smoke scene (`smoke_pixel.tscn`):** the existing 67-check structure extended to ≈ 90 checks: all 10
-   shell screens build; ledger cap 8 + delete-confirm; options round-trip + rebind swap; save v2 write/read/
-   migrate-from-localStorage-fixture; yard loads; both encounters reach `ENDED`; budget/pause; ui_scale 1&2.
-4. **Screenshot walk:** every screen + yard noon/dawn + combat (turn 1, AoE preview, reaction prompt, result
-   card) at 960×540. Deterministic: animations frozen by `--still` flag; near-zero-tolerance diff allowed.
-5. **Art lint** (§5.7) + **contrast lint** (overlay tint pairs ≥ 4.5:1, computed from the palette JSON).
-6. **Browser smoke (Playwright, Chromium):** load → engine print `DELVE_BUILD` → canvas non-blank → click to
-   legal → one screenshot; repeated with network throttle for the ≤ 8 s budget.
-7. **Perf harness:** the screenshot walk records frame timings; CI asserts p95 ≤ 8 ms on the runner as a
-   *trend* alarm (absolute budget enforced by manual device pass at M8).
-
-### 11.3 Acceptance per milestone — see §12 gates; M8 additionally runs the §1.4 checklist on real
-Chrome/Firefox/Safari desktop + one Android and one iOS device (human pass, scripted steps provided).
-
----
-
-## 12. MILESTONES & SCHEDULE
-
-Estimates in **agent-days** (an agent-day ≈ one focused session producing reviewable commits); calendar
-assumes sequential agent work with human review between milestones.
-
-| M | Name | Deliverable (all committed, CI green) | Gate | Effort |
-|---|---|---|---|---|
-| **M0** | Hygiene & freeze | T-01..T-03 + doc banners (§10.4) + archive tag/release; repo ≤ 40 MB | clone size check; docs consistent | 0.5–1 d |
-| **M1** | Pixel skeleton | §4.2 project block; empty 480×270 scene rendering a palette-swatch test card through the integer pipeline; input map v2; autoloads incl. `Dice`; CI `lint+import+smoke` green on the skeleton | swatch screenshot shows uniform pixels, no shimmer | 1–2 d |
-| **M2** | Art pipeline + UI kit | §5 toolchain (`generate→pack`), locked palette files, UI nine-patch kit, both fonts, art lint in CI; one reference screen ("menu" mock) built from the kit | palette lint passes; menu mock screenshot approved | 2–3 d |
-| **M3** | Shell port | All 10 screens at 480×270 (§7.2), save v2 + migration, options pruned, codex re-sourced, credits, loading dwell; smoke ≈ 90 checks | screenshot walk matches GDD-02 strings exactly | 3–5 d |
-| **M4** | Yard playable (no combat) | Tile yard from GDD-03 plan, 22 props, player + 4 NPC rigs walking, beacons T1, day clock + mist, pause menu, interactables, bell stub | T1 completable; 60 fps; draw calls ≤ 32 | 3–5 d |
-| **M5** | Combat core | Grid overlay, turn engine, initiative, movement budget, attack/damage/crit, dice Roll Moment, pathing + LoS + cover data wired | dummy-line encounter (T3/T4) winnable; golden test v1 committed | 3–5 d |
-| **M6** | Combat depth | Reactions/OA, AoE templates, masteries (Push/Topple), Prone, enemy AI + telegraphs, sparring encounter (T8), bestiary entries | sparring loop passes golden + human playtest script | 4–6 d |
-| **M7** | Web release candidate | Export preset + custom HTML shell + audio MP3 twins; hosting topology live at `/play/v0.4.x`; deploy CI; size budgets green; loading on Safari/Chrome/Firefox | Playwright smoke green on throttled network; ≤ 15 MB total | 2–3 d |
-| **M8** | Polish & ship | Accessibility pass (ui_scale, colourblind LUTs, reduced motion), touch fallback, weather/mist pass, backdrops, credits VO sync, device matrix, release notes, v1.0.0-pixel tag | §1.4 checklist fully green | 3–5 d |
-
-**Total: ≈ 22–35 agent-days** (median ≈ 28). Critical path: M2 → M3 → M4 → M5 → M6 (art kit unblocks shell;
-shell unblocks yard; yard unblocks combat). M7/M8 can overlap M6's tail.
-
----
-
-## 13. TASK BACKLOG
-
-| ID | M | Task | Deps | Definition of done |
-|---|---|---|---|---|
-| T-01 | M0 | Rename `.godot/` → `godot/`; consolidate `.gitignore` | — | `git grep "\.godot/"` finds only docs about history; clone clean |
-| T-02 | M0 | Apply §4.2 project settings; verify key names in-editor | T-01 | import pass green; appendix updated with any renames |
-| T-03 | M0 | Move 69 MB ZIP to Release; `*.zip` ignored | T-01 | Release asset exists; tree < 40 MB path set |
-| T-04 | M0 | Archive 3D assets (tag + Release zip + `git rm`) | T-03 | export filter test proves PCK without them |
-| T-05 | M0 | Supersede banners on GDD-00/04; rewrite GDD-05 Way 1 | T-01 | doc review |
-| T-10 | M1 | Pixel skeleton scene + swatch test card | T-02 | screenshot, no shimmer |
-| T-11 | M1 | Input map v2 (§4.9) | T-10 | rebind test passes |
-| T-12 | M1 | `Dice` + `Streams` autoloads + unit tests | T-10 | deterministic under fixed seed |
-| T-13 | M1 | CI workflow skeleton (`lint/import/smoke`) | T-10 | green on PR |
-| T-20 | M2 | Palette files + LUT + shader + infection test | T-10 | pixel-exact reference test |
-| T-21 | M2 | Fonts: BMFont import of 5×7 + 8 px; codex-fit test | T-10 | longest SRD entry unclipped |
-| T-22 | M2 | Nine-patch UI kit + `ui_pixel.gd` factory | T-20 | kit screen shot |
-| T-23 | M2 | Art toolchain v1 (downscale/quantise/clean/pack) | — | one family end-to-end |
-| T-24 | M2 | Art lint + atlas manifest in CI | T-23 | lint red on injected bad PNG |
-| T-30 | M3 | Layout converter + per-screen re-author (10 screens) | T-22 | GDD-02 string parity |
-| T-31 | M3 | Save v2 schema + migration + tests | T-30 | round-trip + fixture migrate |
-| T-32 | M3 | Options schema prune (delete 3D rows) + pixel controls | T-30 | 100 % of live rows act |
-| T-33 | M3 | Codex SRD re-source + attribution block | T-30 | §15 review passed |
-| T-34 | M3 | Credits + sting + loading dwell in pixel | T-30 | walk captures |
-| T-40 | M4 | CI Godot tag verify + import-commit bot | T-13 | `.import` drift auto-committed |
-| T-41 | M4 | Tile yard builder (`build_tile_yard.py` → `.tscn` + data layers) | T-23 | yard loads, layers populated |
-| T-42 | M4 | Player + NPC rigs (6) + 9 anim states | T-23 | walk/attack reads at 1× |
-| T-43 | M4 | Day clock + mist + pause + interactables + bell stub | T-41 | T1 beat completable |
-| T-44 | M4 | Smoke scene extension (target ≈ 90 checks, printed) | T-31 | `SMOKE_ALL_GREEN` |
-| T-47 | M5 | Rules grid consumers: pathing/LoS/cover/elevation + tests | T-41 | distance/LoS unit tests |
-| T-48 | M5 | Turn engine + queue UI + budgets | T-47 | scripted 1-round test |
-| T-49 | M5 | Dice Roll Moment UI | T-23 | pace settings honoured |
-| T-50 | M5 | Dummy-line encounter (T3/T4) | T-48 | winnable; golden v1 |
-| T-55 | M6 | Reactions/OA + AoE templates + previews | T-48 | template unit tests |
-| T-56 | M6 | Masteries + Prone + conditions UI | T-55 | sparring uses both |
-| T-57 | M6 | Enemy AI + telegraphs + pace settings | T-48 | AI golden assertions |
-| T-58 | M6 | Sparring encounter (T8) + bestiary entries | T-56 | §6.8 acceptance |
-| T-60 | M7 | Export preset update + custom HTML shell | T-40 | local export boots |
-| T-61 | M7 | Audio MP3 twins + platform pick | — | Safari audition pass |
-| T-62 | M7 | Hosting topology (`/play/v*`, redirect, caching) | T-60 | deploy green, saves persist across versions |
-| T-63 | M7 | Playwright browser smoke + size budget gates | T-60 | CI tag run green |
-| T-70 | M8 | Accessibility pass (ui_scale, CB LUTs, reduced motion) | all | lint + manual pass |
-| T-71 | M8 | Touch fallback (coarse-pointer d-pad) | T-60 | phone checklist |
-| T-72 | M8 | Weather/mist/backdrops polish pass | T-42 | shots approved |
-| T-73 | M8 | Device matrix + release notes + v1.0.0-pixel tag | all | §1.4 checklist |
-
----
-
-## 14. RISKS & MITIGATIONS
-
-| # | Risk | Likelihood | Impact | Mitigation |
-|---|---|---|---|---|
-| R1 | AI-generated art fails the silhouette/palette bar repeatedly, inflating M2 | med | schedule | §5 pipeline is iterative by design; fallback = CC0 pixel packs recoloured to the palette for *props only* (licence-clean), characters stay bespoke |
-| R2 | Shell re-layout uncovers hidden coupling to 1600×900 (motes math, credits speed) | med | M3 overrun | converter first pass exposes all 69 rects up front; budget already includes re-author |
-| R3 | Godot web build quirks (audio unlock, canvas focus, Safari WebGL) discovered late | med | M7 overrun | browser smoke enters CI at M7 *start*, not end; MP3 twins remove the known Safari audio failure |
-| R4 | Chebyshev/AStar pathing does not yield 5e-legal distances | low | combat correctness | explicit unit test before any encounter content (T-47); fallback = custom 8-way Dijkstra on the 29×29 grid (trivial size) |
-| R5 | CI Godot image tag drift / template mismatch | low | pipeline | pin exact tag at T-40; smoke runs on every PR so breakage is same-day |
-| R6 | Save loss across deploy paths | low | player trust | origin never changes; §9.3 redirect keeps URLs stable; migration is one-way and logged |
-| R7 | WotC trademark pressure (fan names kept, D5) | low-med | takedown | non-commercial posture, visible disclaimer, no sales, no mind-flayer/illithid content in this slice; Route B rename plan already exists in GDD-00 if ever forced |
-| R8 | Scope creep back toward 3D or Chapter 1 | med | project death | §3.1 deferred list is explicit; any addition requires striking something of equal size |
-| R9 | Repo bloat returns | med | DX | CI size gates (§9.4, §10.2) fail the build on regression |
-
----
-
-## 15. RIGHTS, LICENSING & ATTRIBUTION
-
-1. **Fan-work disclaimer** stays verbatim on the legal screen and credits (D5 decision; it is already in
-   `shell.gd` `LEGAL`).
-2. **SRD 5.2.1 (CC-BY-4.0)** is the rules source; its attribution block (GDD-00 §Part 0) must appear in
-   credits and the legal screen *regardless* of the fan-name choice — CC-BY requires it whenever SRD text is
-   used, and the codex does use it.
-3. **Codex provenance (T-33/T-47):** every `rules[]` entry in `shell_content.json` currently labelled
-   "PHB 2024" must be verified sentence-by-sentence against SRD 5.2.1 and reworded to the SRD text where it
-   differs. Anything with no SRD counterpart is cut, not paraphrased.
-4. **Fonts:** pixel fonts must be CC0/OFL with notice files committed (same discipline as the existing
-   Cinzel/Alegreya OFL files).
-5. **Generated art:** prompts and raws retained (`prompts.json`) as provenance; no third-party copyrighted
-   references in prompts.
-6. **Quaternius assets** being retired still get their CC0 credit line preserved in `THIRD_PARTY.md` history.
-
----
-
-## 16. OPEN QUESTIONS (answer to unblock M-gates)
-
-| # | Question | Default if unanswered | Blocks |
+| Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| Q1 | Combat zoom: keep world at 1× during combat (see ~30×17 cells) or add a 2× "lean-in" on the acting combatant? | 1× flat + animated camera nudge (cheaper, pixel-pure) | M5 |
-| Q2 | Should the legacy root web shell gain a playable iframe of `/play/`, or just a link? | Link + embed card (iframe adds pointer/keyboard focus friction) | M7 |
-| Q3 | itch.io publishing: set up a butler key now, or manual uploads until v1.0? | Manual until v1.0 | M7 |
-| Q4 | Keep IM Fell English as a third UI accent anywhere in the pixel build? | No — two pixel fonts only | M2 |
-| Q5 | Codex reading magnification: runtime `ui_scale` toggle vs a dedicated "large text" options row? | Options row (discoverable) | M8 |
-| Q6 | Is a desktop (native) export worth keeping alongside web, given the OGG originals exist? | Web-only for v1.0; desktop later | post-M8 |
+| Rendering is verified headlessly, not visually | medium | medium | previews for stills, live preview for motion, manual checklist per release |
+| Browser differences (autoplay, storage, codecs) | medium | medium | gesture gate, guarded writes, OGG/MP3 fallback, the three target browsers in §4.11 |
+| Canvas performance without a GPU batching layer | low | medium | integer blits, no per-frame allocation, 60 blits/frame today, batch tiles in the yard |
+| No profiler in the build sandbox | medium | low | budgets in §4.10 are measured with the browser's own tooling at M7 |
+| Spec drift between GDD-07 and the data files | low | high | `check_strings.py` fails the build on a single character |
+| Dependency creep (a helper library "just for this") | medium | high | none is needed; the gate has no install step and the page has no `node_modules` |
+| Save loss on a browser that refuses storage | low | medium | flush reports, session continues, scored card explains |
+| Audio arrives cue by cue | certain | low | unknown or missing cues are silent, logged once, counted by the gate |
 
 ---
 
-## 17. APPENDICES
+## 14. RIGHTS, LICENSING & ATTRIBUTION
 
-### A. `project.godot` diff summary
-See §4.2 (complete block). Removed keys: `window/size/viewport_*` 1600/900 pair, `stretch/mode=canvas_items`,
-`stretch/aspect=expand`, Sky3D from `editor_plugins`. Added: `[gui]` pixel-font block, nearest filter, 2D
-snapping, 480×270 viewport + overrides.
+- **Fan work, never for sale.** The disclaimer ships verbatim on the legal screen, in the
+  credits and at the foot of the menu (abridged, with the full text in the tooltip).
+- **SRD 5.2.1, CC-BY-4.0.** The attribution block ships verbatim on the legal screen, in the
+  credits and in GDD-07 §14.2. Rules text is sourced from the SRD, entry by entry (T-47).
+- **Trademarks remain Wizards of the Coast's**, used without permission and with no challenge
+  to any mark or copyright.
+- **Typefaces:** the 5×7 system face (MIT) and Silkscreen (OFL-1.1); licences ship beside the
+  atlases in `web/assets/fonts/LICENCES`.
+- **Audio:** only cues the project has the right to ship are committed.
 
-**T-02 verification record (2026-09-23)** — every §4.2 key name confirmed **exact** against the Godot 4.7
-class/enum references; **zero renames**:
+---
 
-- `display/window/size/*` and `window/stretch/{mode,aspect}` — pre-existing keys, values swapped in place;
-  `window/stretch/scale_mode="integer"` confirmed present (enum `fractional`/`integer`).
-- `gui/theme/default_font_{antialiasing,subpixel_positioning,hinting}` — confirmed; `0` = `NONE`,
-  `DISABLED`, `NONE` respectively (engine default is `1` in all three).
-- `rendering/textures/canvas_textures/default_texture_filter` — confirmed (`0` = Nearest); written as
-  `textures/canvas_textures/…` under `[rendering]`.
-- `rendering/2d/snap/snap_2d_{transforms,vertices}_to_pixel` — confirmed.
-- `rendering/environment/defaults/default_clear_color`, `renderer/rendering_method{,.mobile}`,
-  `editor_plugins/enabled`, `application/config/version` — confirmed (already in use or standard).
-- Applied-form notes: the block's two inline `;` annotations are written as full-line comments in the
-  shipped file (ConfigFile documents full-line `;` comment lines — a trailing comment can be absorbed into
-  the value text); the pre-existing `textures/vram_compression/import_etc2_astc=true` key was kept
-  ("replace/add"); the `[input]` comment defers the actual action edits to T-11, because actions today are
-  registered at runtime by `game_state.gd`, not by `project.godot`.
-- Import gate: the sandbox has no Godot binary (§11.1) and the release CDN is unreachable, so the
-  executable `--headless --import` pass is the CI gate (`import` job, §10.3 / T-13). The local gate was a
-  ConfigFile-grammar validation of the shipped file (sections, keys, value syntax, no inline comments,
-  full §4.2 block parity) — PASS.
+## APPENDIX A — Repository map
 
-### B. Palette tables
-Surface 32 + Below 8 — exact hex in §5.3. Machine-readable copies land at
-`assets/pixel/palette/palette_{surface,below}.png` + `palette_lut.json` (M2, T-20).
-
-### C. New project tree
-See §4.3.
-
-### D. Asset manifest (counts)
-See §3.3; machine-readable `atlas_manifest.json` generated by the packer (M2).
-
-### E. Command cheat-sheet (post-M1)
-
-```sh
-# local dev (requires Godot 4.7.2 + templates on the developer machine)
-godot --headless --path godot --import                 # regenerate imports
-godot --headless --path godot res://tests/smoke_pixel.tscn -- --test-mode
-godot --headless --path godot res://tests/shot_walk.tscn -- --test-mode --still --shots=/tmp/shots
-python3 godot/tools/export_web.py --godot /path/to/godot
-python3 godot/tools/serve_web.py                        # http://localhost:8080
-
-# agent-sandbox toolchain (no Godot needed)
-python3 -m venv .venv && .venv/bin/pip install pillow numpy
-.venv/bin/python godot/tools/pixelart/lint_artifacts.py
-.venv/bin/python godot/tools/pixelart/convert_layout.py --dry-run
-npm i --no-save ffmpeg-static && node godot/tools/audio/transcode.js
+```
+DELVE/
+├ README.md                 what this is and how to run it
+├ 00…07_*.md                the specifications (06/07 are the live ones)
+├ vercel.json               outputDirectory: "web" + cache headers
+├ .github/workflows/        the gates, on every push
+├ tools/                    builders + gates (Python, stdlib only)
+│  ├ build_all.py           run every builder; --check verifies reproducibility
+│  ├ build_palette.py · build_fonts.py · build_brand.py · build_ui_kit.py
+│  ├ check_project.py · check_strings.py
+│  ├ preview_screen.py · fetch_audio.py   (static layout lint; cue fetch)
+│  ├ lib/                   PNG reader/writer, pixel canvas
+│  └ sources/               font sources
+└ web/                      the game (see web/README.md)
+   ├ index.html · css/         the page and the canvas styling
+   ├ js/                       shell + screens (ES modules)
+   ├ data/                     the spec's numbers and copy, as JSON
+   ├ assets/                   fonts, palette, nine-patch kit, audio
+   ├ tests/                    run.mjs · smoke.mjs · shoot.mjs · reel.mjs
+   └ docs/                     build notes: deviations and seams
 ```
 
-### F. Glossary of shipped systems
-`Dice` (seeded d20 authority) · `Streams` (isolated RNG lanes) · `TurnEngine` (queue/economy state machine) ·
-`RulesGrid` (tile custom-data consumers) · `Pathing` (AStarGrid2D, Chebyshev) · `EncounterController`
-(data-driven combat loader) · `ui_pixel` (nine-patch factory) · art pipeline (`generate→pack`, lint-gated).
+## APPENDIX B — The gate commands, and what a failure means
 
-### G. Plan changelog
-- **v1.0 (2026-09-23):** initial plan from clarification round (D1–D6) + full repo audit at `17c5fbc`.
-- **T-01 (2026-09-23):** `.godot/` → `godot/` rename + root `.gitignore` consolidation landed.
-- **T-02 (2026-09-23):** §4.2 applied to `godot/project.godot` (v0.4.0-pixel, 480×270 integer pipeline,
-  Sky3D plugin disabled); key names verified — no renames (Appendix A).
-- **T-03 (2026-09-23):** `DELVE_Godot_4.7.2.zip` (69 MB) moved to GitHub Release
-  [`v0.3.0-godot-3d`](https://github.com/LucasM25-max/DELVE/releases/tag/v0.3.0-godot-3d) and untracked
-  from Git (`*.zip` ignore enforced; H3 resolved). Uploaded via the `upload-release-asset` workflow
-  because the agent sandbox cannot reach `uploads.github.com`. GETTING_STARTED §2 now points at the
-  Release. Tracked tree after this commit: ≈108 MB — the <40 MB gate completes at T-04 (3D asset
-  retirement).
-- **T-04 (2026-09-23):** 3D assets retired (H4/H5). Tag `archive/3d-v0.3.0` + Release
-  [`DELVE_3D_ASSETS_v0.3.0.zip`](https://github.com/LucasM25-max/DELVE/releases/tag/archive/3d-v0.3.0)
-  (80.8 MB) carry characters/textures/models/Sky3D; `git rm` removes them from the tree;
-  `assets/models/manifest.json` becomes the 2D prop manifest (same names + 16-px footprints,
-  §10.2.3); Web `exclude_filter` gains the four retired globs, proved by
-  `godot/tools/verify_export_filters.py` (EXPORT_FILTER_TEST_PASS); THIRD_PARTY credits preserved.
-  Tracked tree: 108.1 MB → **24.5 MB — the M0 ≤40 MB gate green**. The 3D yard scenes are frozen at
-  the tag (accepted per M0 "hygiene & freeze"; rebuilt as 2D at M3/M4).
-- **T-05 (2026-09-23):** supersede banners added to GDD-00 Part 1 (and its header line) and
-  GDD-04; GDD-05 Way 1 rewritten to the `/play/` topology (§9.3) with the stale port-3100 preview
-  steps dropped, and its "where the game is" pointer re-aimed at GDD-06 §3.1/§12. Editor route
-  (Ways 2–3) left unchanged per §10.4.
-- **GDD-07 (2026-09-23):** companion content spec issued —
-  `07_PIXEL_PROLOGUE_YARD_AND_MENU_BUILD_SPEC.md`: complete pixel **menu** (exact 480×270 rects,
-  string master, 16 loading tips) + **entire training yard A–M** at GDD-03 detail (tile coordinates,
-  rules primer R1–R15, props/triggers/VO/audio/VFX, data schemas, QA suite), reconciled with this
-  document's §3.1 slice via ship rings P0/P1/P2 (§18).
-
----
-
-## 18. COMPANION CONTENT SPEC — GDD-07 (ISSUED 2026-09-23)
-
-Everything needed to **build the game menu and the entire prologue training area** in the pixel
-direction now lives in a single standalone document:
-
-→ **`07_PIXEL_PROLOGUE_YARD_AND_MENU_BUILD_SPEC.md` (GDD-07)**
-
-| This document (GDD-06) still owns | GDD-07 owns |
+| Failure | Means |
 |---|---|
-| Technology, art pipeline, milestones/backlog (§12–§13), web export/deploy, CI, risks, budgets | Menu screen-by-screen build rects + every shipped string; yard areas A–M in tile coordinates; rules primer R1–R15 inline at teaching stations; props/chars/audio/VO manifests; encounter + tutorial + map data schemas; menu+yard QA suite |
-| §3.1 first-playable **slice** definition (what lands at M4–M6) | Ship rings **P0/P1/P2** — P1 = this slice, P2 = complete prologue (T0–T11, C1–C6, all 13 areas interactive). P1 ⊂ P2; nothing is dropped, only sequenced |
+| `missing data/… (referenced by …)` | code names a file that is not committed |
+| `index.html has no <script type="module" …>` | the page would load nothing |
+| `… import does not resolve` | a module path is wrong or the file was renamed |
+| `vercel.json must set "outputDirectory": "web"` | the deploy root drifted and the site would 404 |
+| `palette.js SURFACE_HEX does not match build_palette.py` | the ramp was edited in one place only |
+| `… would run into its buttons` | a spec layout no longer fits its panel with the real fonts |
+| `string parity` mismatch | the shipped copy differs from GDD-07 by at least one character |
+| `[dice] … threw` | a unit regression in the rules maths |
+| `[screen] threw …` | a page fails to build, draw or take input |
 
-Where GDD-07 and the 3D-era specs (GDD-02, GDD-03) differ, **GDD-07 wins for the pixel build**
-(deltas catalogued in its §2). One deliberate refinement: ranged height house rule **R11 = 10 ft
-(elev Δ ≥ 2)** in GDD-07 §4, tightening this document's §6.5 `Δ≥1` sketch to the GDD-01/GDD-03
-threshold the loft is built around.
+## APPENDIX C — Changelog
 
----
-
-*End of GDD-06. M0 complete (T-01…T-05); M1+ follows §12/§13. Prologue content build spec: GDD-07 (§18).*
+| Version | Date | Change |
+|---|---|---|
+| 1.0 | 2026-09-23 | first pixel conversion plan (engine project, 3D → 2D) |
+| 2.0 | 2026-09-23 | rewritten for the static web build: GitHub → Vercel, ES modules, data-driven UI, four gates, no engine in the tree |
+| 2.1 | 2026-09-23 | engine-free sweep: the 3D blockout tree and the old root-level browser shell are deleted; cue paths are page-relative; the page rasteriser (`web/tests/shoot.mjs`) becomes the fifth gate and the images are attached to every CI run; module, string and gate counts re-measured |
+| 2.3 | 2026-09-23 | the boot reel is recorded in CI as its own non-gating job (`boot-reel` artifact) and assembled memory-lean, so a runner whose ImageMagick cache is capped still produces the GIF |
+| 2.2 | 2026-09-23 | seven defects found by the rasteriser and fixed: the image cache, the options cancel path, the tinted-run ink box (glyphs drew short), the first-run ground (it re-dimmed the previous frame instead of painting its own), plus the nine-patch rewrite (nine blits, not one per pixel-run) with the offline previewer brought back into step; the optional boot reel is added |

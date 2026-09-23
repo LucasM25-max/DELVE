@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "description": "The three bitmap faces the shell draws with, by role. Each name is an AngelCode `.fnt` descriptor plus its PNG atlas in assets/fonts/ (tools/build_fonts.py bakes them; tools/check_project.py verifies the glyph rects, the atlas bounds and the glyph coverage of every shipped string). Roles are the kit's names: `ui` is the 5 px chrome face, `body` the 8 px prose face, `display` the 10 px heading face.",
+  "faces": {
+    "ui": "pixel_ui_5",
+    "body": "pixel_body_8",
+    "display": "pixel_display_10"
+  }
+}
