@@ -1,12 +1,13 @@
 # 10 — YARD BUILD REPORT (GDD-03, Area A + perimeter)
 
-**Status: COMPLETE & QA-verified** (headless `QA_YARD_PASS`, 31 checks;
-smoke test 11/11). Scope: yard walls, gatehouse, portcullis, gate
-doors, props A1–A4, and the displaced 3D ground of
-`03_NEVERWINTER_YARD_LEVEL_SPEC.md` §4.A.
-Explicitly out of scope per user direction: NPCs (Corwin et al.), the
-dock lane (R1: A5–A10, city gate, lane props), and anything outside the
-walls.
+**Status: COMPLETE & QA-verified** (headless `QA_YARD_PASS`, 50 checks;
+smoke 80/80 all-green) — extended 2026-09-22 with the displaced 3D ground
+and with the Corwin guard NPC and a minimal `TR_A_LANE` per
+`docs/11_CORWIN_GUARD_NPC_IMPLEMENTATION_PLAN.md`. Scope: yard walls,
+gatehouse, portcullis, gate doors, props A1–A4, the displaced 3D ground,
+and Corwin at A1 of `03_NEVERWINTER_YARD_LEVEL_SPEC.md` §4.A. Explicitly
+out of scope per user direction: the dock lane (R1: A5–A10, city gate,
+lane props) and anything outside the walls.
 
 ## What was built
 
@@ -16,13 +17,15 @@ walls.
 | Gatehouse | 8 × 3 × 5 m arch block, 4 m × 4 m passage + segmental vault, straddling south wall at x −4..4 | 92-tri GLB, 12-segment vault soffit; instance rot 180° → world z −3..0, threshold at z=0 |
 | Portcullis | raised (day state), iron | 11 bars / 4 rails, 3.56 m wide, y 1..5, z −1.6..−1.4 (D1) |
 | Gate doors | oak leaves pinned open, 2 × 0.15 × 3.4 | both leaves into the passage, 1 cm stand-off (D2), bands toward centre; wood + iron bands |
-| A1 guard box | 1.2 × 1.2 × 2.4, Corwin's post, shutter open | 176 tris; open shutter, dark interior (no NPC yet), step; front faces gate (D3) |
+| A1 guard box | 1.2 × 1.2 × 2.4, Corwin's post, shutter open | 176 tris; open shutter, dark interior, step; front faces gate (D3); Corwin posted inside (docs/11) |
 | A2 notice board | 1.4 × 0.1 × 1.8, readable | 58 tris; parchment face with legible-look muster writing + wax seal; faces gate (D3) |
 | A3 barrels ×2 | 0.6⌀ × 0.9 @ (3.4,2.2)/(3.6,2.9) r15/40 | 240 tris each; bulged 16-stave body, 3 iron hoops (D5) |
 | A4 lanterns ×2 | 0.2⌀ × 2.6 @ (±3.2,0.8), 2400 K practicals | 120 tris each; iron post, bronze fittings, emissive glass insert + `OmniLight3D` (1, 0.588, 0.314) E3 D7 |
 | Textures | 1 K sets per GDD-03 §6 | 10 authored raster PBR PNGs (barrel oak, crate pine, bronze sets + parchment albedo); 6 authored ground PNGs (cobble and packed dirt, seam-welded to wrap pixel-perfectly for the 4 m / 3 m tiling); 9 wall-era PNGs unchanged |
 | Floor | packed dirt + 14 × 6 m forecourt cobble, flat is unacceptable | two displaced heightfield GLBs: `M_YRD_GROUND_YARD` (44 × 44 m, 0.5 m grid, ±10 cm undulation, wall lips, worn muster lane via vertex tints) and `M_YRD_GROUND_FORECOURT` (camber + flush gate sill + kerb skirts); runtime trimesh collision |
 | Player | spawn at forecourt after T0 fade | (0, 0.5, 5) facing the gate |
+| A1 Corwin NPC | guard: home A1; idle: leans, scans lane; blocks nothing | CC0 Quaternius body + UAL Idle (R13 pipeline), 1.82 m, guard-blue tint (D7), at (2.5, 0.16, 1.5) ROT180; procedural lean (D8) + lane scan; spatialised Voice with VO_GRD_001..003 (001 wired, see D9) |
+| TR_A_LANE | sphere r3 @(0,−4): first entry → VO_GRD_001 + `STR_J_LANE` | Area3D at Godot (0, 1, −4), one-shot `Corwin.say("VO_GRD_001")`; journal note deferred (D9) |
 
 All 14 GLBs: `assets/models/` (manifest.json authoritative).
 All 25 textures: `assets/textures/` (T_YRD_*).
@@ -43,11 +46,13 @@ All 25 textures: `assets/textures/` (T_YRD_*).
   that breaks the tile repeat without any runtime shader.
   No runtime or build-time procedural texture generator remains in the project.
 * **Scene** — `tools/scene/build_test_yard.py` regenerates
-  `scenes/world/test_yard.tscn` byte-for-byte (load_steps 66: 42 ext +
-  23 sub resources; 61 collision shapes; 2 lights). Ground
+* **Scene** — `tools/scene/build_test_yard.py` regenerates
+  `scenes/world/test_yard.tscn` byte-for-byte (load_steps 68: 43 ext +
+  24 sub resources, self-checked; 216 node blocks; 64 collision shapes:
+  61 Level + lane sphere + 2 ground trimesh slots). Ground
   `CollisionShape3D`s are baked from the heightfield meshes as trimeshes
   by `scripts/world/test_yard.gd::_setup_ground_collision()`.
-* **QA** — `tools/qa_yard.gd` (headless, 31 checks): import structure,
+* **QA** — `tools/qa_yard.gd` (headless, 51 checks): import structure,
   47 walls, gate AABBs (gatehouse/portcullis/doors), all prop AABBs,
   7 material overrides, collision count, lantern lights, spawn, ground
   extents/displacement/materials/trimesh collision.
@@ -92,15 +97,37 @@ All 25 textures: `assets/textures/` (T_YRD_*).
   at x ±1.78) near the edges — consequence of the confirmed raised
   state in the 4 m vaulted passage.
 * **D5** Barrel "0.6⌀" read as 0.6 m diameter.
+* **D6** `M_NPC_GUARD` (HERO_NPC tier final art) stands as the CC0
+  Quaternius Superhero Male body at this stage — same convention as the
+  Player (Addendum R13 pipeline); measured 1.82 m via mesh accessor,
+  matching "1.8 h". Final mesh = art pass. **No new third-party content**:
+  the already-credited UBC body + UAL clips are re-used.
+* **D7** Flat guard-blue `StandardMaterial3D` (Color(0.16, 0.24, 0.44),
+  roughness 0.9) stands in for `T_YRD_CLOTH_TABARD` (Guard blue); plain
+  color material — no procedural texture generation.
+* **D8** "leans" = constant spine pose offset (4° forward, 5° settle) over
+  the UAL Idle — UAL ships no lean clip; swappable for a baked action later.
+* **D9** Only `TR_A_LANE` of the Area A trigger set ships with the Corwin
+  milestone (its owner now exists). `STR_J_LANE` has no defined string in
+  GDD-03 and stays out; `VO_GRD_002/003` are imported and playable via
+  `Corwin.say()` but unwired (city-gate pair and TR_A_DEPART/signing state
+  are deferred). Trigger sphere centre lifted to Godot y=1 to meet the
+  player capsule.
+* **D10** VO bed duck (−6 dB during lines, GDD-03 §7/§12) implemented as a
+  gain duck on the menu-music player (`Sound.duck_bed`) — beyond the
+  docs/11 deferral list so the lines mix over the only existing bed.
 
 ## Deferred (explicit user scope, not defects)
 
-* Corwin NPC (guard box interior is dark-set for it) and all R1 dock
-  lane content (A5 crate stacks, A6 rope coils, A7 gull posts, A8
-  barrel row, A9 city gate + guard pair, A10 rope cordon).
-* Trigger/logic layer for Area A (`TR_A_ARRIVE`, `TR_A_LANE`,
+* All R1 dock lane content (A5 crate stacks, A6 rope coils, A7 gull
+  posts, A8 barrel row, A9 city gate + guard pair, A10 rope cordon).
+  *Corwin at A1 is delivered (docs/11); the R1 city-gate guard pair that
+  re-uses `M_NPC_GUARD` is not.*
+* Remaining trigger/logic layer for Area A (`TR_A_ARRIVE`,
   `TR_A_CITYGATE`, `TR_A_DEPART`), audio/VFX beds, the `UI_A_*` cards
   (the board parchment is the visual placeholder for `UI_A_BOARD`).
+  *`TR_A_LANE` ships minimal (VO_GRD_001 one-shot) with the Corwin
+  milestone — see D9.*
 * Remaining area-specific texture variants from GDD-03 §6 (worn dock cobble,
   sand-circle and decal families) are still deferred; the training-yard floor
   itself is a full 44 × 44 m packed-dirt heightfield under a 14 × 6 m
