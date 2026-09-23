@@ -50,7 +50,7 @@ Deterministic: same input -> byte-identical .tscn.
 import math
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]  # .godot/
+ROOT = Path(__file__).resolve().parents[2]  # project root (godot/)
 OUT = ROOT / "scenes" / "world" / "test_yard.tscn"
 
 MODELS = "res://assets/models"

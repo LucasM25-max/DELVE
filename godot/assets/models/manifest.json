@@ -1,6 +1,6 @@
 {
  "M_YRD_WALL_STONE": {
-  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_WALL_STONE.glb",
+  "file": "assets/models/M_YRD_WALL_STONE.glb",
   "mesh": "M_YRD_WALL_STONE",
   "primitives": [
    {
@@ -22,7 +22,7 @@
   ]
  },
  "M_YRD_WALL_STONE_START": {
-  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_WALL_STONE_START.glb",
+  "file": "assets/models/M_YRD_WALL_STONE_START.glb",
   "mesh": "M_YRD_WALL_STONE_START",
   "primitives": [
    {
@@ -44,7 +44,7 @@
   ]
  },
  "M_YRD_WALL_STONE_HALF": {
-  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_WALL_STONE_HALF.glb",
+  "file": "assets/models/M_YRD_WALL_STONE_HALF.glb",
   "mesh": "M_YRD_WALL_STONE_HALF",
   "primitives": [
    {
@@ -66,7 +66,7 @@
   ]
  },
  "M_YRD_WALL_STONE_END": {
-  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_WALL_STONE_END.glb",
+  "file": "assets/models/M_YRD_WALL_STONE_END.glb",
   "mesh": "M_YRD_WALL_STONE_END",
   "primitives": [
    {
@@ -88,7 +88,7 @@
   ]
  },
  "M_YRD_GATEHOUSE": {
-  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_GATEHOUSE.glb",
+  "file": "assets/models/M_YRD_GATEHOUSE.glb",
   "mesh": "M_YRD_GATEHOUSE",
   "primitives": [
    {
@@ -110,7 +110,7 @@
   ]
  },
  "M_YRD_PORTCULLIS": {
-  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_PORTCULLIS.glb",
+  "file": "assets/models/M_YRD_PORTCULLIS.glb",
   "mesh": "M_YRD_PORTCULLIS",
   "primitives": [
    {
@@ -132,7 +132,7 @@
   ]
  },
  "M_YRD_GATE_DOOR": {
-  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_GATE_DOOR.glb",
+  "file": "assets/models/M_YRD_GATE_DOOR.glb",
   "mesh": "M_YRD_GATE_DOOR",
   "primitives": [
    {
@@ -170,7 +170,7 @@
   ]
  },
  "M_YRD_GATE_DOOR_R": {
-  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_GATE_DOOR_R.glb",
+  "file": "assets/models/M_YRD_GATE_DOOR_R.glb",
   "mesh": "M_YRD_GATE_DOOR_R",
   "primitives": [
    {
@@ -208,7 +208,7 @@
   ]
  },
  "M_YRD_GUARD_BOX": {
-  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_GUARD_BOX.glb",
+  "file": "assets/models/M_YRD_GUARD_BOX.glb",
   "mesh": "M_YRD_GUARD_BOX",
   "primitives": [
    {
@@ -246,7 +246,7 @@
   ]
  },
  "M_YRD_NOTICE_BOARD": {
-  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_NOTICE_BOARD.glb",
+  "file": "assets/models/M_YRD_NOTICE_BOARD.glb",
   "mesh": "M_YRD_NOTICE_BOARD",
   "primitives": [
    {
@@ -284,7 +284,7 @@
   ]
  },
  "M_YRD_BARREL": {
-  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_BARREL.glb",
+  "file": "assets/models/M_YRD_BARREL.glb",
   "mesh": "M_YRD_BARREL",
   "primitives": [
    {
@@ -322,7 +322,7 @@
   ]
  },
  "M_YRD_LANTERN_POST": {
-  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_LANTERN_POST.glb",
+  "file": "assets/models/M_YRD_LANTERN_POST.glb",
   "mesh": "M_YRD_LANTERN_POST",
   "primitives": [
    {
@@ -376,7 +376,7 @@
   ]
  },
  "M_YRD_GROUND_YARD": {
-  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_GROUND_YARD.glb",
+  "file": "assets/models/M_YRD_GROUND_YARD.glb",
   "mesh": "M_YRD_GROUND_YARD",
   "primitives": [
    {
@@ -398,7 +398,7 @@
   ]
  },
  "M_YRD_GROUND_FORECOURT": {
-  "file": "/home/user/DELVE/.godot/assets/models/M_YRD_GROUND_FORECOURT.glb",
+  "file": "assets/models/M_YRD_GROUND_FORECOURT.glb",
   "mesh": "M_YRD_GROUND_FORECOURT",
   "primitives": [
    {

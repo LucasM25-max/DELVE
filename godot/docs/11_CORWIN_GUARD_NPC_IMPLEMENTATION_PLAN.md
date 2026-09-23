@@ -4,7 +4,7 @@
 **Spec sources:** `03_NEVERWINTER_YARD_LEVEL_SPEC.md` (GDD-03 v1.0). Current build
 state: `docs/10_YARD_BUILD_REPORT.md` (Area A + perimeter COMPLETE; Corwin listed
 under *Deferred*: "Corwin NPC (guard box interior is dark-set for it)").
-**Engine:** Godot 4.7.2, GL Compatibility. Project root = this folder (`.godot/`).
+**Engine:** Godot 4.7.2, GL Compatibility. Project root = this folder (`godot/`).
 
 ---
 
@@ -238,7 +238,7 @@ yard shots to confirm nothing regressed.
 ### Step 9 — Build, import, verify (exact command sequence)
 
 ```sh
-cd /home/user/DELVE/.godot
+cd godot                                   # from the repo root (GDD-06 T-01: project lives at godot/)
 python3 tools/meshes/build_all.py          # sanity only — GLBs must be byte-identical
 python3 tools/scene/build_test_yard.py     # regenerates test_yard.tscn (now with Corwin)
 # Godot binary (only if /home/user/.cache/godot-src/bin is missing):

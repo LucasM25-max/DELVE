@@ -13,7 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gltf_lib as G  # noqa: E402
 
-ROOT = Path(__file__).resolve().parents[2]  # .godot/
+ROOT = Path(__file__).resolve().parents[2]  # project root (godot/)
 OUT = ROOT / "assets" / "models"
 OUT.mkdir(parents=True, exist_ok=True)
 
@@ -69,6 +69,9 @@ def build() -> dict:
         verts = sum(len(p.positions) for p in mesh.prims)
         print(f"{name}: {verts} verts, {tris} tris, displaced heightfield")
         manifest[name] = G.write_glb(str(OUT / f"{name}.glb"), mesh, name)
+    # Manifest "file" fields stay project-relative (GDD-06 T-01: no absolute paths).
+    for entry in manifest.values():
+        entry["file"] = f'assets/models/{Path(entry["file"]).name}'
     (OUT / "manifest.json").write_text(json.dumps(manifest, indent=1))
     return manifest
 

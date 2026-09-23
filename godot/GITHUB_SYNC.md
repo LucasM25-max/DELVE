@@ -45,7 +45,7 @@ cd DELVE/godot
 
 ## 2. Merging one of my delivery zips
 
-My zips contain the whole `godot/` folder **except** `.godot/` and **except** `addons/`
+My zips contain the whole `godot/` folder **except** `.godot` and **except** `addons/`
 (Terrain3D, Sky3D and other plugin binaries stay yours — they live on your disk and in
 GitHub, never in my zips).
 
@@ -73,7 +73,7 @@ git push
 ```
 
 ### What NOT to push
-- Never push `.godot/` (if it ever appears in the change list, untick it; add it to
+- Never push `.godot` (if it ever appears in the change list, untick it; add it to
   `.gitignore` if needed — the repository already ignores it).
 - Never push engine binaries, export templates or web-export output folders.
 - Big media is fine up to **100 MB per file** (GitHub limit); the character kit (~40 MB)

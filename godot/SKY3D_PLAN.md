@@ -20,7 +20,7 @@
 - **License:** MIT + third-party star/moon textures with separate LICENSE.md.
 
 ## Phase 0 — Done: Vendor + enable + test yard
-- [x] Addon present at `.godot/addons/sky_3d/`, enabled in `project.godot`, yard runs with Sky3D.
+- [x] Addon present at `godot/addons/sky_3d/`, enabled in `project.godot`, yard runs with Sky3D.
 - Smoke test passes (ground white albedo >0.9, child count 4).
 
 ## Phase 1 — DONE: Neverwinter dawn staging (menu + yard)
@@ -109,7 +109,7 @@ Both show entire flow: menus + training area with sky and character moving.
 Future: With Godot binary + Xvfb + ffmpeg, capture real `godot --headless` or Web export via Playwright.
 
 ## Summary
-- Sky3D in repo `.godot/addons/sky_3d/` MIT 2.1.
+- Sky3D in repo `godot/addons/sky_3d/` MIT 2.1.
 - Includes: sun/moon/stars/moon phases, atmosphere, fog, cirrus/cumulus clouds, wind speed/dir driving clouds, time/date, orbital mechanics, exposure.
 - Excludes: rain/snow — custom Weather needed.
 - Phases 1 & 2 implemented and look great at dawn.

@@ -1,6 +1,10 @@
 # Godot caches / exports are rebuilt locally.
 godot/.godot/
 godot/exports/
+
+# Packaging / scratch artifacts (binaries belong in GitHub Releases — GDD-06 T-03).
+*.zip
 deliverables/
 __pycache__/
 *.pyc
+*.tmp

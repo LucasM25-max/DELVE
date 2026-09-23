@@ -103,8 +103,8 @@ python tools/serve_web.py
 python tools/package_project.py
 ```
 
-`.godot/`, `exports/`, real user saves and large generated builds are excluded from the
-source deliverable. No automatic network services, telemetry, plugin downloads or third-party
+The `.godot` engine cache, `exports/`, real user saves and large generated builds are
+excluded from the source deliverable. No automatic network services, telemetry, plugin downloads or third-party
 runtime dependencies are present.
 
 ## Character and animation architecture (v0.3)

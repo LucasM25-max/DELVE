@@ -297,13 +297,13 @@ is not needed by Godot.
    `config/features="4.7"` and the Compatibility renderer; other versions will re-import
    every asset and may shift UI metrics.
 2. Godot editor → **Import** → select `godot/project.godot` → **Import & Edit**.
-3. On first open Godot rebuilds the `.godot/` import cache (fonts, textures, the wax seal,
+3. On first open Godot rebuilds the `.godot` import cache (fonts, textures, the wax seal,
    the parchment alpha cut-out). Let it finish before pressing F5.
 4. F5 runs `scenes/ui/shell.tscn`: attribution → logo sting → menu → contract → loading
    road → test yard.
 
-`.godot/` is a local cache: never commit it, never copy it between machines. Deleting it
-and reopening the project always reproduces it.
+The `.godot` folder is a local cache: never commit it, never copy it between machines.
+Deleting it and reopening the project always reproduces it.
 
 ### 7.3 Verify before pushing (headless CI)
 
