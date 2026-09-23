@@ -230,6 +230,15 @@ step('the menu draws, moves and opens the First Run page', () => {
   eq(menu.selected, 1, 'the down arrow moves the menu cursor')
   menu.handleKey(key('ArrowUp'))
   frames(3, 0.1)
+
+  // One lit row at a time. A hover the pointer leaves behind when the keyboard
+  // takes over would put two cursors on screen at once — the reel caught it.
+  menu.rows[3].setHovered(true)
+  menu.handleKey(key('ArrowDown'))
+  eq(menu.rows.filter((row) => row.focused || row.hovered).length, 1,
+    'exactly one menu row stays lit after a hover and then a keyboard move')
+  check(menu.rows[menu.selected].focused, 'the row that stays lit is the selected one')
+  menu.rows[3].setHovered(false)
   menu.select(0, false)
   menu.handleKey(key('Enter'))
   eq(GameState.state, State.FIRST_RUN, 'PLAY opens the First Run contract page')

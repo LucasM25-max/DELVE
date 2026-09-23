@@ -6,7 +6,10 @@
 //   `px`          the em size in game pixels;
 //   `ascent`      the baseline offset from the top of the line box;
 //   `descent`     the room below the baseline;
-//   `lineHeight`  the step between wrapped lines.
+//   `lineHeight`  the step between wrapped lines;
+//   `tracking`    the default extra letter-spacing, in whole pixels (0 unless the
+//                 face is a display face — the wordmark's 6 px of air is what
+//                 makes 22 px caps read as a marque rather than a shout).
 //
 // Advances come from `assets/fonts/font_metrics.json` — per-character widths in
 // font units, baked from the shipped font by `tools/build_text_faces.py`. A
@@ -32,6 +35,7 @@ export class TextFace {
     this.ascent = Number(definition.ascent)
     this.descent = Number(definition.descent)
     this.lineHeight = Number(definition.lineHeight)
+    this.tracking = Number(definition.tracking ?? 0)
     this.inkHeight = this.ascent + this.descent
     this.unitsPerEm = Number(source.unitsPerEm)
     this.advances = source.advances ?? {}
@@ -48,22 +52,27 @@ export class TextFace {
     return Math.max(1, Math.round((units * this.px) / this.unitsPerEm))
   }
 
-  /** Ink width of a run of text, in whole pixels. */
-  measure(text) {
-    let width = 0
-    for (const character of String(text)) width += this.advance(character)
+  /**
+   * Ink width of a run of text, in whole pixels — every advance plus the
+   * tracking between the glyphs (never after the last one).
+   */
+  measure(text, tracking = this.tracking) {
+    const string = String(text)
+    if (string.length === 0) return 0
+    let width = (string.length - 1) * tracking
+    for (const character of string) width += this.advance(character)
     return width
   }
 
   /** Wrap `text` at `width`: lines, splitting a word only when it cannot fit. */
-  wrap(text, width) {
+  wrap(text, width, tracking = this.tracking) {
     const limit = Math.max(1, Math.floor(width))
     const lines = []
     for (const paragraph of String(text).split('\n')) {
       let line = ''
       for (const word of paragraph.split(/\s+/).filter((word) => word.length > 0)) {
         const candidate = line ? `${line} ${word}` : word
-        if (this.measure(candidate) <= limit) {
+        if (this.measure(candidate, tracking) <= limit) {
           line = candidate
           continue
         }
@@ -71,15 +80,15 @@ export class TextFace {
           lines.push(line)
           line = ''
         }
-        if (this.measure(word) <= limit) {
+        if (this.measure(word, tracking) <= limit) {
           line = word
           continue
         }
         // A single word longer than the line: cut it at the last glyph that fits.
         let rest = word
-        while (rest.length > 0 && this.measure(rest) > limit) {
+        while (rest.length > 0 && this.measure(rest, tracking) > limit) {
           let cut = rest.length - 1
-          while (cut > 1 && this.measure(rest.slice(0, cut)) > limit) cut -= 1
+          while (cut > 1 && this.measure(rest.slice(0, cut), tracking) > limit) cut -= 1
           lines.push(rest.slice(0, cut))
           rest = rest.slice(cut)
         }
@@ -91,36 +100,36 @@ export class TextFace {
   }
 
   /** Height of a wrapped block: lines × line height, plus `lineSpacing` per gap. */
-  measureBlock(text, width, lineSpacing = 0) {
-    const lines = this.wrap(text, width)
+  measureBlock(text, width, lineSpacing = 0, tracking = this.tracking) {
+    const lines = this.wrap(text, width, tracking)
     return lines.length * this.lineHeight + Math.max(0, lines.length - 1) * lineSpacing
   }
 
-  /** Draw one glyph with its pen at (x, baseline). Returns the advance. */
-  drawGlyph(painter, character, x, y, colour) {
+  /** Draw one glyph with its pen at (x, baseline). Returns the advance + tracking. */
+  drawGlyph(painter, character, x, y, colour, tracking = this.tracking) {
     painter.text(character, x, y, colour, this.font)
-    return this.advance(character)
+    return this.advance(character) + tracking
   }
 
   /** Draw a string with its line box top-left at (x, y). Returns the pen x. */
-  draw(painter, text, x, y, colour = null) {
+  draw(painter, text, x, y, colour = null, tracking = this.tracking) {
     const string = String(text)
     const left = Math.round(x)
     const baseline = Math.round(y) + this.ascent
     let cursor = left
-    for (const character of string) cursor += this.drawGlyph(painter, character, cursor, baseline, colour)
-    return cursor
+    for (const character of string) cursor += this.drawGlyph(painter, character, cursor, baseline, colour, tracking)
+    return cursor - (string.length > 0 ? tracking : 0)
   }
 
   /** Draw a wrapped block. Returns the height drawn. */
-  drawBlock(painter, text, x, y, width, colour, lineSpacing = 0, align = 'left') {
-    const lines = this.wrap(text, width)
+  drawBlock(painter, text, x, y, width, colour, lineSpacing = 0, align = 'left', tracking = this.tracking) {
+    const lines = this.wrap(text, width, tracking)
     let cursor = Math.round(y)
     for (const line of lines) {
-      const offset = align === 'center' ? Math.floor((width - this.measure(line)) / 2)
-        : align === 'right' ? width - this.measure(line)
+      const offset = align === 'center' ? Math.floor((width - this.measure(line, tracking)) / 2)
+        : align === 'right' ? width - this.measure(line, tracking)
           : 0
-      this.draw(painter, line, Math.round(x) + offset, cursor, colour)
+      this.draw(painter, line, Math.round(x) + offset, cursor, colour, tracking)
       cursor += this.lineHeight + lineSpacing
     }
     return lines.length * this.lineHeight + Math.max(0, lines.length - 1) * lineSpacing

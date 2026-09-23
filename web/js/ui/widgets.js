@@ -110,23 +110,32 @@ export class ListRow extends Widget {
     this.label = label
     this.face = options.face ?? Face.DISPLAY
     this.colour = options.colour ?? Palette.ink
+    this.tracking = options.tracking ?? null // null: whatever the face declares
     this.disabledColour = options.disabledColour ?? Palette.stone_1
     this.disabledDim = options.disabledDim ?? 0.4
+    // The rows a menu does not have its cursor on sit back a little, so the
+    // focused one reads as chosen rather than as one of five equals.
+    this.idleDim = options.idleDim ?? 1
     this.underline = options.underline ?? null // {colour, offsetY, height, progress}
     this.trailing = options.trailing ?? '' // e.g. the ledger's DELETE affordance
     this.trailingColour = options.trailingColour ?? Palette.bronze_1
   }
 
+  /** Ink width of the label, tracking included: the underline follows the word. */
+  get labelWidth() {
+    return Ui.measure(this.label, null, this.face, 0, this.tracking)
+  }
+
   draw() {
     if (!this.visible) return
     const focused = this.focused || this.hovered
-    const colour = this.enabled ? (focused ? this.colour : this.colour) : this.disabledColour
-    const alpha = this.enabled ? 1 : this.disabledDim
-    Ui.label(this.label, this.rect.x, this.rect.y, { face: this.face, colour, alpha })
+    const colour = this.enabled ? this.colour : this.disabledColour
+    const alpha = this.enabled ? (focused ? 1 : this.idleDim) : this.disabledDim
+    Ui.label(this.label, this.rect.x, this.rect.y, { face: this.face, colour, alpha, tracking: this.tracking })
     if (focused && this.enabled) this.drawCursor()
     if (this.underline && focused && this.enabled) {
       const info = this.underline
-      const width = Math.round(this.rect.w * Math.min(1, Math.max(0, info.progress ?? 1)))
+      const width = Math.round(Math.min(this.labelWidth, this.rect.w) * Math.min(1, Math.max(0, info.progress ?? 1)))
       Ui.rect(Rect.of(this.rect.x, this.rect.y + (info.offsetY ?? 14), width, info.height ?? 2), info.colour ?? Palette.bronze_2)
     }
     if (this.trailing && this.enabled) {

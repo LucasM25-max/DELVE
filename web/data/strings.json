@@ -74,6 +74,13 @@
     "STR_OPTIONS_TAB_ACCESSIBILITY": "Accessibility",
     "STR_OPTIONS_TAB_AUDIO": "Audio",
     "STR_OPTIONS_TAB_CONTROLS": "Controls",
-    "STR_FR_SEAL_NOTE": "Signed in the muster-yard of the Neverwinter guard."
+    "STR_FR_SEAL_NOTE": "Signed in the muster-yard of the Neverwinter guard.",
+    "STR_MENU_PANEL_TITLE": "CURRENT CONTRACT",
+    "STR_MENU_PANEL_EMPTY_TITLE": "NO CONTRACT YET",
+    "STR_MENU_PANEL_DETAIL": "{0} · Level {1} · {2}",
+    "STR_MENU_PANEL_STATUS": "{0}/{1} beats done · CONTINUE to resume.",
+    "STR_MENU_PANEL_EMPTY_HINT": "The ledger holds up to eight contracts.",
+    "STR_MENU_KEYS": "↑ ↓ select · ENTER confirm",
+    "STR_MENU_PANEL_EMPTY_BODY": "No contracts signed yet. PLAY signs your first one."
   }
 }

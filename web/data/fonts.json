@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "description": "The three text faces the shell draws with, by role. Each face names a source in assets/fonts/font_metrics.json (the shipped webfont plus its per-character advances), a size in game pixels, and the vertical metrics the layout uses: `ascent` is the baseline offset from the top of the line box, `descent` the room below it, and `lineHeight` the step between wrapped lines. `ui` is the 9 px chrome face, `body` the 9 px prose face and `display` the 15 px heading face. tools/build_text_faces.py bakes the fonts, the metrics table and the offline atlases from tools/sources/; tools/check_project.py measures every page layout from the same numbers.",
+  "description": "The text faces the shell draws with, by role. Each face names a source in assets/fonts/font_metrics.json (the shipped webfont plus its per-character advances), a size in game pixels, and the vertical metrics the layout uses: `ascent` is the baseline offset from the top of the line box, `descent` the room below it, and `lineHeight` the step between wrapped lines. `tracking` is the default extra letter-spacing, in whole pixels. `ui` is the 9 px chrome face, `body` the 9 px prose face, `display` the 15 px heading face and `wordmark` the 22 px letterspaced brand face. tools/build_text_faces.py bakes the fonts, the metrics table and the offline atlases from tools/sources/; tools/check_project.py measures every page layout from the same numbers.",
   "family": "Delve Sans",
   "faces": {
     "ui": {
@@ -23,6 +23,14 @@
       "ascent": 15,
       "descent": 4,
       "lineHeight": 18
+    },
+    "wordmark": {
+      "source": "inter-600",
+      "size": 22,
+      "ascent": 22,
+      "descent": 6,
+      "lineHeight": 28,
+      "tracking": 6
     }
   }
 }

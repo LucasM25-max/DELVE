@@ -121,7 +121,12 @@ export class LedgerScreen extends ShellScreen {
 
   focusRow(index) {
     this.focus = Math.max(0, Math.min(ROW_COUNT - 1, index))
-    this.rows.forEach((row, rowIndex) => row.setFocus(rowIndex === this.focus))
+    // One lit row at a time: the rows are an exclusive group, so the focus clears
+    // any hover left on a sibling (see MenuScreen.select for the same rule).
+    this.rows.forEach((row, rowIndex) => {
+      row.setFocus(rowIndex === this.focus)
+      if (rowIndex !== this.focus) row.setHovered(false)
+    })
   }
 
   drawRow(row) {

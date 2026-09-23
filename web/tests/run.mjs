@@ -224,7 +224,8 @@ run('input actions', () => {
 run('text faces', () => {
   const ui = fonts.ui
   const body = fonts.body
-  eq(Object.keys(fonts.byRole).sort().join(','), 'body,display,ui', 'the manifest names three roles')
+  const wordmark = fonts.wordmark
+  eq(Object.keys(fonts.byRole).sort().join(','), 'body,display,ui,wordmark', 'the manifest names four roles')
   eq(ui.px, 9, 'the chrome face is drawn at 9 px')
   eq(body.px, 9, 'the prose face is drawn at 9 px')
   eq(ui.lineHeight, 12, 'the chrome face sits on a 12 px line')
@@ -234,6 +235,8 @@ run('text faces', () => {
   eq(ui.measure('PLAY'), ['P', 'L', 'A', 'Y'].reduce((sum, c) => sum + ui.advance(c), 0),
     'a run is the sum of its advances')
   eq(ui.file, 'assets/fonts/delve_sans_600.woff2', 'the chrome face is the SemiBold subset')
+  eq(wordmark.file, ui.file, 'the wordmark shares the SemiBold subset')
+  eq(wordmark.px, 22, 'the wordmark face is drawn at 22 px')
   eq(body.file, 'assets/fonts/delve_sans_400.woff2', 'the prose face is the Regular subset')
   eq(ui.font, '600 9px "Delve Sans", system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
     'the canvas font string names the stylesheet family')
@@ -247,6 +250,12 @@ run('text faces', () => {
     'the same help fits the First Run group in two lines (the 48 px pitch)')
   eq(ui.wrap('', 100).length, 1, 'an empty string is one empty line')
   // A face is measured from the shipped metrics, not from a text rasteriser.
+  eq(wordmark.tracking, 6, 'the wordmark carries 6 px of tracking')
+  eq(wordmark.measure('DELVE'), ['D', 'E', 'L', 'V', 'E']
+    .reduce((sum, c) => sum + wordmark.advance(c), 0) + 4 * 6, 'tracking is inside the measured width')
+  eq(wordmark.measure(''), 0, 'an empty run has no width, trailing tracking included')
+  check(ui.tracking === 0 && body.tracking === 0, 'the reading faces carry no tracking')
+
   const metrics = readJSON('assets/fonts/font_metrics.json')
   const units = metrics.sources[readJSON('data/fonts.json').faces.ui.source].advances[65] // 'A'
   eq(ui.advance('A'), Math.max(1, Math.round((units * ui.px) / metrics.sources[readJSON('data/fonts.json').faces.ui.source].unitsPerEm)),
@@ -280,14 +289,35 @@ run('menu layout', () => {
   eq(menu.item_count, 5, 'five menu items')
   const last = origin.y + menu.item_pitch * (menu.item_count - 1) + origin.h
   check(last <= 270, `the fifth item ends at y ${last}, inside the canvas`)
-  const lockup = Rect.from(menu.lockup_rect)
-  check(lockup.bottom <= origin.y, 'the lockup clears the first item')
+  const mark0 = Rect.from(menu.header.mark_rect)
+  check(mark0.bottom <= origin.y, 'the header lockup clears the first item')
   const disclaimer = Rect.from(menu.disclaimer_rect)
   const stamp = Rect.from(menu.version_stamp_rect)
   check(disclaimer.bottom <= 270 && stamp.bottom <= 270, 'both footer lines are inside the canvas (§5.4 note)')
   check(disclaimer.y >= last, 'the footer sits below the item block')
   const stampText = ShellData.t('STR_VERSION_STAMP', [VERSION, '2026-09-23'])
   check(fonts.ui.measure(stampText) <= stamp.w, 'the version stamp fits its 330 px field')
+
+  // The composition the third pass added: header block, contract card, hints.
+  const header = menu.header
+  const panel = Rect.from(menu.contract_panel.rect)
+  const mark = Rect.from(header.mark_rect)
+  const wordmarkRect = Rect.from(header.wordmark_rect)
+  check(mark.bottom <= origin.y, 'the header clears the first menu item')
+  check(mark.x === 29, 'the header shares the column with the items (§5.4 x 29)')
+  check(panel.x > origin.right && panel.bottom <= 270, 'the contract card clears the item column and the canvas edge')
+  check(Rect.from(menu.keys_rect).y >= last, 'the key hint sits below the item block')
+  check(panel.y >= mark.y, 'the card starts no higher than the header')
+  const rule = Rect.from(menu.footer_rule_rect)
+  check(rule.y < disclaimer.y && rule.y > panel.bottom, 'the footer rule separates the card from the footer')
+  const wordmarkFont = fonts.wordmark
+  const wordmarkWidth = wordmarkFont.measure(ShellData.brand.wordmark.text)
+  check(wordmarkWidth <= wordmarkRect.w, `the typed wordmark fits its ${wordmarkRect.w} px field`)
+  check(mark.w === 48 && mark.h === 48, 'the header mark is the emblem at 2x')
+  check(wordmarkFont.measure('DELVE') < panel.w, 'the wordmark is narrower than the card')
+  check(fonts.ui.measure(ShellData.t('STR_MENU_KEYS')) <= Rect.from(menu.keys_rect).w,
+    'the key hint fits the foot of the item column')
+
 })
 
 run('first run page', () => {
@@ -395,7 +425,8 @@ run('widgets', () => {
 
 run('brand geometry', () => {
   eq(Brand.emblemSize().width, 24, 'the emblem is 24 px (§5.1)')
-  eq(Brand.wordmarkLetters().join(''), 'DELVE', 'the wordmark spells DELVE')
+  eq(Brand.wordmarkLetters().join(''), 'DELVE', 'the pixel wordmark spells DELVE')
+  eq(Brand.lockupSize, undefined, 'the retired pixel lockup has no reader left')
   eq(Brand.emblemStepRects().length, 3, 'the emblem has three steps')
   eq(Brand.litStepCount(0.2), 1, 'a fifth of the way in lights one step')
   eq(Brand.litStepCount(1), 3, 'a finished load lights all three')

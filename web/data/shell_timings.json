@@ -33,12 +33,6 @@
   },
   "menu": {
     "column_x": 29,
-    "lockup_rect": [
-      29,
-      22,
-      96,
-      24
-    ],
     "item_rect": [
       29,
       92,
@@ -52,7 +46,7 @@
     "underline_height": 2,
     "underline_draw_ms": 180,
     "emblem_flicker_ms": 200,
-    "disabled_dim": 0.4,
+    "disabled_dim": 0.8,
     "disclaimer_alpha": 0.6,
     "disclaimer_rect": [
       10,
@@ -66,7 +60,7 @@
       330,
       10
     ],
-    "_footer_note": "GDD-07 §5.4 puts both footer lines on one row at y 259. The shipped 9 px face measures the abridged disclaimer at 249 px and the version stamp at 195 px — 444 px of the 480 px row — so the spec's single row is back: disclaimer at x 10, stamp right-aligned to x 470. The line box is 12 px (ascent 9 + descent 3), so the row sits at y 258: the spec's 259 would push the last row of any descender off the canvas. The spec's original numbers are kept in spec_rects for reference.",
+    "_footer_note": "GDD-07 §5.4 puts both footer lines on one row at y 259. The shipped 9 px face measures the abridged disclaimer at 249 px and the version stamp at 195 px — 444 px of the 480 px row — so the spec's single row is back: disclaimer at x 10, stamp right-aligned to x 470. The line box is 12 px (ascent 9 + descent 3), so the row sits at y 258: the spec's 259 would push the last row of any descender off the canvas. The spec's original numbers are kept in spec_rects for reference. The footer sits under a bronze rule (footer_rule_rect) so it reads as a footer rather than a stray line.",
     "spec_rects": {
       "disclaimer": [
         10,
@@ -75,8 +69,107 @@
         8
       ],
       "version_stamp_right_x": 470,
-      "version_stamp_y": 259
-    }
+      "version_stamp_y": 259,
+      "lockup": [
+        29,
+        22,
+        96,
+        24
+      ]
+    },
+    "header": {
+      "mark_rect": [
+        29,
+        16,
+        48,
+        48
+      ],
+      "wordmark_rect": [
+        87,
+        14,
+        320,
+        28
+      ],
+      "sublock_rect": [
+        87,
+        42,
+        360,
+        12
+      ],
+      "sublock2_rect": [
+        87,
+        54,
+        360,
+        12
+      ],
+      "rule_rect": [
+        29,
+        76,
+        422,
+        1
+      ],
+      "_note": "The §5.4 lockup rect (29,22,96,24) was the emblem plus the 22 px pixel wordmark. The wordmark is now type (the `wordmark` face, 22 px, 6 px tracking), so the header is re-cut: the emblem at 2x (48 px) and the two brand lines beside it, with a bronze rule under the block. The spec rect is kept in spec_rects."
+    },
+    "contract_panel": {
+      "rect": [
+        196,
+        96,
+        255,
+        132
+      ],
+      "stamp_rect": [
+        212,
+        110,
+        24,
+        24
+      ],
+      "title_rect": [
+        244,
+        116,
+        191,
+        12
+      ],
+      "name_rect": [
+        212,
+        142,
+        223,
+        20
+      ],
+      "detail_rect": [
+        212,
+        166,
+        223,
+        12
+      ],
+      "rule_rect": [
+        212,
+        186,
+        223,
+        1
+      ],
+      "hint_rect": [
+        212,
+        196,
+        223,
+        24
+      ],
+      "_note": "The menu's right half used to be empty. It now carries the latest contract (or the reason CONTINUE is dimmed), which is what CONTINUE acts on. The card is the same parchment nine-patch the ledger and First Run use, aligned to the header and footer rules at x 29/451, and it is read from SaveStore on every frame so it can never disagree with the ledger."
+    },
+    "keys_rect": [
+      29,
+      206,
+      164,
+      14
+    ],
+    "footer_rule_rect": [
+      29,
+      250,
+      422,
+      1
+    ],
+    "item_tracking": 4,
+    "item_idle_dim": 0.78,
+    "_keys_note": "The foot of the item column: the keyboard hint, or §5.4's `No contracts signed yet.` tooltip while the pointer is on a disabled CONTINUE. 164 px keeps it clear of the contract card at x 196."
   },
   "screens": {
     "fade_ms": 600,

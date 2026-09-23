@@ -191,10 +191,48 @@ def check_data_files() -> None:
                  % (key, value, menu.get(key)))
     if timings.get("boot", {}).get("sting", {}).get("total_ms") != 4000:
         fail("shell_timings.boot.sting.total_ms should be 4000 (§5.2)")
-    if menu.get("lockup_rect") != [29, 22, 96, 24]:
-        fail("menu lockup rect must be (29,22,96,24) per §5.4")
     if menu.get("item_rect", [0, 0, 0, 0])[:3] != [29, 92, 140]:
         fail("menu item rect must start at (29,92,140,18) per §5.4")
+    # The menu's composition (third pass): a header block, the item column, the
+    # contract card and the footer. Each piece must sit inside the canvas and the
+    # pieces must not collide — the card is what keeps the right half from being
+    # empty, and the item column's foot is where the §5.4 tooltip goes.
+    header = menu.get("header", {})
+    card = menu.get("contract_panel", {})
+    item = menu.get("item_rect", [0, 0, 0, 0])
+    item_bottom = item[1] + menu.get("item_pitch", 21) * (menu.get("item_count", 5) - 1) + item[3]
+    mark = header.get("mark_rect", [0, 0, 0, 0])
+    if mark[0] != item[0]:
+        fail("the menu header must share the item column's x (%s)" % item[0])
+    if mark[3] != 48 or mark[2] != 48:
+        fail("the menu header mark must be the emblem at 2x (48x48), is %s" % mark[2:4])
+    if mark[1] + mark[3] > item[1]:
+        fail("the menu header runs into the first item row")
+    wordmark = header.get("wordmark_rect", [0, 0, 0, 0])
+    face = font_manifest().get("faces", {}).get("wordmark", {})
+    if face.get("size") != 22:
+        fail("the wordmark face must be 22 px (the §5.1 cap height at 2x)")
+    text_width = FaceWidths("wordmark").width("DELVE")
+    if text_width > wordmark[2]:
+        fail("the typed wordmark needs %d px, its field is %d" % (text_width, wordmark[2]))
+    panel = card.get("rect", [0, 0, 0, 0])
+    _inside(panel, [0, 0, 480, 270], "menu.contract_panel.rect")
+    if panel[0] <= item[0] + item[2]:
+        fail("the contract card would sit under the item column (%s vs item right edge %d)"
+             % (panel, item[0] + item[2]))
+    if panel[1] < mark[1] + mark[3]:
+        fail("the contract card starts above the header block's bottom")
+    for key in ("stamp_rect", "title_rect", "name_rect", "detail_rect", "rule_rect", "hint_rect"):
+        _inside(card.get(key, [0, 0, 0, 0]), panel, "menu.contract_panel.%s" % key)
+    keys = menu.get("keys_rect", [0, 0, 0, 0])
+    if keys[1] < item_bottom:
+        fail("the menu key hint at y %d sits on the last item row (ends at %d)" % (keys[1], item_bottom))
+    if keys[0] + keys[2] > panel[0]:
+        fail("the menu key hint (and the §5.4 tooltip that takes its line) runs under the card")
+    rule = menu.get("footer_rule_rect", [0, 0, 0, 0])
+    if not (panel[1] + panel[3] <= rule[1] <= menu.get("disclaimer_rect", [0, 0, 0, 8])[1]):
+        fail("the footer rule must sit between the contract card and the disclaimer")
+
     # Footer: the two strings are stacked (see menu._footer_note); both rects
     # must still sit entirely inside the 480x270 canvas.
     for key in ("disclaimer_rect", "version_stamp_rect"):
@@ -210,9 +248,9 @@ def check_data_files() -> None:
         fail("the version stamp must stay right-aligned to x = 470 (§5.4)")
 
     # Brand geometry must describe the PNGs that actually shipped.
+    # The retired lockup is gone: the header block below asserts what replaced it.
     for section, filename in (("emblem", "logo_emblem.png"),
-                              ("wordmark", "logo_wordmark.png"),
-                              ("lockup", "logo_menu.png")):
+                              ("wordmark", "logo_wordmark.png")):
         declared = brand.get(section, {}).get("size")
         path = os.path.join(WEB, "assets", "pixel", "ui", filename)
         if declared is None or not os.path.exists(path):
@@ -222,6 +260,28 @@ def check_data_files() -> None:
         if [image.width, image.height] != declared:
             fail("brand.json says %s is %s but the PNG is %dx%d"
                  % (section, declared, image.width, image.height))
+    variants = brand.get("emblem", {}).get("variants", {})
+    if variants.get("mark_2x") != "logo_emblem_2x.png":
+        fail("brand.json must name the 2x menu mark (logo_emblem_2x.png)")
+    if variants.get("mark_2x_steps") != "logo_emblem_steps_2x.png":
+        fail("brand.json must name the 2x lit mark (logo_emblem_steps_2x.png)")
+    # Both 2x marks must be whole-number doubles of the 24 px originals, or the
+    # header would draw its flicker a pixel off the mark underneath it.
+    for small_name, big_name in (("logo_emblem.png", "logo_emblem_2x.png"),
+                                 ("logo_emblem_steps.png", "logo_emblem_steps_2x.png")):
+        small = read_png(os.path.join(WEB, "assets", "pixel", "ui", small_name))
+        big = read_png(os.path.join(WEB, "assets", "pixel", "ui", big_name))
+        if (big.width, big.height) != (small.width * 2, small.height * 2):
+            fail("%s is not a 2x %s (%dx%d vs %dx%d)"
+                 % (big_name, small_name, big.width, big.height, small.width, small.height))
+            continue
+        for y in range(big.height):
+            for x in range(big.width):
+                if big.get(x, y) != small.get(x // 2, y // 2):
+                    fail("%s differs from %s at (%d,%d)" % (big_name, small_name, x, y))
+                    break
+    if brand.get("wordmark", {}).get("text") != "DELVE":
+        fail("brand.json must carry the typed wordmark's text")
     if brand.get("emblem", {}).get("size") != [24, 24]:
         fail("emblem must be 24x24 per §5.1")
     if len(brand.get("emblem", {}).get("steps", [])) != 3:
@@ -361,7 +421,7 @@ def check_fonts() -> None:
     if manifest.get("schema") != 2:
         fail("data/fonts.json should carry schema 2 (webfont faces)")
     faces = manifest.get("faces", {})
-    for role in ("ui", "body", "display"):
+    for role in ("ui", "body", "display", "wordmark"):
         if role not in faces:
             fail("data/fonts.json has no '%s' face" % role)
     needed = set(charset(WEB))

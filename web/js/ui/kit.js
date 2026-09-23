@@ -18,8 +18,8 @@ import { loadJSON } from '../core/data.js'
 export const UI_DIR = 'assets/pixel/ui/'
 export const BMP_DIR = 'assets/pixel/' // palette ramps, standalone sprites
 
-/** Face names, resolved from the loaded font manifests. */
-export const Face = { DISPLAY: 'display', BODY: 'body', UI: 'ui' }
+/** Face names, resolved from the loaded font manifests (`data/fonts.json`). */
+export const Face = { DISPLAY: 'display', BODY: 'body', UI: 'ui', WORDMARK: 'wordmark' }
 
 /** A plain integer rect. Screens keep their geometry in these and nothing else. */
 export class Rect {
@@ -150,28 +150,37 @@ export const Ui = {
 
   // --- text -------------------------------------------------------------
 
-  label(text, x, y, { face = Face.UI, colour = Palette.ink, width = null, align = 'left', lineSpacing = 0, alpha = 1 } = {}) {
+  /**
+   * One run of text. `tracking` overrides the face's own letter-spacing (the
+   * wordmark's 6 px, the brand lines' 2 px); `null` means "whatever the face
+   * declares", which is what most call sites want.
+   */
+  label(text, x, y, { face = Face.UI, colour = Palette.ink, width = null, align = 'left', lineSpacing = 0, alpha = 1, tracking = null } = {}) {
     const font = this.font(face)
     if (alpha <= 0 || text === '') return 0
+    const space = tracking ?? font.tracking
     this.painter.withAlpha(alpha, () => {
-      if (width === null) font.draw(this.painter, text, x, y, colour)
-      else font.drawBlock(this.painter, text, x, y, width, colour, lineSpacing, align)
+      if (width === null) font.draw(this.painter, text, x, y, colour, space)
+      else font.drawBlock(this.painter, text, x, y, width, colour, lineSpacing, align, space)
     })
-    return width === null ? font.measure(text) : font.measureBlock(text, width, lineSpacing)
+    return width === null ? font.measure(text, space) : font.measureBlock(text, width, lineSpacing, space)
   },
 
   /** Right-align a run against `rightX` (the option rows' control gutter). */
   labelRight(text, rightX, y, options = {}) {
     const font = this.font(options.face ?? Face.UI)
-    return this.label(text, rightX - font.measure(text), y, options)
+    const space = options.tracking ?? font.tracking
+    return this.label(text, rightX - font.measure(text, space), y, options)
   },
 
-  measure(text, width = null, face = Face.UI, lineSpacing = 0) {
+  measure(text, width = null, face = Face.UI, lineSpacing = 0, tracking = null) {
     const font = this.font(face)
-    return width === null ? font.measure(text) : font.measureBlock(text, width, lineSpacing)
+    const space = tracking ?? font.tracking
+    return width === null ? font.measure(text, space) : font.measureBlock(text, width, lineSpacing, space)
   },
 
-  wrap(text, width, face = Face.UI) {
-    return this.font(face).wrap(text, width)
+  wrap(text, width, face = Face.UI, tracking = null) {
+    const font = this.font(face)
+    return font.wrap(text, width, tracking ?? font.tracking)
   },
 }

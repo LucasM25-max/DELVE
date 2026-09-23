@@ -31,7 +31,8 @@ import { OptionsScreen } from './screens/options.js'
 /** Every image the shell may draw, so the first frame is never half-loaded. */
 const SPRITES = [
   `${UI_DIR}logo_emblem.png`,
-  `${UI_DIR}logo_menu.png`,
+  `${UI_DIR}logo_emblem_2x.png`,
+  `${UI_DIR}logo_emblem_steps_2x.png`,
   `${UI_DIR}logo_emblem_steps.png`,
   `${UI_DIR}logo_emblem_step1.png`,
   `${UI_DIR}logo_emblem_step2.png`,

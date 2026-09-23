@@ -450,9 +450,27 @@ const shots = {
     // CONTINUE is dimmed with no ledger entry, so hovering it shows the tooltip.
     shell.active.handlePointerMove(80, 113)
   },
+  // The menu with a contract in the ledger: the right-hand card carries it.
+  'menu-contract': () => {
+    contract()
+    shell.go_to(State.MENU)
+  },
+  // The §5.4 flicker: the emblem's steps lit for 0.2 s after a selection.
+  'menu-flicker': () => {
+    shell.go_to(State.MENU)
+    shell.active.select(0, false)
+    // The state `flickerEmblem()` leaves behind, without the navigation a real
+    // confirmation would trigger (the menu holds no save in this run).
+    shell.active.emblemLit = true
+    shell.active.flickerUntil = 0.2
+  },
+  // The same menu with the new-contract card open over it (§5.5). The selection
+  // is set explicitly: shots share one shell, and a hover from an earlier shot
+  // would otherwise leave ENTER aimed at whichever row that shot touched.
   'menu-new-contract': () => {
     contract()
     shell.go_to(State.MENU)
+    shell.active.select(0, false)
     shell.active.onKey(key('Enter'))
   },
   // The page dims whatever is behind it (first_run.draw() opens with Ui.dim(0.6)),
@@ -504,20 +522,21 @@ const shots = {
   },
   codex: () => shell.go_to(State.STUB_CARD, { stub: 'codex' }),
   credits: () => shell.go_to(State.STUB_CARD, { stub: 'credits' }),
-  // A measuring stick rather than a page: the three faces side by side, so a
+  // A measuring stick rather than a page: every shipped face side by side, so a
   // font or metric regression is visible in the images.
   faces: () => () => {
     Ui.ground('#FFFFFF')
     Ui.label('PLAYA Sg1 jam', 8, 6, { face: Face.DISPLAY, colour: Palette.ink })
-    Ui.label('The quick brown fox jumps over it.', 8, 30, { face: Face.BODY, colour: Palette.ink })
-    Ui.label('PRESS ANY BUTTON TO CONTINUE.', 8, 48, { face: Face.UI, colour: Palette.ink })
-    Ui.label('0123456789 · 480×270 · 16 px', 8, 64, { face: Face.BODY, colour: Palette.stone_1 })
-    Ui.panel('panel_parchment', { x: 8, y: 90, w: 180, h: 60 })
-    Ui.panel('panel_ink', { x: 200, y: 90, w: 180, h: 60 })
-    Ui.patch('button', { x: 8, y: 160, w: 120, h: 18 }, { state: 'normal' })
-    Ui.patch('pill', { x: 140, y: 160, w: 90, h: 16 }, { state: 'selected' })
-    Ui.sprite('wax_seal', 250, 158)
-    Ui.sprite('item_cursor', 300, 160)
+    Ui.label('DELVE', 8, 24, { face: Face.WORDMARK, colour: Palette.ink })
+    Ui.label('The quick brown fox jumps over it.', 8, 54, { face: Face.BODY, colour: Palette.ink })
+    Ui.label('PRESS ANY BUTTON TO CONTINUE.', 8, 72, { face: Face.UI, colour: Palette.ink })
+    Ui.label('0123456789 · 480×270 · 16 px', 8, 88, { face: Face.BODY, colour: Palette.stone_1 })
+    Ui.panel('panel_parchment', { x: 8, y: 110, w: 180, h: 60 })
+    Ui.panel('panel_ink', { x: 200, y: 110, w: 180, h: 60 })
+    Ui.patch('button', { x: 8, y: 180, w: 120, h: 18 }, { state: 'normal' })
+    Ui.patch('pill', { x: 140, y: 180, w: 90, h: 16 }, { state: 'selected' })
+    Ui.sprite('wax_seal', 250, 178)
+    Ui.sprite('item_cursor', 300, 180)
   },
 }
 
@@ -569,7 +588,7 @@ void GameState
 function checkTextInk() {
   const failures = []
   Ui.ground('#FFFFFF')
-  ;[Face.DISPLAY, Face.BODY, Face.UI].forEach((face, row) => {
+  ;[Face.DISPLAY, Face.WORDMARK, Face.BODY, Face.UI].forEach((face, row) => {
     const definition = manifest.faces[face]
     const cell = atlasFaceFor(`${atlas.faces[face].weight} ${definition.size}px "${manifest.family}"`)
     if (!cell) {
@@ -586,7 +605,8 @@ function checkTextInk() {
       if (offsetY + height > bottom) { bottom = offsetY + height; characters[1] = String.fromCharCode(code) }
     }
     const probe = characters.join('')
-    const originY = 8 + row * 90
+    // Four faces on one 270 px canvas: 64 px rows, the probe drawn in the top 60.
+    const originY = 8 + row * 64
     Ui.label(probe, 8, originY, { face, colour: Palette.ink })
     let first = null
     let last = null
@@ -613,6 +633,6 @@ function checkTextInk() {
     process.exitCode = 1
     return
   }
-  console.log('  text inks its full line box on all three faces')
+  console.log(`  text inks its full line box on all ${[Face.DISPLAY, Face.WORDMARK, Face.BODY, Face.UI].length} faces`)
 }
 

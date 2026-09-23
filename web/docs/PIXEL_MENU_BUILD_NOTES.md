@@ -62,6 +62,7 @@ typefaces, not a pixel font**.
 | `pixel_ui_5` — "m5x7-class 5×7" | **Inter SemiBold** at 9 px | OFL-1.1, notice committed |
 | `pixel_body_8` — "Pixel Operator-class 8 px" | **Inter Regular** at 9 px | OFL-1.1, notice committed |
 | §5.4 "menu items 34 px → 10 px display" | **Inter SemiBold** at 15 px (`display`) | same |
+| §5.1 wordmark | **Inter SemiBold** at 22 px, 6 px tracking (`wordmark`, menu only — §2.14) | same |
 
 What changed underneath, and why each piece exists:
 
@@ -95,10 +96,16 @@ point the builder at them, re-run `tools/build_all.py --check`, and restore the 
 
 Sizes are the spec's roles, not a literal re-use of its pixel counts (a 5 px chrome face is
 unreadable in a real typeface): chrome/body 9 px on a 12 px line, display 15 px on an 18 px
-line. Every rect in `data/` is unchanged; the labels sit inside them, verified by the
+line, the wordmark 22 px on a 28 px line. Letter-spacing is a property of the face
+(`data/fonts.json` -> `tracking`), not of a call site, so every measure and every draw agree
+by construction. Every rect in `data/` is unchanged; the labels sit inside them, verified by the
 Python layout gate and by `shoot.mjs`.
 
 ### 2.3 Wordmark: 6×9 grid at 2×, not "5×7 at 18 px"
+
+*(The menu no longer draws this: §2.14 replaced the pixel lockup with the typed wordmark.
+`logo_wordmark.png` and its chisel strip stay for the boot sting, which is the one place the
+pixel wordmark is still right.)*
 
 §5.1 asks for the wordmark in a "5×7-pixel display face" with "cap height 18 px",
 "letter-spacing 2 px". 18 ÷ 7 is not an integer, so a 5×7 face cannot reach an 18 px cap
@@ -278,6 +285,59 @@ rects, timings and layouts are still written in the 480×270 space, and the prev
 still 1:1 renders of it — `fitViewport()` is a pure function with its own unit tests in
 `run.mjs` and a smoke-test assertion against the booted shell.
 
+### 2.14 The menu's composition: header, item column, contract card (requested, third pass)
+
+The request was blunt: *"the main menu looks horrific improve this significantly."* It was
+fair. §5.4's menu was a column of five words on white with the right half of the screen
+empty, and once the design space started filling the window (§2.13) that emptiness stopped
+being margin and started being the page.
+
+The skeleton is untouched — column x 29, items on a 21 px pitch, one footer row at y 258,
+the same routes, the same strings — because those are the spec's and the reel measures them.
+What changed is what surrounds it:
+
+| | before | now |
+|---|---|---|
+| Lockup | 96×24 `logo_menu.png` (24 px emblem + 22 px *pixel* wordmark) at (29, 22) | the emblem at **2×** (48 px) at (29, 16), the typed wordmark beside it — a fourth face, `Face.WORDMARK`, 22 px SemiBold, 6 px of tracking — and the two brand lines under it, closed by a bronze rule at y 76 |
+| Type in the column | display face, no tracking, every row the same weight | 4 px of tracking, the five rows sitting back at 78 % until the cursor lands on one |
+| Right half | empty | `panel_parchment` card (196, 96, 255, 132): the emblem stamp lit to the contract's progress, `CURRENT CONTRACT`, its name in display type, `{class} · Level {n} · {chapter}`, a bronze rule and `{n}/{m} beats done` |
+| CONTINUE with no save | the row dimmed, tooltip on hover | the row dimmed **and** the card explaining it — `NO CONTRACT YET`, `No contracts signed yet. PLAY signs your first one.`, `The ledger holds up to eight contracts.` |
+| Foot of the column | (empty) | `↑ ↓ select · ENTER confirm` at (29, 206) — which is also where §5.4's tooltip goes, so the two never collide |
+
+Why the card earns its space rather than being filler: it shows what `CONTINUE` *would*
+load. The menu's job is to tell a returning player which contract they are in — and until
+this pass the only way to find out was to open the ledger. It is read from `SaveStore` on
+every frame, so it cannot disagree with the ledger, the First Run page or the overlay card.
+
+Three things this pass had to fix underneath the drawing:
+
+- **Tracking had to reach the widgets.** `ListRow` took a face and drew it; it now takes
+  `tracking` and `idleDim`, and its §5.4 underline is measured to the word rather than to the
+  column (`labelWidth`), so the underline ends where `PLAY` ends instead of at an arbitrary
+  140 px.
+- **The flicker needed 2× art.** §5.4's 0.2 s confirmation flicker lights the emblem's three
+  steps. With the mark at 48 px the 24 px steps image would have landed in the wrong pixels,
+  so `build_brand.py` now emits `logo_emblem_steps_2x.png` as well, and `check_project.py`
+  asserts both 2× marks are exact pixel doubles of their 24 px originals.
+- **The pixel lockup retired.** `logo_menu.png` had no reader left once the menu drew type, so
+  it is gone — asset, `brand.json` entry, `Brand.lockupSize()`, preload list and checker line.
+  `logo_wordmark.png`/`_strip.png` stay: the boot sting still chisels the pixel wordmark, which
+  is the one place it is still right.
+
+**One lit row at a time.** A hover used to stay on its row after the keyboard took over, so
+`↑`/`↓` after a mouse move left two cursors on screen at once. The stills never showed it —
+`web/tests/reel.mjs` did, at 20 fps in the GIF. `MenuScreen.select()` and
+`LedgerScreen.focusRow()` now clear their siblings' hover, which is what an exclusive group
+means, and `smoke.mjs` asserts it after a hover-then-keyboard move.
+
+Two renderers must agree, and now they are compared. `tools/preview_screen.py` was rewritten
+to compose the same header/card/footer from the same `shell_timings.json` rects, and the
+menu images it writes were diffed against `shoot.mjs`'s: 4 % of pixels differ, all of them
+anti-aliasing at glyph edges, with every element's left/right extent identical. Two bugs came
+out of that diff — `Ui.label`'s `tracking` option had been a no-op (silently ignored, so the
+JavaScript drew the brand lines and items with no tracking at all), and the Python face
+ignored the face's own declared tracking.
+
 ---
 
 ## 3. Seeing a screen without a browser
@@ -299,9 +359,10 @@ python3 tools/preview_screen.py menu --scale 2     # one screen, 2x for legibili
 python3 tools/preview_screen.py first-run ledger options-rebind
 ```
 
-Screens: `legal` · `menu` · `menu-tooltip` · `menu-new-contract` · `sting-end` · `stub` ·
-`first-run` · `ledger` · `ledger-confirm` · `options-graphics` · `options-audio` ·
-`options-accessibility` · `options-controls` (scrolled) · `options-rebind` (capturing a key).
+Screens: `legal` · `menu` · `menu-tooltip` · `menu-contract` (a signed contract in the card,
+CONTINUE lit) · `menu-new-contract` · `sting-end` · `stub` · `first-run` · `ledger` ·
+`ledger-confirm` · `options-graphics` · `options-audio` · `options-accessibility` ·
+`options-controls` (scrolled) · `options-rebind` (capturing a key).
 These are the **static** pages — the ones whose pixels come from data rather than from a
 running screen — and §3.1 below covers the animated ones, which only the JavaScript
 renderer can reach.
@@ -324,12 +385,13 @@ node web/tests/shoot.mjs menu ledger         # just those pages
 node web/tests/shoot.mjs faces               # the faces and panel patches, as a measuring stick
 ```
 
-The nineteen shots: `legal` · `sting` · `sting-end` (all three emblem steps lit, wordmark and
-sublock) · `menu` · `menu-hover` · `menu-tooltip` · `menu-new-contract` · `first-run` ·
+The twenty-one shots: `legal` · `sting` · `sting-end` (all three emblem steps lit, wordmark and
+sublock) · `menu` · `menu-hover` · `menu-tooltip` · `menu-contract` · `menu-new-contract` ·
+`menu-flicker` (the emblem's steps lit, §5.4's 0.2 s confirmation) · `first-run` ·
 `ledger` · `ledger-confirm` · `ledger-corrupt` (a scorched slot read back from a wrecked save) ·
 `options-graphics` · `options-audio` · `options-controls` (scrolled) · `options-rebind`
 (capturing a key) · `options-accessibility` · `codex` · `credits` (the two stub cards) ·
-`faces`.
+`faces` (all four text faces and the panel patches, as a measuring stick).
 
 Shots carry the same names as `preview_screen.py`'s screens, so the same page can be rendered
 by both renderers and compared — `web/preview/menu.png` (Python) against
@@ -359,10 +421,13 @@ it has already paid for itself five times:
   the old tiling on all nineteen pages — and the offline previewer was brought into step, so
   the two renderers still agree.
 
-The last point is the one to keep: after those fixes `tools/preview_screen.py` and
-`shoot.mjs` agree to within a few hundred pixels on every page — the residue is the widget
-focus and hover states a static lint draws at rest. Where they do disagree, `shoot.mjs` is
-right: it draws what the game draws.
+The last point is the one to keep. After the menu pass (§2.14) the two renderers were diffed
+pixel by pixel on that page: every element's extent matches — header, card, items, hints,
+footer all start and end at the same x — and 4 % of pixels differ, all of them anti-aliasing
+at glyph edges, because one renderer lets the browser hint the glyphs and the other blits a
+coverage atlas. The residue on the older pages is the widget focus and hover states a static
+lint draws at rest. Where the two disagree about *geometry*, `shoot.mjs` is right: it draws
+what the game draws.
 
 ---
 
@@ -373,16 +438,18 @@ Verified by `tools/check_project.py` (numbers) and `web/tests/run.mjs` + `web/te
 
 | Element | Spec rect | Shipped |
 |---|---|---|
-| menu lockup | (29, 22, 96, 24) | same |
+| menu lockup | (29, 22, 96, 24) | re-cut: 2× emblem (29, 16, 48, 48) + typed wordmark (87, 14) + brand lines + rule (29, 76, 422, 1) — §2.14; the spec rect is kept in `spec_rects.lockup` |
 | menu column x | 29 | same |
 | item 1 PLAY | (29, 92, 140, 18) | same |
 | item pitch / gap | 21 px / 3 px | same (92 → 113 → 134 → 155 → 176) |
 | hover underline | (29, item_y + 14, w_draw, 2) | same; `w_draw` measured from the font |
 | underline draw | 0.18 s, L→R | same |
-| selection flicker | 0.2 s emblem steps | same |
+| selection flicker | 0.2 s emblem steps | same; the steps come from `logo_emblem_steps_2x.png`, so the flicker lands on the 48 px mark |
+| menu right half | clean — nothing | contract card (196, 96, 255, 132) — §2.14 |
+| menu key hint | not in the spec | (29, 206, 164, 14), and the §5.4 tooltip's anchor |
 | disclaimer line | (10, 259, 300, 8), 60 % alpha | (10, 254, 348, 8) — stacked, see §2.5 |
 | version stamp | right-aligned to (470, 259) | right-aligned to 470 at y 262 — stacked |
-| top-right | clean — nothing | same |
+| top-right | clean — nothing | same (the card stops at x 451, under the rule's end) |
 
 First Run, ledger and Options (§5.5/§5.6), same verification:
 

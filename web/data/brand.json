@@ -7,6 +7,8 @@
       24
     ],
     "variants": {
+      "mark_2x": "logo_emblem_2x.png",
+      "mark_2x_steps": "logo_emblem_steps_2x.png",
       "stamp_0": "logo_emblem.png",
       "stamp_1": "logo_emblem_step1.png",
       "stamp_2": "logo_emblem_step2.png",
@@ -39,9 +41,16 @@
       "w": 2,
       "h": 2
     },
-    "comment": "Steps light top to bottom on load-complete and at 33/66/100 % on the loading seal."
+    "size_2x": [
+      48,
+      48
+    ],
+    "comment": "Steps light top to bottom on load-complete and at 33/66/100 % on the loading seal.",
+    "comment_2x": "`mark_2x` is the same mark at 2x for the menu header; its step rects are the 24 px ones doubled."
   },
   "wordmark": {
+    "text": "DELVE",
+    "comment_text": "The menu draws this with the `wordmark` face (data/fonts.json); logo_wordmark.png stays the pixel wordmark the boot sting chisels.",
     "size": [
       72,
       22

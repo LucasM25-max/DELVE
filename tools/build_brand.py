@@ -6,12 +6,17 @@ Outputs, under `assets/pixel/ui/`:
     logo_emblem.png         24x24  d20 face: stepped top edge, 2 px bronze
                                    stroke, ink keyline, 2 px mint centroid pip
     logo_emblem_steps.png   24x24  same asset with the three steps lit mint
+    logo_emblem_steps_2x.png 48x48 the lit-steps mark at 2x, for the menu header
                                    (load-complete / seal stamp in the sting)
     logo_wordmark.png       72x22  DELVE in the display face: 18 px cap height,
                                    2 px letter-spacing, bronze face, 1 px ink
                                    keyline, 1 px mint lower-left rim-light
-    logo_menu.png           96x24  menu lockup = emblem + wordmark side by side,
-                                   matching the §5.4 rect (29, 22, 96, 24)
+    logo_emblem_2x.png      48x48  the emblem at 2x: the menu's own mark, next to
+                                   the typed wordmark (the lockup below stays for
+                                   the boot sting, which chisels the pixel letters)
+    (logo_menu.png retired in the menu pass: the menu draws the 2x emblem beside
+     the typed wordmark, so the 96x24 pixel lockup has no reader left)
+                                   by side, matching the §5.4 rect (29, 22, 96, 24)
     icon.png                64x64  project/window icon (emblem x2 on ink)
 
 Spec note (documented in `assets/pixel/art_manifest.json`): §5.1 asks for a
@@ -261,6 +266,26 @@ def build_menu_lockup(wordmark: Canvas, emblem: Canvas) -> Canvas:
     return canvas
 
 
+def build_emblem_2x(emblem: Canvas) -> Canvas:
+    """The emblem at 2x, on its own: a 48 px mark for the menu header.
+
+    Pixel art scales by whole numbers or not at all, so this is a plain 2x blit —
+    the mark reads as a deliberate 4 px-stroke glyph beside 22 px type instead of
+    a 24 px sticker. Same palette, same steps (their geometry is doubled in
+    `brand.json` by the caller).
+    """
+    canvas = Canvas(emblem.width * 2, emblem.height * 2)
+    for y in range(emblem.height):
+        for x in range(emblem.width):
+            pixel = emblem.get(x, y)
+            if not pixel[3]:
+                continue
+            for sy in range(2):
+                for sx in range(2):
+                    canvas.set(x * 2 + sx, y * 2 + sy, pixel)
+    return canvas
+
+
 def build_icon(emblem: Canvas) -> Canvas:
     """64x64 window/project icon: the emblem at 2x on an ink field."""
     canvas = Canvas(64, 64, INK)
@@ -285,6 +310,8 @@ def main() -> int:
     emblem_lit = build_emblem(steps_lit=True)
     ledger_stamps = {count: build_emblem(lit_steps=count) for count in (1, 2)}
     lockup = build_menu_lockup(wordmark, emblem)
+    emblem_2x = build_emblem_2x(emblem)
+    emblem_lit_2x = build_emblem_2x(emblem_lit)
     icon = build_icon(emblem)
 
     if args.preview:
@@ -298,12 +325,13 @@ def main() -> int:
     strip = build_wordmark_strip(wordmark)
     for name, canvas in (
         ("logo_emblem.png", emblem),
+        ("logo_emblem_2x.png", emblem_2x),
         ("logo_emblem_steps.png", emblem_lit),
+        ("logo_emblem_steps_2x.png", emblem_lit_2x),
         ("logo_emblem_step1.png", ledger_stamps[1]),
         ("logo_emblem_step2.png", ledger_stamps[2]),
         ("logo_wordmark.png", wordmark),
         ("logo_wordmark_strip.png", strip),
-        ("logo_menu.png", lockup),
         ("icon.png", icon),
     ):
         canvas.save(os.path.join(OUT_DIR, name))
@@ -316,6 +344,8 @@ def main() -> int:
         "emblem": {
             "size": [24, 24],
             "variants": {
+                "mark_2x": "logo_emblem_2x.png",
+                "mark_2x_steps": "logo_emblem_steps_2x.png",
                 "stamp_0": "logo_emblem.png",
                 "stamp_1": "logo_emblem_step1.png",
                 "stamp_2": "logo_emblem_step2.png",
@@ -324,9 +354,13 @@ def main() -> int:
             "comment_stamps": "Save stamps light one step per third of the beat list completed (steps lit = beats completed, §5.5).",
             "steps": [{"x": x, "y": y, "w": w, "h": 2} for x, y, w in EMBLEM_STEPS],
             "pip": {"x": EMBLEM_PIP[0], "y": EMBLEM_PIP[1], "w": EMBLEM_PIP[2], "h": EMBLEM_PIP[3]},
+            "size_2x": [emblem_2x.width, emblem_2x.height],
             "comment": "Steps light top to bottom on load-complete and at 33/66/100 % on the loading seal.",
+            "comment_2x": "`mark_2x` is the same mark at 2x for the menu header; its step rects are the 24 px ones doubled.",
         },
         "wordmark": {
+            "text": "DELVE",
+            "comment_text": "The menu draws this with the `wordmark` face (data/fonts.json); logo_wordmark.png stays the pixel wordmark the boot sting chisels.",
             "size": [wordmark.width, wordmark.height],
             "strip": [strip.width, strip.height],
             "cell_width": GLYPH_CELL,
