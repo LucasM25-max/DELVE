@@ -210,7 +210,10 @@ export class FirstRunScreen extends ShellScreen {
   // --- drawing ----------------------------------------------------------
 
   draw() {
-    Ui.dim(0.6)
+    // A screen owns its ground: `Ui.dim(0.6)` here dimmed whatever the last frame
+    // left on the canvas and re-dimmed it every frame, so the page arrived white
+    // and settled to ink. Every other page paints white or ink on the first line.
+    Ui.white()
     Ui.panel('panel_parchment', this.panel)
     Ui.label(this.t('STR_FR_TITLE'), this.panel.x, this.panel.y + 8, {
       face: Face.DISPLAY, colour: Palette.ink, width: this.panel.w, align: 'center',

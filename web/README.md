@@ -101,6 +101,7 @@ node web/tests/smoke.mjs           # boots every page against a DOM stub
 node web/tests/shoot.mjs           # renders every page through the real painter
 python3 tools/build_all.py --check # asset builders are reproducible (needs fontTools)
 python3 tools/preview_screen.py    # the static layout lint, straight from the assets
+node web/tests/reel.mjs            # optional: the boot sequence as web/preview/reel.gif
 ```
 
 The first five run on every push in
@@ -110,8 +111,11 @@ between a commit and a deploy, so keep them green.
 
 `shoot.mjs` is the honest one: `preview_screen.py` re-implements the layout in
 Python and can agree with a bug, whereas `shoot.mjs` boots the actual screens and
-blits through a canvas that keeps its pixels. Between them they caught the three
-defects listed in [`docs/PIXEL_MENU_BUILD_NOTES.md`](docs/PIXEL_MENU_BUILD_NOTES.md) §3.1.
+blits through a canvas that keeps its pixels. It also measures a tinted run on each
+face and fails if the ink box comes up short, so clipped glyphs cannot ship. Between
+them they caught the defects listed in
+[`docs/PIXEL_MENU_BUILD_NOTES.md`](docs/PIXEL_MENU_BUILD_NOTES.md) §3.1 — the last of
+which was found by watching the reel rather than the stills.
 
 ## Where the next piece plugs in
 
@@ -121,3 +125,4 @@ defects listed in [`docs/PIXEL_MENU_BUILD_NOTES.md`](docs/PIXEL_MENU_BUILD_NOTES
 | Yard (§6) | `js/screens/yard.js` plus `js/world/` for the tile renderer; map from `data/yard_map.json` in the GDD-07 §12 schema |
 | Codex (§5.7) / Credits (§5.8) | replace `js/screens/stub.js` behind the same menu wiring — the strings and the rect are already in `data/` |
 | Sound | drop files into `assets/audio/` with the names in `data/audio_cues.json`; the game picks them up with no code change |
+| A moving capture | `node web/tests/reel.mjs` already records the boot path; extend its `SCRIPT` with the yard beats once they exist |

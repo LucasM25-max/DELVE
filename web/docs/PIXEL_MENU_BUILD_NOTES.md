@@ -230,6 +230,11 @@ menu's own input handler stands down while it is up. The wax seal, the title and
 
 ## 3. Seeing a screen without a browser
 
+`node web/tests/reel.mjs` is the moving-picture sibling of the stills below: it drives the
+same booted shell through the boot sequence with scripted input, writes one PNG per frame and
+assembles `web/preview/reel.gif` with ImageMagick `convert`. It is not a gate; it is how a
+reviewer watches the timings.
+
 `python3 tools/preview_screen.py` renders the shell's screens to PNG straight from the
 shipped assets — same rects, same strings, same `.fnt` fonts, same nine-patches — into
 `web/preview/` (git-ignored):
@@ -243,6 +248,9 @@ python3 tools/preview_screen.py first-run ledger options-rebind
 Screens: `legal` · `menu` · `menu-tooltip` · `menu-new-contract` · `sting-end` · `stub` ·
 `first-run` · `ledger` · `ledger-confirm` · `options-graphics` · `options-audio` ·
 `options-accessibility` · `options-controls` (scrolled) · `options-rebind` (capturing a key).
+These are the **static** pages — the ones whose pixels come from data rather than from a
+running screen — and §3.1 below covers the animated ones, which only the JavaScript
+renderer can reach.
 
 It is how the footer collision (§2.5), the first-run help overflow (§2.9) and the ledger
 hint landing on row 8 (§2.11) were all found — and it is the fastest way to check a layout
@@ -257,26 +265,50 @@ the `source-in` composite the text tinting uses) and `clearRect` all rasterise i
 buffer, which is then written out as a PNG.
 
 ```bash
-node web/tests/shoot.mjs                 # every page → web/preview/shell-*.png
-node web/tests/shoot.mjs menu ledger     # just those pages
-node web/tests/shoot.mjs font            # the three faces, as a measuring stick
+node web/tests/shoot.mjs                     # every page → web/preview/shell-*.png
+node web/tests/shoot.mjs menu ledger         # just those pages
+node web/tests/shoot.mjs faces               # the faces and panel patches, as a measuring stick
 ```
 
-Shots: `legal` · `sting` · `menu` · `menu-tooltip` · `menu-new-contract` · `first-run` ·
-`ledger` · `ledger-confirm` · `ledger-scorched` · `options-graphics` · `options-audio` ·
-`options-controls` · `options-rebind` · `options` · `stub` · `font`.
+The nineteen shots: `legal` · `sting` · `sting-end` (all three emblem steps lit, wordmark and
+sublock) · `menu` · `menu-hover` · `menu-tooltip` · `menu-new-contract` · `first-run` ·
+`ledger` · `ledger-confirm` · `ledger-corrupt` (a scorched slot read back from a wrecked save) ·
+`options-graphics` · `options-audio` · `options-controls` (scrolled) · `options-rebind`
+(capturing a key) · `options-accessibility` · `codex` · `credits` (the two stub cards) ·
+`faces`.
+
+Shots carry the same names as `preview_screen.py`'s screens, so the same page can be rendered
+by both renderers and compared — `web/preview/menu.png` (Python) against
+`web/preview/shell-menu.png` (JavaScript). Where the two disagree, `shoot.mjs` is right: it
+draws what the game draws.
 
 It is the fifth gate (CI runs it and uploads the images as the `shell-pages` artifact), and
-it has already paid for itself three times:
+it has already paid for itself five times:
 
 * the menu drew **nothing but rectangles** — `render.js` resolved image loads into a local
   promise and never put the decoded image back into its cache, so every `drawImage` found
   `null` (the smoke test could not see this: its canvas throws pixels away);
-* every label lost its descenders — the tint surface was sized from the `.fnt`'s `info size`
-  (10 px on the display face) instead of the ink box, which is 14 px because that face is
-  baked at 2×; `PixelFont.inkHeight` is now the authority;
+* every label was **short**. `font.px` is the `.fnt`'s nominal em — 10 px on the display face
+  — while its glyphs are 14 px tall, because that face is baked at 2×. The tint surface was
+  sized from the em, and then the `source-in` fill covered only the top `font.px` rows, so the
+  bottom of every glyph stayed white: `PLAY` drew as a stem, a box and a Y, and no other gate
+  could see it. Both halves use `PixelFont.inkHeight` now, and *this* gate measures the ink
+  box (`checkTextInk()`) so the class of bug cannot come back;
+* the first-run page **darkened as you looked at it** — `first_run.draw()` opened with
+  `Ui.dim(0.6)` and never painted a ground, so every frame re-dimmed the previous frame's
+  pixels and the page settled from white to ink over about a dozen frames. Every screen now
+  paints its own ground on the first line;
 * exiting Options with a rebind armed **threw** — the screen called `stopListening()` on a
-  widget whose method is `cancel()`.
+  widget whose method is `cancel()`;
+* the nine-patch cost **one `drawImage` per pixel-run**: 3,421,636 calls to paint the suite.
+  Corners, edges and middle are nine blits now — 7,443 calls, for pixels proved identical to
+  the old tiling on all nineteen pages — and the offline previewer was brought into step, so
+  the two renderers still agree.
+
+The last point is the one to keep: after those fixes `tools/preview_screen.py` and
+`shoot.mjs` agree to within a few hundred pixels on every page — the residue is the widget
+focus and hover states a static lint draws at rest. Where they do disagree, `shoot.mjs` is
+right: it draws what the game draws.
 
 ---
 

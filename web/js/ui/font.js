@@ -156,9 +156,12 @@ function tintedRun(font, string, colour) {
     }
     cursor += glyph ? glyph.advance : 0
   }
+  // Fill the whole ink box, not the nominal em: `info size` is 10 px on the
+  // display face but its glyphs are 14 px tall, so a `font.px`-high fill leaves
+  // the bottom four rows white — invisible on white, and every letter short.
   ctx.globalCompositeOperation = 'source-in'
   ctx.fillStyle = colour
-  ctx.fillRect(0, 0, width, font.px)
+  ctx.fillRect(0, 0, width, surface.height)
   tintCache.set(key, surface)
   return surface
 }

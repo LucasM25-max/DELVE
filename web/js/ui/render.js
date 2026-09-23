@@ -100,9 +100,11 @@ export class Painter {
   }
 
   /**
-   * Nine-patch: the four corners 1:1, the edges stretched along one axis, and the
-   * middle tiled — the same treatment `tools/preview_screen.py` applies, so the
-   * offline previews and the game agree pixel for pixel.
+   * Nine-patch: the four corners 1:1, the four edges stretched along their axis,
+   * the middle stretched. Every panel in the kit has a flat interior (the art
+   * lint proves it), so stretching is pixel-identical to tiling — and it is nine
+   * `drawImage` calls instead of one per pixel-run, which matters at 60 fps.
+   * `tools/preview_screen.py` draws the same nine slices to the same margins.
    */
   nine(imagePath, margin, x, y, w, h) {
     const image = this.getImage(imagePath)
@@ -113,37 +115,27 @@ export class Painter {
     h = Math.round(h)
     if (w <= 0 || h <= 0) return
     const size = image.width
-    const middle = size - margin * 2
-    const sourceY = (py) => {
-      if (py < margin) return py
-      if (py >= h - margin) return size - (h - py)
-      return margin + ((py - margin) % middle)
+    // A small rect (a 4 px scrollbar, a 16 px pill) cannot hold the full margin.
+    const edge = Math.max(1, Math.min(margin, Math.floor(size / 2), Math.floor(w / 2), Math.floor(h / 2)))
+    const inner = size - edge * 2
+    const far = size - edge
+    const across = w - edge * 2
+    const down = h - edge * 2
+    const ctx = this.ctx
+    ctx.globalAlpha = this.globalAlpha
+    const slice = (sx, sy, sw, sh, dx, dy, dw, dh) => {
+      if (sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0) return
+      ctx.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh)
     }
-    const sourceX = (px) => {
-      if (px < margin) return px
-      if (px >= w - margin) return size - (w - px)
-      return margin + ((px - margin) % middle)
-    }
-    this.ctx.globalAlpha = this.globalAlpha
-    // Rows first, so the per-row y lookup is computed once per scanline.
-    const rows = []
-    let runStart = 0
-    for (let py = 1; py <= h; py += 1) {
-      if (py === h || sourceY(py) !== sourceY(runStart)) {
-        rows.push([runStart, py - runStart, sourceY(runStart)])
-        runStart = py
-      }
-    }
-    for (const [rowY, rowH, sy] of rows) {
-      let runX = 0
-      for (let px = 1; px <= w; px += 1) {
-        if (px === w || sourceX(px) !== sourceX(runX)) {
-          const length = px - runX
-          this.ctx.drawImage(image, sourceX(runX), sy, 1, 1, x + runX, y + rowY, length, rowH)
-          runX = px
-        }
-      }
-    }
+    slice(0, 0, edge, edge, x, y, edge, edge)
+    slice(far, 0, edge, edge, x + w - edge, y, edge, edge)
+    slice(0, far, edge, edge, x, y + h - edge, edge, edge)
+    slice(far, far, edge, edge, x + w - edge, y + h - edge, edge, edge)
+    slice(edge, 0, inner, edge, x + edge, y, across, edge)
+    slice(edge, far, inner, edge, x + edge, y + h - edge, across, edge)
+    slice(0, edge, edge, inner, x, y + edge, edge, down)
+    slice(far, edge, edge, inner, x + w - edge, y + edge, edge, down)
+    slice(edge, edge, inner, inner, x + edge, y + edge, across, down)
   }
 
   /** A 1 px frame, used for the debug grid and the focus marks. */

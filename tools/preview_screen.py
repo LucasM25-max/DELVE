@@ -8,7 +8,7 @@ overflow its panel before anyone opens the site. `web/tests/shoot.mjs` is the
 counterpart that renders the *JavaScript* screens through a real painter.
 
     python3 tools/preview_screen.py                 # every screen
-    python3 tools/preview_screen.py menu sting      # just those two
+    python3 tools/preview_screen.py menu sting-end  # just those two
     python3 tools/preview_screen.py --scale 2       # 2x for legibility
 
 Output lands in `web/preview/<screen>.png` (git-ignored). The previewer reads
@@ -146,9 +146,9 @@ class Shell:
                 dr, dg, db, _ = canvas.get(x + ix, y + iy)
                 mix = a / 255.0
                 canvas.set(x + ix, y + iy, (
-                    int(r * mix + dr * (1 - mix)),
-                    int(g * mix + dg * (1 - mix)),
-                    int(b * mix + db * (1 - mix)),
+                    round(r * mix + dr * (1 - mix)),
+                    round(g * mix + dg * (1 - mix)),
+                    round(b * mix + db * (1 - mix)),
                     255,
                 ))
 
@@ -168,27 +168,44 @@ class Shell:
 
     def nine(self, canvas: Canvas, filename: str, margin: int,
              rect: tuple[int, int, int, int]) -> None:
+        """Nine-patch: corners 1:1, edges and middle stretched.
+
+        The same nine slices `web/js/ui/render.js` draws, in the same order and
+        with the same clamped margin, so a panel here and a panel in the game are
+        identical — and both are nine blits rather than one per pixel-run.
+        """
         source = self.image(filename)
         size = source.width
-        middle = size - margin * 2
         x, y, w, h = rect
-        for py in range(h):
-            if py < margin:
-                sy = py
-            elif py >= h - margin:
-                sy = size - (h - py)
-            else:
-                sy = margin + (py - margin) % middle
-            for px in range(w):
-                if px < margin:
-                    sx = px
-                elif px >= w - margin:
-                    sx = size - (w - px)
-                else:
-                    sx = margin + (px - margin) % middle
-                colour = source.get(sx, sy)
-                if colour[3]:
-                    canvas.set(x + px, y + py, colour)
+        if w <= 0 or h <= 0:
+            return
+        edge = max(1, min(margin, size // 2, w // 2, h // 2))
+        inner = size - edge * 2
+        far = size - edge
+        across = w - edge * 2
+        down = h - edge * 2
+
+        def slice_(sx: int, sy: int, sw: int, sh: int, dx: int, dy: int,
+                   dw: int, dh: int) -> None:
+            if sw <= 0 or sh <= 0 or dw <= 0 or dh <= 0:
+                return
+            for py in range(dh):
+                source_y = sy + min(sh - 1, (py * sh) // dh)
+                for px in range(dw):
+                    source_x = sx + min(sw - 1, (px * sw) // dw)
+                    colour = source.get(source_x, source_y)
+                    if colour[3]:
+                        canvas.set(dx + px, dy + py, colour)
+
+        slice_(0, 0, edge, edge, x, y, edge, edge)
+        slice_(far, 0, edge, edge, x + w - edge, y, edge, edge)
+        slice_(0, far, edge, edge, x, y + h - edge, edge, edge)
+        slice_(far, far, edge, edge, x + w - edge, y + h - edge, edge, edge)
+        slice_(edge, 0, inner, edge, x + edge, y, across, edge)
+        slice_(edge, far, inner, edge, x + edge, y + h - edge, across, edge)
+        slice_(0, edge, edge, inner, x, y + edge, edge, down)
+        slice_(far, edge, edge, inner, x + w - edge, y + edge, edge, down)
+        slice_(edge, edge, inner, inner, x + edge, y + edge, across, down)
 
 
 # --------------------------------------------------------------------------
@@ -357,7 +374,7 @@ def _control_width(shell: Shell, values) -> int:
 
 def screen_new_contract(shell: Shell) -> Canvas:
     """The menu with the `Begin a new contract?` overlay card on top (§5.5)."""
-    canvas = _dim(screen_menu(shell))
+    canvas = _dim(screen_menu(shell), 0.55)
     card = shell.timings["screens"]["new_contract_card"]
     rect = tuple(card["rect"])
     shell.panel(canvas, "panel_parchment", rect)
@@ -370,7 +387,7 @@ def screen_new_contract(shell: Shell) -> Canvas:
     for index, line in enumerate(body.wrap(text, body_rect[2]).split("\n")):
         body.draw(canvas, line, body_rect[0], body_rect[1] + index * body.line_height, INK)
     _button(shell, canvas, tuple(card["begin_rect"]), shell.t("STR_NEW_BEGIN"))
-    _button(shell, canvas, tuple(card["back_rect"]), shell.t("STR_BACK"))
+    _button(shell, canvas, tuple(card["back_rect"]), shell.t("STR_BACK"), state="hover")
     return canvas
 
 
@@ -468,14 +485,14 @@ def screen_ledger_confirm(shell: Shell) -> Canvas:
     """The blood confirm card: `Break this contract?` · `BREAK` · `KEEP`."""
     canvas = screen_ledger(shell)
     layout = shell.timings["screens"]["ledger"]
-    canvas = _dim(canvas)
+    canvas = _dim(canvas, 0.55)
     rect = tuple(layout["card_rect"])
     shell.panel(canvas, "panel_parchment", rect)
     ui = shell.fonts["ui"]
     ui.draw_centred(canvas, shell.t("STR_BREAK_TITLE"), rect[0] + rect[2] // 2, rect[1] + 28, INK)
     _button(shell, canvas, tuple(layout["break_rect"]), shell.t("STR_BREAK_YES"),
             "button_blood", PARCHMENT)
-    _button(shell, canvas, tuple(layout["keep_rect"]), shell.t("STR_BREAK_NO"))
+    _button(shell, canvas, tuple(layout["keep_rect"]), shell.t("STR_BREAK_NO"), state="hover")
     return canvas
 
 
@@ -568,18 +585,25 @@ def _draw_control(shell: Shell, canvas: Canvas, row: dict, right_x: int, y: int,
 
 
 def _button(shell: Shell, canvas: Canvas, rect: tuple[int, int, int, int], text: str,
-            family: str = "button", colour=INK) -> None:
-    """A nine-patched button: parchment `button` or blood `button_blood` (§5.5)."""
-    shell.panel(canvas, family, rect)
+            family: str = "button", colour=INK, state: str = "normal") -> None:
+    """A nine-patched button: parchment `button` or blood `button_blood` (§5.5).
+
+    `state` is the widget's, not the mouse's: a card focuses its first widget, and
+    `Button` draws a focused button in its hover patch.
+    """
+    shell.panel(canvas, family, rect, state)
     ui = shell.fonts["ui"]
     ui.draw_centred(canvas, text, rect[0] + rect[2] // 2, rect[1] + 6, colour)
 
 
-def _dim(canvas: Canvas) -> Canvas:
+def _dim(canvas: Canvas, alpha: float = 0.5) -> Canvas:
+    """The ink scrim behind a modal card. Cards pass 0.55 (widgets.js `Card`)."""
+    keep = 1.0 - alpha
     for y in range(HEIGHT):
         for x in range(WIDTH):
             r, g, b, _ = canvas.get(x, y)
-            canvas.set(x, y, (int(r * 0.5 + 8), int(g * 0.5 + 10), int(b * 0.5 + 12), 255))
+            canvas.set(x, y, (round(r * keep + 16 * alpha), round(g * keep + 20 * alpha),
+                              round(b * keep + 24 * alpha), 255))
     return canvas
 
 
@@ -603,7 +627,8 @@ SCREENS = {
 
 
 def _blend(front, back, alpha: float):
-    return tuple(int(front[i] * alpha + back[i] * (1 - alpha)) for i in range(3)) + (255,)
+    """`render.js` rounds every blend; truncating drifts a level per step."""
+    return tuple(round(front[i] * alpha + back[i] * (1 - alpha)) for i in range(3)) + (255,)
 
 
 def upscale(canvas: Canvas, factor: int) -> Canvas:
