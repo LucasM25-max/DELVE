@@ -293,7 +293,8 @@ theme/default_font_subpixel_positioning=0
 theme/default_font_hinting=0
 
 [input]
-; see §4.9 — game_view/game_jump removed; grid_* and interact added
+; see §4.9 — game_view/game_jump removed; grid_* and interact added (T-11;
+; until then actions are registered at runtime by game_state.gd)
 
 [rendering]
 renderer/rendering_method="gl_compatibility"
@@ -301,18 +302,24 @@ renderer/rendering_method.mobile="gl_compatibility"
 textures/canvas_textures/default_texture_filter=0
 2d/snap/snap_2d_transforms_to_pixel=true
 2d/snap/snap_2d_vertices_to_pixel=true
-environment/defaults/default_clear_color=Color(0.039, 0.051, 0.063, 1)   ; ink-1
+; ink-1 clear colour
+environment/defaults/default_clear_color=Color(0.039, 0.051, 0.063, 1)
 
 [editor_plugins]
-enabled=PackedStringArray()      ; Sky3D removed
+; Sky3D removed
+enabled=PackedStringArray()
 ```
 
 Rationale, point by point: `viewport` stretch renders the *whole frame* (including text) at 480×270 and
 integer-upscales it — the honest pixel look; `scale_mode=integer` prevents fractional pixel sizes; nearest
 filtering globally; the two `snap_2d` flags kill sub-pixel shimmer (camera smoothing must also stay off, or
 use pixel-snapped smoothing); the `[gui]` block makes bitmap fonts rasterise without antialiasing/hinting
-mush. **[VERIFY]** at T-02 that every key exists under that exact name in 4.7.2's Project Settings search and
-record any renamed key in the appendix.
+mush. **[VERIFIED — T-02, 2026-09-23]** every key above exists under that exact name in Godot 4.7.2
+(checked against the 4.7 `ProjectSettings` class reference and `TextServer` enums): **no renames were
+needed**, and each `=0` value maps onto the intended enum member — `FONT_ANTIALIASING_NONE`, `HINTING_NONE`,
+`SUBPIXEL_POSITIONING_DISABLED`, texture filter Nearest. Annotations are carried as full-line `;` comments
+in the shipped file (ConfigFile documents full-line comment lines); the executable import pass is the CI
+gate per §11.1. Full record in Appendix A.
 
 ### 4.3 Directory layout (new tree under `godot/`)
 
@@ -1094,6 +1101,28 @@ See §4.2 (complete block). Removed keys: `window/size/viewport_*` 1600/900 pair
 `stretch/aspect=expand`, Sky3D from `editor_plugins`. Added: `[gui]` pixel-font block, nearest filter, 2D
 snapping, 480×270 viewport + overrides.
 
+**T-02 verification record (2026-09-23)** — every §4.2 key name confirmed **exact** against the Godot 4.7
+class/enum references; **zero renames**:
+
+- `display/window/size/*` and `window/stretch/{mode,aspect}` — pre-existing keys, values swapped in place;
+  `window/stretch/scale_mode="integer"` confirmed present (enum `fractional`/`integer`).
+- `gui/theme/default_font_{antialiasing,subpixel_positioning,hinting}` — confirmed; `0` = `NONE`,
+  `DISABLED`, `NONE` respectively (engine default is `1` in all three).
+- `rendering/textures/canvas_textures/default_texture_filter` — confirmed (`0` = Nearest); written as
+  `textures/canvas_textures/…` under `[rendering]`.
+- `rendering/2d/snap/snap_2d_{transforms,vertices}_to_pixel` — confirmed.
+- `rendering/environment/defaults/default_clear_color`, `renderer/rendering_method{,.mobile}`,
+  `editor_plugins/enabled`, `application/config/version` — confirmed (already in use or standard).
+- Applied-form notes: the block's two inline `;` annotations are written as full-line comments in the
+  shipped file (ConfigFile documents full-line `;` comment lines — a trailing comment can be absorbed into
+  the value text); the pre-existing `textures/vram_compression/import_etc2_astc=true` key was kept
+  ("replace/add"); the `[input]` comment defers the actual action edits to T-11, because actions today are
+  registered at runtime by `game_state.gd`, not by `project.godot`.
+- Import gate: the sandbox has no Godot binary (§11.1) and the release CDN is unreachable, so the
+  executable `--headless --import` pass is the CI gate (`import` job, §10.3 / T-13). The local gate was a
+  ConfigFile-grammar validation of the shipped file (sections, keys, value syntax, no inline comments,
+  full §4.2 block parity) — PASS.
+
 ### B. Palette tables
 Surface 32 + Below 8 — exact hex in §5.3. Machine-readable copies land at
 `assets/pixel/palette/palette_{surface,below}.png` + `palette_lut.json` (M2, T-20).
@@ -1128,7 +1157,52 @@ npm i --no-save ffmpeg-static && node godot/tools/audio/transcode.js
 
 ### G. Plan changelog
 - **v1.0 (2026-09-23):** initial plan from clarification round (D1–D6) + full repo audit at `17c5fbc`.
+- **T-01 (2026-09-23):** `.godot/` → `godot/` rename + root `.gitignore` consolidation landed.
+- **T-02 (2026-09-23):** §4.2 applied to `godot/project.godot` (v0.4.0-pixel, 480×270 integer pipeline,
+  Sky3D plugin disabled); key names verified — no renames (Appendix A).
+- **T-03 (2026-09-23):** `DELVE_Godot_4.7.2.zip` (69 MB) moved to GitHub Release
+  [`v0.3.0-godot-3d`](https://github.com/LucasM25-max/DELVE/releases/tag/v0.3.0-godot-3d) and untracked
+  from Git (`*.zip` ignore enforced; H3 resolved). Uploaded via the `upload-release-asset` workflow
+  because the agent sandbox cannot reach `uploads.github.com`. GETTING_STARTED §2 now points at the
+  Release. Tracked tree after this commit: ≈108 MB — the <40 MB gate completes at T-04 (3D asset
+  retirement).
+- **T-04 (2026-09-23):** 3D assets retired (H4/H5). Tag `archive/3d-v0.3.0` + Release
+  [`DELVE_3D_ASSETS_v0.3.0.zip`](https://github.com/LucasM25-max/DELVE/releases/tag/archive/3d-v0.3.0)
+  (80.8 MB) carry characters/textures/models/Sky3D; `git rm` removes them from the tree;
+  `assets/models/manifest.json` becomes the 2D prop manifest (same names + 16-px footprints,
+  §10.2.3); Web `exclude_filter` gains the four retired globs, proved by
+  `godot/tools/verify_export_filters.py` (EXPORT_FILTER_TEST_PASS); THIRD_PARTY credits preserved.
+  Tracked tree: 108.1 MB → **24.5 MB — the M0 ≤40 MB gate green**. The 3D yard scenes are frozen at
+  the tag (accepted per M0 "hygiene & freeze"; rebuilt as 2D at M3/M4).
+- **T-05 (2026-09-23):** supersede banners added to GDD-00 Part 1 (and its header line) and
+  GDD-04; GDD-05 Way 1 rewritten to the `/play/` topology (§9.3) with the stale port-3100 preview
+  steps dropped, and its "where the game is" pointer re-aimed at GDD-06 §3.1/§12. Editor route
+  (Ways 2–3) left unchanged per §10.4.
+- **GDD-07 (2026-09-23):** companion content spec issued —
+  `07_PIXEL_PROLOGUE_YARD_AND_MENU_BUILD_SPEC.md`: complete pixel **menu** (exact 480×270 rects,
+  string master, 16 loading tips) + **entire training yard A–M** at GDD-03 detail (tile coordinates,
+  rules primer R1–R15, props/triggers/VO/audio/VFX, data schemas, QA suite), reconciled with this
+  document's §3.1 slice via ship rings P0/P1/P2 (§18).
 
 ---
 
-*End of GDD-06. Approval of §16 defaults (or overrides) starts M0.*
+## 18. COMPANION CONTENT SPEC — GDD-07 (ISSUED 2026-09-23)
+
+Everything needed to **build the game menu and the entire prologue training area** in the pixel
+direction now lives in a single standalone document:
+
+→ **`07_PIXEL_PROLOGUE_YARD_AND_MENU_BUILD_SPEC.md` (GDD-07)**
+
+| This document (GDD-06) still owns | GDD-07 owns |
+|---|---|
+| Technology, art pipeline, milestones/backlog (§12–§13), web export/deploy, CI, risks, budgets | Menu screen-by-screen build rects + every shipped string; yard areas A–M in tile coordinates; rules primer R1–R15 inline at teaching stations; props/chars/audio/VO manifests; encounter + tutorial + map data schemas; menu+yard QA suite |
+| §3.1 first-playable **slice** definition (what lands at M4–M6) | Ship rings **P0/P1/P2** — P1 = this slice, P2 = complete prologue (T0–T11, C1–C6, all 13 areas interactive). P1 ⊂ P2; nothing is dropped, only sequenced |
+
+Where GDD-07 and the 3D-era specs (GDD-02, GDD-03) differ, **GDD-07 wins for the pixel build**
+(deltas catalogued in its §2). One deliberate refinement: ranged height house rule **R11 = 10 ft
+(elev Δ ≥ 2)** in GDD-07 §4, tightening this document's §6.5 `Δ≥1` sketch to the GDD-01/GDD-03
+threshold the loft is built around.
+
+---
+
+*End of GDD-06. M0 complete (T-01…T-05); M1+ follows §12/§13. Prologue content build spec: GDD-07 (§18).*

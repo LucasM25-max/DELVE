@@ -1,0 +1,75 @@
+# GDD-06 §10 — release-asset upload utility.
+#
+# Why this exists: the agent sandbox can reach github.com / api.github.com but NOT
+# uploads.github.com (asset-upload egress is blocked), so binary artifacts are
+# uploaded from a GitHub-hosted runner instead. Used by M0 tasks T-03/T-04 —
+# "binaries belong in Releases, never in the repository tree".
+#
+# How to use: edit the ENV block below (tag/title/asset/notes), commit, push —
+# the push to this file triggers the run (the `paths` filter keeps every other
+# push from re-triggering it). Two modes:
+#   - ASSET already in-tree at that commit  → uploaded as-is (T-03).
+#   - PACK_PATHS set                        → runner zips those paths into
+#     ASSET first, then uploads (T-04: the retired 3D asset trees).
+name: Upload release asset
+
+on:
+  push:
+    branches:
+      - arena/01a0cdae-delve
+    paths:
+      - '.github/workflows/upload-release-asset.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      # Default ref = the pushed commit; pack/upload operates on this tree.
+      - uses: actions/checkout@v4
+
+      - name: Pack (optional), create release (idempotent), upload asset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: archive/3d-v0.3.0
+          TITLE: archive/3d-v0.3.0 — DELVE retired 3D assets (characters, textures, models, Sky3D)
+          ASSET: DELVE_3D_ASSETS_v0.3.0.zip
+          PACK_PATHS: godot/assets/characters godot/assets/textures godot/assets/models godot/addons/sky_3d
+          NOTES: |
+            **Archived 3D-era assets for DELVE (GDD-06 T-04 / §10.2).**
+
+            Contents (≈86 MB packed), exactly as tracked at tag `archive/3d-v0.3.0`:
+
+            - `godot/assets/characters/**` — Quaternius Universal Base Characters + Universal
+              Animation Library glTF (CC0 1.0; licence texts inside)
+            - `godot/assets/textures/**` — 3D PBR ground materials (cobble/dirt/stone/wood/…)
+            - `godot/assets/models/**` — the 15-name `M_YRD_*` yard kit glTF + its QA manifest
+            - `godot/addons/sky_3d/**` — Sky3D addon (MIT)
+
+            **Why:** GDD-06 hygiene finding H4/H5 + task T-04 — these 73+ MB are 3D-only and must
+            not ship inside the browser build's PCK. They are retired from the working tree after
+            this tag; provenance is preserved here. The full playable 3D-era project is Release
+            [`v0.3.0-godot-3d`](https://github.com/LucasM25-max/DELVE/releases/tag/v0.3.0-godot-3d);
+            credits stay in `THIRD_PARTY.md`.
+
+            Unofficial, non-commercial fan project — GDD-06 §15. Never sold; no warranty.
+        run: |
+          set -euo pipefail
+          if [ -n "${PACK_PATHS:-}" ]; then
+            echo "packing: $PACK_PATHS -> $ASSET"
+            rm -f "$ASSET"
+            zip -r -q "$ASSET" $PACK_PATHS
+          fi
+          test -f "$ASSET" || { echo "::error::asset '$ASSET' missing after pack step"; exit 1; }
+          ls -la "$ASSET"
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --title "$TITLE" --notes "$NOTES"
+          fi
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber "$ASSET"
+          echo "--- release state after upload ---"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --json tagName,isDraft,assets --jq '{tag:.tagName,draft:.isDraft,assets:[.assets[]|{name:.name,size:.size}]}'
