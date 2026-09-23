@@ -20,13 +20,15 @@ export_presets.cfg               Single-threaded Web preset
 scenes/ui/shell.tscn              Main scene
 scenes/world/test_yard.tscn       Editable 3D blockout; Art is the model integration slot
 scenes/actors/player.tscn         CharacterBody3D, capsule, Visuals, camera/SpringArm
+scenes/actors/npc_corwin.tscn     Corwin guard NPC (A1): hero body, guard-blue tint, Voice
 scripts/core/game_state.gd       Settings, validation, input bindings, eight-slot local save
-scripts/core/sound.gd            Bundled OGG, user-gesture startup, volume/focus behavior
+scripts/core/sound.gd            Bundled OGG, user-gesture startup, volume/focus/VO-duck behavior
 scripts/ui/shell.gd              Screen state machine, native Controls, threaded loader
 scripts/ui/shell_ui.gd           Fonts, palette, reusable native UI factory
 scripts/ui/backdrop.gd           Low-cost panorama drift, reduced-motion support
 scripts/ui/options_page.gd       Schema-driven native settings and rebinding
 scripts/world/player.gd          Camera-relative movement and camera modes
+scripts/world/npc_corwin.gd      Guard idle (lean/scan pose offsets), VO say(), TR_A_LANE hook
 scripts/world/test_yard.gd       Pause, pointer lock, menu return, HUD
 assets/images/                  Existing web artwork, optimized for browser download
 assets/audio/                   Supplied theme (no invented/generated extra tracks)

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://kkgmy5bjhl0k"
-path="res://.godot/imported/T_YRD_COBBLE_normal.png-737c9520caa29ddba8ed8a5db4b3eb40.ctex"
+uid="uid://cu3u1xewrq4uw"
+path="res://.godot/imported/qa_corwin_fit.png-8ef986d334c4ffee0498a54905d395e3.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/T_YRD_COBBLE_normal.png"
-dest_files=["res://.godot/imported/T_YRD_COBBLE_normal.png-737c9520caa29ddba8ed8a5db4b3eb40.ctex"]
+source_file="res://tests/qa_corwin_fit.png"
+dest_files=["res://.godot/imported/qa_corwin_fit.png-8ef986d334c4ffee0498a54905d395e3.ctex"]
 
 [params]
 
@@ -21,9 +21,9 @@ compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=1
+compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

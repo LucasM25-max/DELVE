@@ -2,6 +2,8 @@ extends Node3D
 ## Test yard with Sky3D 2.1 integration — Phases 1 & 2 implemented.
 ## Phase 1: Neverwinter dawn staging — latitude, longitude, time, lighting tuned for Compatibility.
 ## Phase 2: Clouds as weather proxy — coverage driven by gfx.clouds, wind from settings.
+## Floor: displaced 3D heightfield ground (dirt + forecourt cobble GLBs)
+## with trimesh collision baked in _setup_ground_collision().
 const UI = preload("res://scripts/ui/shell_ui.gd")
 var pause_overlay: Control
 var resume_button: Button
@@ -22,6 +24,7 @@ var current_weather := WeatherState.CLEAR
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_setup_ground_collision()
 	call_deferred("_configure_sky3d_phase1_2")
 
 	var layer := CanvasLayer.new()
@@ -72,6 +75,34 @@ func _ready() -> void:
 
 	# React to settings changes for clouds/time
 	GameState.setting_changed.connect(_on_setting_changed)
+
+## Bake exact collision from the displaced ground heightfield GLBs.
+## The floor is a true 3D surface (not a plane), so a box shape no longer
+## matches it: each StaticBody under Terrain3D gets a ConcavePolygonShape3D
+## built from its own mesh, before the first physics step. Skips cleanly
+## when a Terrain3D GDExtension instance replaces the fallback meshes.
+func _setup_ground_collision() -> void:
+	var terrain := get_node_or_null("Terrain3D")
+	if terrain == null:
+		return
+	for body in terrain.get_children():
+		if not (body is StaticBody3D):
+			continue
+		var col := body.get_node_or_null("Collision") as CollisionShape3D
+		var mesh_node := _find_mesh_instance(body)
+		if col == null or mesh_node == null or not (mesh_node.mesh is ArrayMesh):
+			continue
+		col.shape = (mesh_node.mesh as ArrayMesh).create_trimesh_shape()
+
+
+func _find_mesh_instance(n: Node) -> MeshInstance3D:
+	if n is MeshInstance3D:
+		return n
+	for c in n.get_children():
+		var found := _find_mesh_instance(c)
+		if found:
+			return found
+	return null
 
 func build_pause() -> void:
 	pause_overlay = Control.new()

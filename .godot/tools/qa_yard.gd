@@ -1,5 +1,6 @@
 extends SceneTree
-## Headless QA for the GDD-03 yard build (walls, gate, props A1-A4).
+## Headless QA for the GDD-03 yard build (walls, gate, props A1-A4) and the
+## Corwin guard NPC + TR_A_LANE (docs/11 plan Step 6, incl. behaviour probes).
 ## Run: godot --headless --path . --script res://tools/qa_yard.gd
 ## Prints QA_YARD_PASS / QA_YARD_FAIL; exits 0/1.
 
@@ -211,10 +212,182 @@ func main() -> void:
 	ck(absf(player.position.z - 5.0) < 0.01 and absf(player.position.x) < 0.01,
 		"player spawn at (0, 0.5, 5) in the forecourt")
 
+	# 17) 3D ground: displaced heightfield GLBs + runtime trimesh collision
+	var dirt_mi := yard.get_node("Terrain3D/DirtGround/Ground/M_YRD_GROUND_YARD") as MeshInstance3D
+	var cob_mi := yard.get_node("Terrain3D/ForecourtCobble/Ground/M_YRD_GROUND_FORECOURT") as MeshInstance3D
+	ck(dirt_mi != null and dirt_mi.mesh != null and cob_mi != null and cob_mi.mesh != null,
+		"ground heightfield meshes present under Terrain3D")
+	if dirt_mi and dirt_mi.mesh:
+		var da := dirt_mi.mesh.get_aabb()
+		ck(absf(da.position.x - (-22.0)) < 0.02 and absf(da.end.x - 22.0) < 0.02
+			and absf(da.position.z - 0.0) < 0.02 and absf(da.end.z - 44.0) < 0.02,
+			"dirt spans x -22..22, z 0..44 (got " + aabb_s(da) + ")")
+		ck(da.end.y - da.position.y > 0.12,
+			"dirt is displaced in 3D, not a flat plane (y span %.3f)" % (da.end.y - da.position.y))
+		ck(da.position.y >= -0.2 and da.end.y <= 0.2,
+			"dirt relief stays within +/-0.2 m (got %.3f..%.3f)" % [da.position.y, da.end.y])
+	if cob_mi and cob_mi.mesh:
+		var ca := cob_mi.mesh.get_aabb()
+		ck(absf(ca.position.x - (-7.0)) < 0.02 and absf(ca.end.x - 7.0) < 0.02
+			and absf(ca.position.z - 0.0) < 0.02 and absf(ca.end.z - 6.0) < 0.02,
+			"forecourt spans x -7..7, z 0..6 (got " + aabb_s(ca) + ")")
+		ck(ca.end.y < 0.1 and ca.position.y > -0.15,
+			"forecourt camber + kerb skirts within bounds (got %.3f..%.3f)" % [ca.position.y, ca.end.y])
+	for tag: String in ["DirtGround", "ForecourtCobble"]:
+		var body := yard.get_node("Terrain3D/" + tag) as StaticBody3D
+		var col := body.get_node_or_null("Collision") as CollisionShape3D
+		ck(col != null and col.shape is ConcavePolygonShape3D,
+			tag + " has baked trimesh collision")
+	var dirt_mat := (dirt_mi.get_active_material(0) as StandardMaterial3D) if dirt_mi else null
+	var cob_mat := (cob_mi.get_active_material(0) as StandardMaterial3D) if cob_mi else null
+	ck(dirt_mat != null and dirt_mat.vertex_color_use_as_albedo
+		and dirt_mat.albedo_texture != null and dirt_mat.normal_enabled
+		and dirt_mat.texture_filter == BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC,
+		"dirt material: tiled maps + vertex tints + aniso mipmaps")
+	ck(cob_mat != null and cob_mat.vertex_color_use_as_albedo
+		and cob_mat.albedo_texture != null and cob_mat.normal_enabled,
+		"cobble material: tiled maps + vertex tints + normals")
+
+	# Corwin guard NPC + TR_A_LANE (GDD-03 §4.A; docs/11 plan Step 6)
+	var corwin: Node3D = yard.get_node_or_null("NPCs/Corwin") as Node3D
+	ck(corwin != null, "NPCs/Corwin instanced")
+	if corwin != null:
+		ck(absf(corwin.position.x - 2.5) < 0.01 and absf(corwin.position.y - 0.16) < 0.01
+			and absf(corwin.position.z - 1.5) < 0.01,
+			"Corwin at A1 home (2.5, 0.16, 1.5), feet on the box floor")
+		var ca := _subtree_aabb(corwin)
+		# Bind-mesh bounds in Corwin-local space: 1.82 m figure (accessor y
+		# -0.01..1.81; T-pose x +-0.93). The horizontal fit is asserted on
+		# posed hand bones below (bind width != posed width).
+		ck(absf(ca.position.y + 0.01) < 0.06 and absf(ca.end.y - 1.81) < 0.06
+			and ca.end.y - ca.position.y > 1.7
+			and absf((ca.position.x + ca.end.x) * 0.5) < 0.05
+			and absf((ca.position.z + ca.end.z) * 0.5) < 0.08,
+			"Corwin ~1.8 m figure (bind mesh bounds) centred at home (got " + aabb_s(ca) + ")")
+		ck(corwin.find_children("*", "PhysicsBody3D", true, false).is_empty()
+			and corwin.find_children("*", "CollisionShape3D", true, false).is_empty()
+			and corwin.find_children("*", "Area3D", true, false).is_empty(),
+			"Corwin blocks nothing (no physics, collision or areas)")
+		var hero: Node = corwin.get_node_or_null("Visuals/Hero")
+		var ual: AnimationPlayer = hero.get_node_or_null("UAL") if hero != null else null
+		ck(ual != null and ual.has_animation("Idle") and ual.has_animation("Idle_Talking"),
+			"Corwin UAL library bound (Idle + Idle_Talking)")
+		var cskel: Skeleton3D = corwin.get_node_or_null("Visuals/Hero/Armature/Skeleton3D") as Skeleton3D
+		ck(cskel != null and cskel.get_bone_count() == 65
+			and cskel.find_bone("Head") >= 0 and cskel.find_bone("neck_01") >= 0
+			and cskel.find_bone("spine_01") >= 0 and cskel.find_bone("spine_02") >= 0,
+			"Corwin rig: 65-bone skeleton with Head/neck_01/spine pose bones")
+		var voice: AudioStreamPlayer3D = corwin.get_node_or_null("Voice") as AudioStreamPlayer3D
+		ck(voice != null and absf(voice.position.y - 1.65) < 0.01 and voice is AudioStreamPlayer3D,
+			"Corwin Voice player at mouth height (spatialised)")
+		var tinted := false
+		for d: Node in _descendant_meshes(corwin):
+			var mi := d as MeshInstance3D
+			if mi == null:
+				continue
+			var sm := mi.get_active_material(0) as StandardMaterial3D
+			if sm != null and sm.albedo_color.is_equal_approx(Color(0.16, 0.24, 0.44, 1)):
+				tinted = true
+		ck(tinted, "guard-blue tabard tint on the body mesh (D7)")
+	var vo_expect := {"vo_grd_001": 6.96, "vo_grd_002": 4.36, "vo_grd_003": 5.52}
+	var vo_ok := true
+	for vname: String in vo_expect:
+		var vstream = load("res://assets/audio/%s.ogg" % vname)
+		if not (vstream is AudioStreamOggVorbis):
+			vo_ok = false
+			print("  VO not imported: ", vname)
+		elif absf(vstream.get_length() - vo_expect[vname]) > 0.25:
+			vo_ok = false
+			print("  VO wrong length: ", vname, " got ", vstream.get_length())
+	ck(vo_ok, "vo_grd_001..003 import as OGG with spec lengths (Step 1)")
+	var lane: Area3D = yard.get_node_or_null("TR_A_LANE") as Area3D
+	ck(lane != null and lane.monitoring, "TR_A_LANE Area3D present and monitoring")
+	if lane != null:
+		ck(absf(lane.position.x) < 0.01 and absf(lane.position.y - 1.0) < 0.01
+			and absf(lane.position.z + 4.0) < 0.01, "TR_A_LANE at spec (0, 1, -4)")
+		var lshape: CollisionShape3D = lane.get_node_or_null("Shape") as CollisionShape3D
+		var sphere: SphereShape3D = lshape.shape as SphereShape3D if lshape != null else null
+		ck(sphere != null and absf(sphere.radius - 3.0) < 0.01, "TR_A_LANE sphere radius 3 (S5)")
+		var wired := false
+		for c: Dictionary in lane.get_signal_connection_list("body_entered"):
+			var obj: Object = c.callable.get_object()
+			if obj == corwin and String(c.callable.get_method()) == "_on_lane_body_entered":
+				wired = true
+		ck(wired, "TR_A_LANE body_entered -> Corwin._on_lane_body_entered (one-shot)")
+
+	# Runtime behaviour (docs/11 Step 6): pose offsets, scan sweep,
+	# one-shot trigger firing, overlap refusal, bed duck (S10 mix).
+	if corwin != null and lane != null:
+		var bc = corwin  # dynamic: script API on the NPC instance
+		var bskel: Skeleton3D = corwin.get_node_or_null("Visuals/Hero/Armature/Skeleton3D") as Skeleton3D
+		if bskel != null:
+			var b_head := bskel.find_bone("Head")
+			var b_spine := bskel.find_bone("spine_02")
+			bc.debug_set_pose(0.0)
+			var q0: Quaternion = bskel.get_bone_pose_rotation(b_head)
+			var s0: Quaternion = bskel.get_bone_pose_rotation(b_spine)
+			bc.debug_set_pose(30.0, 4.0)
+			var q1: Quaternion = bskel.get_bone_pose_rotation(b_head)
+			var s1: Quaternion = bskel.get_bone_pose_rotation(b_spine)
+			ck(not q0.is_equal_approx(q1), "head scan pose drives the Head/neck bones")
+			ck(not s0.is_equal_approx(s1), "lean pose drives the spine bones (D8)")
+		var yaw0: float = bc._scan_yaw
+		for i in 20:
+			bc._update_scan(0.5)  # 10 s of virtual idle
+		ck(absf(bc._scan_yaw - yaw0) > 1.0, "lane scan sweeps the head yaw over time")
+		for i in 30:
+			bc._process(0.016)  # settle into the UAL idle pose (tree is paused here)
+		if bskel != null:
+			var hands_ok := true
+			for bname in ["hand_l", "hand_r"]:
+				var hw: Vector3 = bskel.global_transform * bskel.get_bone_global_pose(bskel.find_bone(bname)).origin
+				hands_ok = hands_ok and hw.x > 1.96 and hw.x < 3.04 \
+					and hw.z > 0.96 and hw.z < 2.04 and hw.y > 0.16 and hw.y < 2.1
+			ck(hands_ok, "posed hands stay inside the guard-box interior")
+		paused = false
+		yard.set_process(false)  # headless: no pointer capture; keep physics live
+		var pbody: Node3D = yard.get_node_or_null("Player") as Node3D
+		if pbody != null:
+			pbody.global_position = Vector3(0, 0.5, 5)  # south of the lane sphere
+			for frame in 5:
+				await physics_frame
+			pbody.global_position = Vector3(0, 1.0, -4)  # TR_A_LANE centre
+			for frame in 10:
+				await physics_frame
+			ck(bc._lane_said and not bc.say("VO_GRD_002"),
+				"TR_A_LANE fires VO_GRD_001 once; say() refuses overlap (S10)")
+			var dvoice: AudioStreamPlayer3D = corwin.get_node_or_null("Voice") as AudioStreamPlayer3D
+			ck(dvoice != null and dvoice.playing, "VO_GRD_001 is audibly playing on Voice")
+			# Autoloads are not compile-time identifiers in a --script context;
+			# reach Sound through the tree (duck_bed + duck_db, S10 mix). The
+			# say() above already ducked; spin wall-clock (headless frames have
+			# micro-deltas) until the tween reaches the -6 dB floor.
+			var sound_node: Node = root.get_node_or_null("Sound")
+			var t0 := Time.get_ticks_msec()
+			while sound_node != null and Time.get_ticks_msec() - t0 < 400 \
+				and float(sound_node.get("duck_db")) > -3.0:
+				await process_frame
+			ck(sound_node != null and float(sound_node.get("duck_db")) < -3.0,
+				"VO ducks the music bed toward -6 dB (GDD-03 §7/§12)")
+
 	yard.queue_free()
 	print("checks run: %d, failures: %d" % [checks, failures])
 	print("QA_YARD_" + ("PASS" if failures == 0 else "FAIL"))
 	quit(0 if failures == 0 else 1)
+
+
+func _subtree_aabb(n: Node3D) -> AABB:
+	# Bounds of all descendant meshes in n's local space (any depth — unlike
+	# _mesh_aabb this accumulates full global chains, for skinned characters).
+	var out := AABB()
+	var inv := n.global_transform.affine_inverse()
+	for d in _descendant_meshes(n):
+		var mi := d as MeshInstance3D
+		if mi == null or mi.mesh == null:
+			continue
+		var local := (inv * mi.global_transform) * mi.mesh.get_aabb()
+		out = local if out.get_volume() == 0.0 else out.merge(local)
+	return out
 
 
 func _mesh_aabb(n: Node) -> AABB:
