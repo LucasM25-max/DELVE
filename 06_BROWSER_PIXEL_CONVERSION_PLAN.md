@@ -1166,6 +1166,14 @@ npm i --no-save ffmpeg-static && node godot/tools/audio/transcode.js
   because the agent sandbox cannot reach `uploads.github.com`. GETTING_STARTED §2 now points at the
   Release. Tracked tree after this commit: ≈108 MB — the <40 MB gate completes at T-04 (3D asset
   retirement).
+- **T-04 (2026-09-23):** 3D assets retired (H4/H5). Tag `archive/3d-v0.3.0` + Release
+  [`DELVE_3D_ASSETS_v0.3.0.zip`](https://github.com/LucasM25-max/DELVE/releases/tag/archive/3d-v0.3.0)
+  (80.8 MB) carry characters/textures/models/Sky3D; `git rm` removes them from the tree;
+  `assets/models/manifest.json` becomes the 2D prop manifest (same names + 16-px footprints,
+  §10.2.3); Web `exclude_filter` gains the four retired globs, proved by
+  `godot/tools/verify_export_filters.py` (EXPORT_FILTER_TEST_PASS); THIRD_PARTY credits preserved.
+  Tracked tree ≈22 MB — **M0 <40 MB gate green**. The 3D yard scenes are frozen at the tag
+  (accepted per M0 "hygiene & freeze"; rebuilt as 2D at M3/M4).
 
 ---
 

@@ -23,6 +23,12 @@ licence texts):
   Asset Library / GitHub release; **not redistributed in delivery zips**.
 - **Sky3D** by Tokisan Games — MIT. GDScript plugin, same distribution note.
 
+> **T-04 retirement note (2026-09-23):** the Quaternius character/UAL files, the 3D ground
+> textures, the `M_YRD_*` model kit and the Sky3D addon have been retired from the working
+> tree (GDD-06 §10.2). Byte-preserving copies — **including every licence text cited above** —
+> ship in Release [`DELVE_3D_ASSETS_v0.3.0.zip`](https://github.com/LucasM25-max/DELVE/releases/tag/archive/3d-v0.3.0)
+> at tag `archive/3d-v0.3.0`. The CC0/MIT credits above remain in force (GDD-06 §15.6).
+
 CC0 content carries no attribution obligation; attribution is kept voluntarily. The
 earlier statement that no external models were downloaded applied to rounds ≤ 12 only.
 
